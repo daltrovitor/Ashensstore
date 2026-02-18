@@ -15,7 +15,8 @@ import {
   ArrowLeft,
   GripVertical,
   Pencil,
-  Truck
+  Truck,
+  X
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
@@ -61,6 +62,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+interface VariantForm {
+  id?: string
+  name: string
+  size: string
+  color: string
+  price: string
+  in_stock: boolean
+}
+
+const emptyVariant: VariantForm = { name: '', size: '', color: '', price: '', in_stock: true }
+
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState("products")
   const [products, setProducts] = useState<Product[]>([])
@@ -82,18 +94,28 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     is_featured: false
   })
 
+  // Multiple images state
+  const [productImages, setProductImages] = useState<string[]>([])
+
+  // Variants state
+  const [variants, setVariants] = useState<VariantForm[]>([])
+
   // Fetch initial data
   useEffect(() => {
     fetchProducts()
     fetchCategories()
-  }, [])
+  }, [activeTab])
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/categories')
+      console.log("Fetching categories...")
+      const res = await fetchWithAuth('/api/categories')
       if (res.ok) {
         const data = await res.json()
+        console.log("Categories received:", data)
         setCategories(Array.isArray(data) ? data : [])
+      } else {
+        console.error("Failed to fetch categories:", res.status)
       }
     } catch (error) {
       console.error("Erro ao carregar categorias:", error)
@@ -116,6 +138,13 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     }
   }
 
+  const resetForm = () => {
+    setFormData({ name: '', slug: '', description: '', price: '', imageUrl: '', category_id: '', is_featured: false })
+    setProductImages([])
+    setVariants([])
+    setEditingId(null)
+  }
+
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCreating(true)
@@ -124,6 +153,30 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       const url = editingId ? `/api/admin/products/${editingId}` : '/api/admin/products'
       const method = editingId ? 'PUT' : 'POST'
 
+      // Combine thumbnail + additional images
+      const allImages = formData.imageUrl
+        ? [formData.imageUrl, ...productImages.filter(img => img !== formData.imageUrl)]
+        : productImages
+
+      // Build variants payload
+      const variantsPayload = variants.length > 0
+        ? variants.map(v => ({
+          id: v.id,
+          name: v.name || 'Padrão',
+          size: v.size || null,
+          color: v.color || null,
+          price: parseFloat(v.price.toString().replace('.', '').replace(',', '.')) || 0,
+          in_stock: v.in_stock
+        }))
+        : undefined
+
+      const parsedPrice = parseFloat(formData.price.toString().replace(/\./g, '').replace(',', '.'))
+      if (isNaN(parsedPrice)) {
+        toast.error("Preço inválido")
+        setIsCreating(false)
+        return
+      }
+
       const res = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -131,12 +184,13 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           name: formData.name,
           slug: formData.slug || formData.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''),
           description: formData.description,
-          price: parseFloat(formData.price.toString().replace('.', '').replace(',', '.')),
-          thumbnail_url: formData.imageUrl,
-          images: [formData.imageUrl],
-          category_id: formData.category_id || null,
+          price: parsedPrice,
+          thumbnail_url: formData.imageUrl || allImages[0] || null,
+          images: allImages,
+          category_id: (formData.category_id && formData.category_id !== "none") ? formData.category_id : null,
           is_active: true,
-          is_featured: formData.is_featured
+          is_featured: formData.is_featured,
+          variants: variantsPayload
         })
       })
 
@@ -145,16 +199,15 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       if (res.ok) {
         toast.success(editingId ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!")
         setNewProductOpen(false)
-        setFormData({ name: '', slug: '', description: '', price: '', imageUrl: '', category_id: '', is_featured: false })
-        setEditingId(null)
+        resetForm()
         fetchProducts()
       } else if (res.status === 409) {
         toast.warning("Produto duplicado!", {
-          description: "Já existe um produto com este nome ou slug. Tente alterar o nome.",
+          description: data.error || "Já existe um produto com este nome ou slug. Tente alterar o nome.",
           duration: 6000,
         })
       } else {
-        toast.error(data.error || "Erro ao salvar produto")
+        toast.error(data.message || data.error || "Erro ao salvar produto")
       }
     } catch (error) {
       console.error(error)
@@ -175,6 +228,26 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       category_id: product.category_id || '',
       is_featured: product.is_featured
     })
+
+    // Load existing images
+    const mockupImages = product.mockups?.map(m => m.image_url) || []
+    const existingImages = mockupImages.length > 0 ? mockupImages : (product.images || [])
+    setProductImages(existingImages.filter(img => img !== (product.thumbnail_url || product.images?.[0] || '')))
+
+    // Load existing variants
+    if (product.variants && product.variants.length > 0) {
+      setVariants(product.variants.map(v => ({
+        id: v.id,
+        name: v.name || '',
+        size: v.size || '',
+        color: v.color || '',
+        price: (v.retail_price || v.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+        in_stock: v.in_stock
+      })))
+    } else {
+      setVariants([])
+    }
+
     setNewProductOpen(true)
   }
 
@@ -218,6 +291,32 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       console.error('Logout error:', error)
       onLogout()
     }
+  }
+
+  // --- Variant helpers ---
+  const addVariant = () => {
+    setVariants([...variants, { ...emptyVariant }])
+  }
+
+  const updateVariant = (index: number, field: keyof VariantForm, value: string | boolean) => {
+    const updated = [...variants]
+    updated[index] = { ...updated[index], [field]: value }
+    setVariants(updated)
+  }
+
+  const removeVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index))
+  }
+
+  // --- Image helpers ---
+  const addProductImage = (url: string) => {
+    if (url && !productImages.includes(url)) {
+      setProductImages([...productImages, url])
+    }
+  }
+
+  const removeProductImage = (index: number) => {
+    setProductImages(productImages.filter((_, i) => i !== index))
   }
 
   return (
@@ -265,8 +364,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 <Dialog open={newProductOpen} onOpenChange={(open) => {
                   setNewProductOpen(open)
                   if (!open) {
-                    setEditingId(null)
-                    setFormData({ name: '', slug: '', description: '', price: '', imageUrl: '', category_id: '', is_featured: false })
+                    resetForm()
                   }
                 }}>
                   <DialogTrigger asChild>
@@ -274,88 +372,228 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       <Plus className="mr-2 h-4 w-4" /> Novo Produto
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
+                  <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Editar Produto" : "Adicionar Novo Produto"}</DialogTitle>
                       <DialogDescription>
-                        {editingId ? "Edite os detalhes do produto abaixo." : "Adicione um novo produto ao catálogo manualmente."}
+                        {editingId ? "Edite os detalhes do produto abaixo." : "Adicione um novo produto ao catálogo."}
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleSaveProduct} className="space-y-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="name">Nome do Produto</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          required
-                        />
+                    <form onSubmit={handleSaveProduct} className="space-y-6 py-4">
+
+                      {/* --- Informações Básicas --- */}
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Informações Básicas</h3>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="name">Nome do Produto</Label>
+                            <Input
+                              id="name"
+                              value={formData.name}
+                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="slug">Slug (URL)</Label>
+                            <Input
+                              id="slug"
+                              value={formData.slug}
+                              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                              placeholder="Auto-gerado se vazio"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="price">Preço Base (R$)</Label>
+                            <Input
+                              id="price"
+                              type="text"
+                              inputMode="decimal"
+                              value={formData.price}
+                              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                              placeholder="0,00"
+                              required
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="category">Categoria</Label>
+                            <Select
+                              value={formData.category_id || "none"}
+                              onValueChange={(val) => setFormData({ ...formData, category_id: val === "none" ? "" : val })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma categoria</SelectItem>
+                                {categories.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="featured"
+                            checked={formData.is_featured}
+                            onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
+                          />
+                          <Label htmlFor="featured">Produto em Destaque?</Label>
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="slug">Slug (URL)</Label>
-                        <Input
-                          id="slug"
-                          value={formData.slug}
-                          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                          placeholder="Auto-gerado se vazio"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+
+                      {/* --- Descrição --- */}
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Descrição do Produto</h3>
                         <div className="grid gap-2">
-                          <Label htmlFor="price">Preço (R$)</Label>
-                          <Input
-                            id="price"
-                            type="text"
-                            inputMode="decimal"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            placeholder="0,00"
-                            required
+                          <Label htmlFor="description">Descrição completa (aparece na página do produto)</Label>
+                          <Textarea
+                            id="description"
+                            rows={8}
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Descreva o produto em detalhes: materiais, especificações, dimensões, modo de uso, etc."
+                            className="resize-y min-h-[120px]"
+                          />
+                          <p className="text-xs text-muted-foreground">{formData.description.length} caracteres</p>
+                        </div>
+                      </div>
+
+                      {/* --- Imagens --- */}
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Imagens do Produto</h3>
+
+                        <div className="grid gap-2">
+                          <Label>Imagem Principal (Thumbnail)</Label>
+                          <ImageUpload
+                            value={formData.imageUrl}
+                            onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+                            disabled={isCreating}
                           />
                         </div>
+
                         <div className="grid gap-2">
-                          <Label htmlFor="category">Categoria</Label>
-                          <Select
-                            value={formData.category_id}
-                            onValueChange={(val) => setFormData({ ...formData, category_id: val })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label>Imagens Adicionais</Label>
+                          <div className="grid grid-cols-4 gap-3">
+                            {productImages.map((img, index) => (
+                              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
+                                <img src={img} alt={`Imagem ${index + 1}`} className="object-cover w-full h-full" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeProductImage(index)}
+                                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                            {/* Add new image slot */}
+                            <div className="aspect-square">
+                              <ImageUpload
+                                value=""
+                                onChange={(url) => {
+                                  if (url) addProductImage(url)
+                                }}
+                                disabled={isCreating}
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{productImages.length} imagem(ns) adicional(is)</p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="featured"
-                          checked={formData.is_featured}
-                          onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
-                        />
-                        <Label htmlFor="featured">Produto em Destaque?</Label>
+
+                      {/* --- Variações --- */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Variações do Produto</h3>
+                          <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                            <Plus className="mr-1 h-3 w-3" /> Adicionar Variação
+                          </Button>
+                        </div>
+
+                        {variants.length === 0 ? (
+                          <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
+                            <p>Nenhuma variação adicionada.</p>
+                            <p className="text-xs mt-1">Uma variação padrão será criada automaticamente com o preço base.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {variants.map((variant, index) => (
+                              <div key={index} className="p-4 border rounded-lg bg-muted/30 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-semibold text-muted-foreground">Variação {index + 1}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeVariant(index)}
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 h-7 px-2"
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" /> Remover
+                                  </Button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs">Nome da Variação</Label>
+                                    <Input
+                                      value={variant.name}
+                                      onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                                      placeholder="Ex: P, M, G, GG"
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs">Preço (R$)</Label>
+                                    <Input
+                                      value={variant.price}
+                                      onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                                      placeholder="0,00"
+                                      className="h-8 text-sm"
+                                      inputMode="decimal"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs">Tamanho</Label>
+                                    <Input
+                                      value={variant.size}
+                                      onChange={(e) => updateVariant(index, 'size', e.target.value)}
+                                      placeholder="P, M, G..."
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs">Cor</Label>
+                                    <Input
+                                      value={variant.color}
+                                      onChange={(e) => updateVariant(index, 'color', e.target.value)}
+                                      placeholder="Preto, Branco..."
+                                      className="h-8 text-sm"
+                                    />
+                                  </div>
+                                  <div className="flex items-end gap-2 pb-0.5">
+                                    <Switch
+                                      checked={variant.in_stock}
+                                      onCheckedChange={(checked) => updateVariant(index, 'in_stock', checked)}
+                                    />
+                                    <Label className="text-xs">{variant.in_stock ? 'Em estoque' : 'Esgotado'}</Label>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div className="grid gap-2">
-                        <ImageUpload
-                          value={formData.imageUrl}
-                          onChange={(url) => setFormData({ ...formData, imageUrl: url })}
-                          disabled={isCreating}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="description">Descrição</Label>
-                        <Textarea
-                          id="description"
-                          rows={3}
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        />
-                      </div>
+
                       <DialogFooter>
-                        <Button type="submit" disabled={isCreating}>
+                        <Button type="submit" disabled={isCreating} className="w-full sm:w-auto">
                           {isCreating ? 'Salvando...' : 'Salvar Produto'}
                         </Button>
                       </DialogFooter>
@@ -372,6 +610,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         <TableHead>Imagem</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Preço</TableHead>
+                        <TableHead>Variações</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -379,11 +618,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">Carregando...</TableCell>
+                          <TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell>
                         </TableRow>
                       ) : products.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell>
                         </TableRow>
                       ) : (
                         products.map((product) => (
@@ -400,6 +639,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell>
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price || product.variants?.[0]?.retail_price || 0)}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-xs text-muted-foreground">
+                                {product.variants?.length || 0} variação(ões)
+                              </span>
                             </TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs font-bold ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { Loader2, Trash2, Plus, GripVertical } from "lucide-react"
+import { fetchWithAuth } from "@/lib/utils/fetch"
 
 interface Category {
     id: string
@@ -32,10 +33,14 @@ export function CategoriesManager() {
     const fetchCategories = async () => {
         try {
             setLoading(true)
-            const res = await fetch('/api/categories')
+            console.log("CategoriesManager: Fetching /api/categories")
+            const res = await fetchWithAuth('/api/categories')
             if (res.ok) {
                 const data = await res.json()
+                console.log("CategoriesManager: Received data:", data)
                 setCategories(Array.isArray(data) ? data : [])
+            } else {
+                console.error("CategoriesManager: Fetch failed", res.status)
             }
         } catch (error) {
             console.error('Error fetching categories:', error)

@@ -4,16 +4,28 @@ import { checkAdminAuth } from '@/lib/auth/admin-middleware'
 import { getSupabaseService } from '@/lib/supabase/server'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
+const VariantSchema = z.object({
+    id: z.string().uuid().optional(),
+    name: z.string().min(1, "Variant name is required"),
+    size: z.string().nullable().optional(),
+    color: z.string().nullable().optional(),
+    price: z.number().min(0),
+    in_stock: z.boolean().default(true),
+})
+
 const ProductSchema = z.object({
     name: z.string().min(1, "Name is required"),
     slug: z.string().min(1, "Slug is required"),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
     price: z.number().min(0),
-    thumbnail_url: z.string().optional(),
+    thumbnail_url: z.string().optional().nullable(),
     images: z.array(z.string()).optional(),
     category_id: z.string().uuid().optional().nullable(),
     is_active: z.boolean().default(true),
     is_featured: z.boolean().default(false),
+    variants: z.array(VariantSchema).optional(),
 })
 
 export async function GET(request: Request) {
@@ -23,7 +35,6 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Use SERVICE ROLE to ensure admins can see all products regardless of RLS
         const supabase = getSupabaseService()
         if (!supabase) {
             throw new Error('Supabase Service Role Key is missing')
@@ -64,17 +75,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Use SERVICE ROLE to bypass RLS on admin operations
         const supabase = getSupabaseService()
         if (!supabase) {
-            console.error('getSupabaseService returned null')
             return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
         }
 
         const body = await request.json()
+        console.log('[Admin Products] Received body:', JSON.stringify(body, null, 2))
 
-        // Basic validation
-        const validatedData = ProductSchema.parse(body)
+        let validatedData: z.infer<typeof ProductSchema>;
+        try {
+            validatedData = ProductSchema.parse(body)
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                console.error('[Admin Products] Validation Error details:', JSON.stringify(error.errors, null, 2))
+                return NextResponse.json({
+                    error: 'Validation Error',
+                    details: error.errors,
+                    message: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+                }, { status: 400 })
+            }
+            throw error
+        }
 
         // 1. Create Product
         const { data: product, error: productError } = await supabase
@@ -93,32 +115,45 @@ export async function POST(request: Request) {
             .single()
 
         if (productError) {
-            // Check for duplicate slug error (Supabase/Postgres code 23505)
             if (productError.code === '23505') {
+                return NextResponse.json({ error: 'Já existe um produto com este slug.' }, { status: 409 })
+            }
+            if (productError.code === '23503') {
+                console.error('[Admin Products] Category ID violation:', validatedData.category_id)
                 return NextResponse.json({
-                    error: 'Já existe um produto com este slug. Tente alterar o slug.',
-                    details: productError.details
-                }, { status: 409 })
+                    error: 'Categoria inválida.',
+                    message: `A categoria selecionada (ID: ${validatedData.category_id}) não é válida para esta tabela de produtos. Por favor, recrie a categoria e tente selecionar novamente.`
+                }, { status: 400 })
             }
             throw productError
         }
 
-        // 2. Create Default Variant
-        const { error: variantError } = await supabase
-            .from('product_variants')
-            .insert({
+        // 2. Create Variants
+        if (validatedData.variants && validatedData.variants.length > 0) {
+            const variantsToInsert = validatedData.variants.map((v: any) => ({
                 product_id: product.id,
-                name: 'Default',
+                name: v.name,
+                size: v.size || null,
+                color: v.color || null,
+                price: v.price,
+                retail_price: v.price,
+                in_stock: v.in_stock,
+                printful_variant_id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(7),
+            }))
+
+            await supabase.from('product_variants').insert(variantsToInsert)
+        } else {
+            // Default Variant
+            await supabase.from('product_variants').insert({
+                product_id: product.id,
+                name: 'Padrão',
                 price: validatedData.price,
                 retail_price: validatedData.price,
                 printful_variant_id: 'local-' + Date.now(),
             })
-
-        if (variantError) {
-            console.error('Error creating default variant:', variantError)
         }
 
-        // 3. Create Mockups (Images)
+        // 3. Create Mockups
         if (validatedData.images && validatedData.images.length > 0) {
             const mockups = validatedData.images.map((url: string, index: number) => ({
                 product_id: product.id,
@@ -126,17 +161,13 @@ export async function POST(request: Request) {
                 display_order: index,
                 is_main: index === 0
             }))
-
             await supabase.from('product_mockups').insert(mockups)
         }
 
         return NextResponse.json({ success: true, product })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Admin Products] Create Error:', error)
-        if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Validation Error', details: error.errors }, { status: 400 })
-        }
-        return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Failed to create product' }, { status: 500 })
     }
 }

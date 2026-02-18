@@ -15,7 +15,7 @@ async function getProduct(slug: string): Promise<Product | null> {
 
   const { data, error } = await supabase
     .from('products')
-    .select('*, category:categories(*), variants:product_variants(*)')
+    .select('*, category:store_categories(*), variants:product_variants(*)')
     .eq('slug', slug)
     .single()
 
@@ -77,7 +77,7 @@ export default async function Page({ params }: Props) {
     "name": product.name,
     "description": product.description,
     "image": product.thumbnail_url || product.images?.[0],
-    "sku": product.external_id,
+    "sku": product.variants?.[0]?.sku || product.id,
     "offers": {
       "@type": "Offer",
       "url": `https://loja.libraslixas.com.br/produto/${slug}`,
