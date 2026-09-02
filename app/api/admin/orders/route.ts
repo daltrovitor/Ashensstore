@@ -202,6 +202,107 @@ export async function POST(request: Request) {
                 })
             }
 
+            case 'create_local_order': {
+                const {
+                    receipt_number,
+                    customer_name,
+                    customer_phone,
+                    customer_document,
+                    state_registration,
+                    machine_number,
+                    address,
+                    neighborhood,
+                    city,
+                    state_code,
+                    zip,
+                    payment_method,
+                    payment_status,
+                    status,
+                    total,
+                    items,
+                } = data
+
+                if (!customer_name) {
+                    return NextResponse.json({ error: 'Nome do cliente é obrigatório' }, { status: 400 })
+                }
+
+                const receiptNum = receipt_number || Math.floor(1000 + Math.random() * 9000).toString()
+                const externalId = `LOC-${receiptNum}-${Date.now().toString().slice(-4)}`
+
+                // Cria o pedido no Supabase
+                const { data: order, error: orderErr } = await supabase
+                    .from('orders')
+                    .insert({
+                        external_id: externalId,
+                        status: status || 'CONFIRMED',
+                        payment_status: payment_status || 'completed',
+                        payment_method: payment_method || 'pix',
+                        customer_name,
+                        customer_phone: customer_phone || null,
+                        customer_email: 'balcao@libras.com.br',
+                        subtotal: total || 0,
+                        shipping_cost: 0,
+                        total: total || 0,
+                        tax: 0,
+                        is_test: false,
+                        shipping_address: {
+                            order_type: 'local',
+                            receipt_number: receiptNum,
+                            customer_document: customer_document || null,
+                            state_registration: state_registration || null,
+                            machine_number: machine_number || null,
+                            address1: address || 'Retirada no Balcão',
+                            neighborhood: neighborhood || null,
+                            city: city || 'Goiânia',
+                            state_code: state_code || 'GO',
+                            zip: zip || null,
+                            phone: customer_phone || null,
+                        },
+                    })
+                    .select()
+                    .single()
+
+                if (orderErr) throw orderErr
+
+                // Cria os itens do pedido
+                if (Array.isArray(items) && items.length > 0) {
+                    const orderItemsToInsert = items.map((item: any) => ({
+                        order_id: order.id,
+                        product_variant_id: null,
+                        name: item.unit ? `[${item.unit.toUpperCase()}] ${item.name}` : item.name,
+                        quantity: item.quantity || 1,
+                        unit_price: item.unit_price || 0,
+                        total_price: item.total_price || ((item.quantity || 1) * (item.unit_price || 0)) || 0,
+                    }))
+
+                    const { error: itemsErr } = await supabase
+                        .from('order_items')
+                        .insert(orderItemsToInsert)
+
+                    if (itemsErr) {
+                        console.error('Erro ao inserir itens locais:', itemsErr)
+                    }
+                }
+
+                return NextResponse.json({
+                    success: true,
+                    external_id: externalId,
+                    order: {
+                        ...order,
+                        receipt_number: receiptNum,
+                        customer_document,
+                        state_registration,
+                        machine_number,
+                        address,
+                        neighborhood,
+                        city: city || 'Goiânia',
+                        state: state_code || 'GO',
+                        zip,
+                        items: items || [],
+                    },
+                })
+            }
+
             default:
                 return NextResponse.json(
                     { error: 'Ação não reconhecida' },

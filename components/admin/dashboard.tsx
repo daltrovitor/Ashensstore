@@ -1,4 +1,4 @@
-﻿
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -16,12 +16,16 @@ import {
   GripVertical,
   Pencil,
   Truck,
-  X
+  X,
+  Boxes,
+  DollarSign
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
 import { CategoriesManager } from "@/components/admin/categories-manager"
 import { ShippingManager } from "@/components/admin/shipping-manager"
+import { InventoryManager } from "@/components/admin/inventory-manager"
+import { FinancialManager } from "@/components/admin/financial-manager"
 import { ImageUpload } from "@/components/admin/image-upload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -329,6 +333,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         <nav className="flex-1 p-4 space-y-2">
           <Button variant={activeTab === 'products' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('products')}>
             <ShoppingBag className="mr-2 h-4 w-4" /> Produtos
+          </Button>
+          <Button variant={activeTab === 'inventory' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('inventory')}>
+            <Boxes className="mr-2 h-4 w-4" /> Estoque
+          </Button>
+          <Button variant={activeTab === 'financial' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('financial')}>
+            <DollarSign className="mr-2 h-4 w-4" /> Financeiro
           </Button>
           <Button variant={activeTab === 'orders' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('orders')}>
             <Package className="mr-2 h-4 w-4" /> Pedidos
@@ -665,6 +675,16 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                   </Table>
                 </CardContent>
               </Card>
+            </div>
+          )}
+          {activeTab === 'inventory' && (
+            <div className="space-y-6">
+              <InventoryManager />
+            </div>
+          )}
+          {activeTab === 'financial' && (
+            <div className="space-y-6">
+              <FinancialManager />
             </div>
           )}
           {activeTab === 'orders' && (

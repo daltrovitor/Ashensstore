@@ -27,13 +27,15 @@ export async function createOrder(params: {
     customerPhone?: string
     shippingAddress: OrderRecipient
     items: Array<{
-        variant_id: string
+        variant_id?: string
         quantity: number
         price: number
         name: string
     }>
     isTest?: boolean
     shippingCost?: number
+    paymentMethod?: string
+    orderType?: string
 }): Promise<{ orderId: string; total: number }> {
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -108,12 +110,17 @@ export async function createOrder(params: {
         .insert({
             external_id: externalId,
             status: params.isTest ? 'TEST_ORDER' : 'PENDING_PAYMENT',
+            payment_status: 'pending',
+            payment_method: params.paymentMethod || 'card',
             customer_name: params.customerName,
             customer_email: params.customerEmail,
             customer_phone: params.customerPhone,
-            shipping_address: params.shippingAddress,
+            shipping_address: {
+                ...params.shippingAddress,
+                order_type: params.orderType || 'ecommerce',
+            },
             subtotal,
-            // shipping_cost: shippingCost, // TODO: Descomente após rodar a migration '20240210_alter_orders_add_shipping.sql'
+            shipping_cost: shippingCost,
             tax,
             total,
             is_test: params.isTest || false,

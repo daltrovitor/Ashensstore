@@ -21,19 +21,23 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Eye, CreditCard, RefreshCw, MapPin, Package, Truck, CheckCircle2, Clock, XCircle } from "lucide-react"
+import { Eye, CreditCard, RefreshCw, MapPin, Package, Truck, CheckCircle2, Clock, XCircle, Store, ShoppingBag, Printer, QrCode } from "lucide-react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
+import { NewOrderDialog } from "@/components/admin/new-order-dialog"
+import { OrderReceiptPrint } from "@/components/admin/order-receipt-print"
 
 interface Order {
     id: string
     external_id: string
     status: string
     payment_status: string
+    payment_method?: string
     total: number
     shipping_cost: number
     customer_name: string
     customer_email: string
+    customer_phone?: string
     created_at: string
     items: any[]
     shipping_address: any
@@ -70,9 +74,12 @@ export function OrdersManager() {
     const [orders, setOrders] = useState<Order[]>([])
     const [loading, setLoading] = useState(true)
     const [statusFilter, setStatusFilter] = useState("all")
+    const [channelFilter, setChannelFilter] = useState("all") // all, ecommerce, local
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
     const [detailsOpen, setDetailsOpen] = useState(false)
     const [updatingStatus, setUpdatingStatus] = useState(false)
+    const [printOrder, setPrintOrder] = useState<any | null>(null)
+    const [printModalOpen, setPrintModalOpen] = useState(false)
 
     useEffect(() => {
         fetchOrders()
@@ -103,6 +110,47 @@ export function OrdersManager() {
         setSelectedOrder(order)
         setDetailsOpen(true)
     }
+
+    const handlePrintReceipt = (order: Order) => {
+        const addr = order.shipping_address || {}
+        setPrintOrder({
+            external_id: order.external_id,
+            receipt_number: addr.receipt_number,
+            created_at: order.created_at,
+            customer_name: order.customer_name,
+            customer_phone: order.customer_phone || addr.phone,
+            customer_document: addr.customer_document,
+            state_registration: addr.state_registration,
+            machine_number: addr.machine_number,
+            address: addr.address1,
+            neighborhood: addr.neighborhood,
+            city: addr.city,
+            state: addr.state_code,
+            zip: addr.zip,
+            total: order.total,
+            payment_method: order.payment_method,
+            payment_status: order.payment_status,
+            items: order.items?.map((item: any) => ({
+                quantity: item.quantity,
+                unit: item.unit || "un",
+                name: item.name,
+                unit_price: item.unit_price,
+                total_price: item.total_price,
+            })) || [],
+        })
+        setPrintModalOpen(true)
+    }
+
+    const filteredOrders = orders.filter((order) => {
+        if (channelFilter === "all") return true
+        const isLocal =
+            order.shipping_address?.order_type === "local" ||
+            order.shipping_address?.order_type === "loja" ||
+            order.shipping_address?.order_type === "balcao"
+        if (channelFilter === "local") return isLocal
+        if (channelFilter === "ecommerce") return !isLocal
+        return true
+    })
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         setUpdatingStatus(true)
@@ -161,14 +209,14 @@ export function OrdersManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3 flex-wrap">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="all">Todos os Status</SelectItem>
                             <SelectItem value="PENDING_PAYMENT">Aguardando Pagamento</SelectItem>
                             <SelectItem value="PAID">Pago</SelectItem>
                             <SelectItem value="CONFIRMED">Pedido Confirmado</SelectItem>
@@ -178,20 +226,35 @@ export function OrdersManager() {
                             <SelectItem value="CANCELED">Cancelado</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" size="icon" onClick={fetchOrders} title="Atualizar">
+
+                    <Select value={channelFilter} onValueChange={setChannelFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Canal de Venda" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos os Canais</SelectItem>
+                            <SelectItem value="ecommerce">🛒 E-commerce (Online)</SelectItem>
+                            <SelectItem value="local">🏪 Venda Local (Balcão)</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Button variant="outline" size="icon" onClick={fetchOrders} title="Atualizar Lista">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
+
+                <NewOrderDialog onOrderCreated={fetchOrders} />
             </div>
 
             <Card>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>ID</TableHead>
+                            <TableHead>ID / Talão</TableHead>
+                            <TableHead>Canal</TableHead>
                             <TableHead>Cliente</TableHead>
-                            <TableHead>Localização</TableHead>
                             <TableHead>Data</TableHead>
+                            <TableHead>Pagamento</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Total</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -200,62 +263,92 @@ export function OrdersManager() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8">
+                                <TableCell colSpan={8} className="text-center py-8">
                                     <Spinner />
                                 </TableCell>
                             </TableRow>
-                        ) : orders.length === 0 ? (
+                        ) : filteredOrders.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                     Nenhum pedido encontrado.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            orders.map((order) => (
-                                <TableRow key={order.id}>
-                                    <TableCell className="font-mono text-xs">{order.external_id}</TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">{order.customer_name}</span>
-                                            <span className="text-xs text-muted-foreground">{order.customer_email}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {order.shipping_address ? (
-                                            <div className="flex items-center gap-1.5 text-sm">
-                                                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-xs">
-                                                        {order.shipping_address.city}
-                                                    </span>
-                                                    <span className="text-[10px] text-muted-foreground">
-                                                        {order.shipping_address.state_code} - CEP {order.shipping_address.zip}
-                                                    </span>
+                            filteredOrders.map((order) => {
+                                const isLocal =
+                                    order.shipping_address?.order_type === "local" ||
+                                    order.shipping_address?.order_type === "loja" ||
+                                    order.shipping_address?.order_type === "balcao"
+
+                                const method = (order.payment_method || "").toLowerCase()
+
+                                return (
+                                    <TableRow key={order.id}>
+                                        <TableCell className="font-mono text-xs">
+                                            <div className="font-bold">{order.external_id}</div>
+                                            {order.shipping_address?.machine_number && (
+                                                <div className="text-[10px] text-red-600 font-sans font-medium">
+                                                    Máq: {order.shipping_address.machine_number}
                                                 </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {isLocal ? (
+                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[11px] font-semibold">
+                                                    <Store className="w-3 h-3" /> Venda Local
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 text-[11px] font-semibold">
+                                                    <ShoppingBag className="w-3 h-3" /> E-commerce
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-sm">{order.customer_name}</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {order.shipping_address?.phone || order.customer_email}
+                                                </span>
                                             </div>
-                                        ) : (
-                                            <span className="text-xs text-muted-foreground">—</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{new Date(order.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={getStatusColor(order.status)}>
-                                            {STATUS_LABELS[order.status] || order.status}
-                                        </Badge>
-                                        {order.payment_id && (
-                                            <Badge variant="secondary" className="ml-2 text-[10px]">
-                                                Stripe
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                            {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-semibold">
+                                                    {method === "pix" ? "🟢 PIX Direto" : method.includes("card") ? "🔵 Cartão" : method === "cash" ? "💵 Dinheiro" : method || "—"}
+                                                </span>
+                                                <span className={`text-[10px] ${order.payment_status === "completed" || order.status === "PAID" ? "text-green-600 font-bold" : "text-yellow-600 font-medium"}`}>
+                                                    {order.payment_status === "completed" || order.status === "PAID" ? "Pago" : "Pendente"}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={getStatusColor(order.status)}>
+                                                {STATUS_LABELS[order.status] || order.status}
                                             </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{formatCurrency(order.total)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(order)} title="Ver detalhes">
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                        </TableCell>
+                                        <TableCell className="font-bold text-sm">{formatCurrency(order.total)}</TableCell>
+                                        <TableCell className="text-right space-x-1">
+                                            <Button variant="ghost" size="sm" onClick={() => handleViewDetails(order)} title="Ver detalhes">
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            {isLocal && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handlePrintReceipt(order)}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    title="Imprimir Talão / Ordem de Serviço"
+                                                >
+                                                    <Printer className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })
                         )}
                     </TableBody>
                 </Table>
@@ -417,19 +510,69 @@ export function OrdersManager() {
                             {/* Payment Info */}
                             <div className="border rounded-md p-4 bg-muted/20">
                                 <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4" /> Pagamento (Stripe)
+                                    <CreditCard className="h-4 w-4" /> Forma de Pagamento
                                 </h4>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                                     <div>
-                                        <span className="text-muted-foreground block">Status do Pagamento:</span>
+                                        <span className="text-muted-foreground block text-xs">Método:</span>
+                                        <span className="font-medium capitalize">
+                                            {selectedOrder.payment_method === 'pix' ? '🟢 PIX (Direto CNPJ)' : selectedOrder.payment_method?.includes('card') ? '🔵 Cartão' : selectedOrder.payment_method === 'cash' ? '💵 Dinheiro' : selectedOrder.payment_method || 'Não especificado'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground block text-xs">Status do Pagamento:</span>
                                         <span className="font-medium">{selectedOrder.payment_status || 'Pendente'}</span>
                                     </div>
                                     <div>
-                                        <span className="text-muted-foreground block">ID da Transação:</span>
-                                        <span className="font-mono text-xs">{selectedOrder.payment_id || 'N/A'}</span>
+                                        <span className="text-muted-foreground block text-xs">Transação / Referência:</span>
+                                        <span className="font-mono text-xs">{selectedOrder.payment_id || selectedOrder.external_id}</span>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Informações de Venda Local / Oficina (se aplicável) */}
+                            {selectedOrder.shipping_address?.order_type === 'local' && (
+                                <div className="border-2 border-red-200 bg-red-50/20 rounded-md p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-bold text-red-700 flex items-center gap-2 text-sm">
+                                            <Store className="h-4 w-4" /> Dados do Talão / Oficina Librás
+                                        </h4>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => handlePrintReceipt(selectedOrder)}
+                                            className="bg-red-600 hover:bg-red-700 text-white font-bold h-8 text-xs gap-1.5"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" /> Imprimir Talão
+                                        </Button>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                        <div>
+                                            <span className="text-muted-foreground block">Nº da Máquina:</span>
+                                            <span className="font-bold text-red-800 font-mono">
+                                                {selectedOrder.shipping_address.machine_number || '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground block">CNPJ / CPF:</span>
+                                            <span className="font-medium">
+                                                {selectedOrder.shipping_address.customer_document || '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground block">Insc. Estadual:</span>
+                                            <span className="font-medium">
+                                                {selectedOrder.shipping_address.state_registration || '—'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground block">Setor (Bairro):</span>
+                                            <span className="font-medium">
+                                                {selectedOrder.shipping_address.neighborhood || '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Items */}
                             <div>
@@ -501,6 +644,18 @@ export function OrdersManager() {
                                 </div>
                             </div>
                         </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Print Modal for Receipt */}
+            <Dialog open={printModalOpen} onOpenChange={setPrintModalOpen}>
+                <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
+                    {printOrder && (
+                        <OrderReceiptPrint
+                            order={printOrder}
+                            onClose={() => setPrintModalOpen(false)}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -9,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCart } from "@/hooks/use-shopping-cart"
-import { Loader2 } from "lucide-react"
+import { Loader2, QrCode, CreditCard, CheckCircle, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { formatPhone, formatCEP } from "@/components/ui/inputMasks"
+import { PixQrCode } from "@/components/ecommerce/pix-qr-code"
 
 const formatPrice = (p: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -38,6 +38,12 @@ export function CheckoutForm() {
     const { cart, clearCart } = useCart()
     const [isProcessing, setIsProcessing] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
+    const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix")
+    const [pixData, setPixData] = useState<{
+        pix_code: string
+        order_id: string
+        total: number
+    } | null>(null)
 
     const [shippingCost, setShippingCost] = useState(0)
 
@@ -122,6 +128,7 @@ export function CheckoutForm() {
         try {
             // Prepare order payload
             const orderPayload = {
+                payment_method: paymentMethod,
                 items: cart.items.map(item => ({
                     variant_id: item.id,
                     quantity: item.quantity,
@@ -164,12 +171,23 @@ export function CheckoutForm() {
 
             const result = await response.json()
 
-            // If we have a checkout URL (e.g. Stripe), redirect
+            // Se for Pix, exibe a tela de QR Code e Copia e Cola
+            if (result.payment_method === 'pix' && result.pix_code) {
+                setPixData({
+                    pix_code: result.pix_code,
+                    order_id: result.order_id,
+                    total: result.total || total,
+                })
+                clearCart()
+                toast.success('Pedido gerado! Conclua o pagamento via Pix.')
+                return
+            }
+
+            // If we have a checkout URL (e.g. Stripe Card), redirect
             if (result.checkout_url) {
                 window.location.href = result.checkout_url
-                clearCart() // Maybe clear after success? But typically cleared on thank you page.
+                clearCart()
             } else {
-                // If just success (e.g. manual/mock payment)
                 setIsSuccess(true)
                 clearCart()
             }
@@ -180,6 +198,35 @@ export function CheckoutForm() {
         } finally {
             setIsProcessing(false)
         }
+    }
+
+    if (pixData) {
+        return (
+            <div className="space-y-6">
+                <div className="text-center">
+                    <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
+                        <CheckCircle className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-2xl font-serif font-black">Pedido Recebido com Sucesso!</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Pedido <span className="font-mono font-bold text-foreground">#{pixData.order_id}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Efetue o pagamento via Pix para confirmar seu pedido imediatamente.
+                    </p>
+                </div>
+
+                <PixQrCode
+                    pixCode={pixData.pix_code}
+                    amount={pixData.total}
+                    orderId={pixData.order_id}
+                    onConfirm={() => {
+                        setIsSuccess(true)
+                        setPixData(null)
+                    }}
+                />
+            </div>
+        )
     }
 
     if (isSuccess) {
@@ -290,14 +337,89 @@ export function CheckoutForm() {
                 </div>
             </div>
 
-            {/* Pagamento será no Stripe */}
-            <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
-                <h3 className="text-xl font-bold font-serif mb-2 flex items-center gap-2 text-blue-800">
-                    2. Pagamento
-                </h3>
-                <p className="text-blue-600 text-sm">
-                    Você será redirecionado para o ambiente seguro do Stripe para finalizar o pagamento.
-                </p>
+            {/* 2. Seleção do Método de Pagamento */}
+            <div className="bg-card p-6 rounded-xl border border-border space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold font-serif flex items-center gap-2">
+                        2. Forma de Pagamento
+                    </h3>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" /> Checkout Seguro
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Opção PIX */}
+                    <div
+                        onClick={() => setPaymentMethod("pix")}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                            paymentMethod === "pix"
+                                ? "border-emerald-500 bg-emerald-50/30 shadow-sm"
+                                : "border-border hover:border-muted-foreground/30 bg-card"
+                        }`}
+                    >
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2.5 rounded-lg ${paymentMethod === "pix" ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                                    <QrCode className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-bold text-base">PIX</h4>
+                                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                            Aprovação Rápida
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        QR Code & Copia e Cola direto na conta
+                                    </p>
+                                </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                paymentMethod === "pix" ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/40"
+                            }`}>
+                                {paymentMethod === "pix" && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
+                            Chave CNPJ oficial da Librás: <strong className="font-mono text-foreground">00.267.195/0001-30</strong>
+                        </div>
+                    </div>
+
+                    {/* Opção Cartão (Stripe) */}
+                    <div
+                        onClick={() => setPaymentMethod("card")}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                            paymentMethod === "card"
+                                ? "border-blue-500 bg-blue-50/30 shadow-sm"
+                                : "border-border hover:border-muted-foreground/30 bg-card"
+                        }`}
+                    >
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2.5 rounded-lg ${paymentMethod === "card" ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                                    <CreditCard className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-bold text-base">Cartão de Crédito / Débito</h4>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Visa, Mastercard, Elo, Hipercard, Amex
+                                    </p>
+                                </div>
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                paymentMethod === "card" ? "border-blue-500 bg-blue-500" : "border-muted-foreground/40"
+                            }`}>
+                                {paymentMethod === "card" && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
+                            Processado em ambiente seguro com criptografia pela <strong>Stripe</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Resumo do Pedido */}
@@ -327,8 +449,10 @@ export function CheckoutForm() {
                         <>
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...
                         </>
+                    ) : paymentMethod === "pix" ? (
+                        `Gerar Pix • ${formatPrice(total)}`
                     ) : (
-                        `Pagar ${formatPrice(total)}`
+                        `Pagar com Cartão • ${formatPrice(total)}`
                     )}
                 </Button>
             </div>
