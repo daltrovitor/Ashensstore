@@ -72,10 +72,11 @@ interface VariantForm {
   size: string
   color: string
   price: string
+  stock: string
   in_stock: boolean
 }
 
-const emptyVariant: VariantForm = { name: '', size: '', color: '', price: '', in_stock: true }
+const emptyVariant: VariantForm = { name: '', size: '', color: '', price: '', stock: '10', in_stock: true }
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState("products")
@@ -93,6 +94,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     slug: '',
     description: '',
     price: '',
+    stock: '10',
     imageUrl: '',
     category_id: '',
     is_featured: false
@@ -143,7 +145,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   const resetForm = () => {
-    setFormData({ name: '', slug: '', description: '', price: '', imageUrl: '', category_id: '', is_featured: false })
+    setFormData({ name: '', slug: '', description: '', price: '', stock: '10', imageUrl: '', category_id: '', is_featured: false })
     setProductImages([])
     setVariants([])
     setEditingId(null)
@@ -162,24 +164,34 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         ? [formData.imageUrl, ...productImages.filter(img => img !== formData.imageUrl)]
         : productImages
 
-      // Build variants payload
-      const variantsPayload = variants.length > 0
-        ? variants.map(v => ({
-          id: v.id,
-          name: v.name || 'Padrão',
-          size: v.size || null,
-          color: v.color || null,
-          price: parseFloat(v.price.toString().replace('.', '').replace(',', '.')) || 0,
-          in_stock: v.in_stock
-        }))
-        : undefined
-
       const parsedPrice = parseFloat(formData.price.toString().replace(/\./g, '').replace(',', '.'))
       if (isNaN(parsedPrice)) {
         toast.error("Preço inválido")
         setIsCreating(false)
         return
       }
+
+      // Build variants payload
+      const variantsPayload = variants.length > 0
+        ? variants.map(v => {
+          const s = parseInt(v.stock || '10', 10)
+          const stockCount = isNaN(s) ? 0 : s
+          return {
+            id: v.id,
+            name: v.name || 'Padrão',
+            size: v.size || null,
+            color: v.color || null,
+            price: parseFloat(v.price.toString().replace(/\./g, '').replace(',', '.')) || 0,
+            stock: stockCount,
+            in_stock: stockCount > 0 && v.in_stock !== false
+          }
+        })
+        : [{
+            name: 'Padrão',
+            price: parsedPrice,
+            stock: parseInt(formData.stock || '10', 10) || 10,
+            in_stock: (parseInt(formData.stock || '10', 10) || 10) > 0
+          }]
 
       const res = await fetchWithAuth(url, {
         method,
@@ -228,6 +240,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       slug: product.slug,
       description: product.description || '',
       price: (product.price || product.variants?.[0]?.retail_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      stock: (product.variants?.[0]?.stock !== undefined ? product.variants[0].stock : (product.variants?.[0]?.in_stock ? 10 : 0)).toString(),
       imageUrl: product.thumbnail_url || product.images?.[0] || '',
       category_id: product.category_id || '',
       is_featured: product.is_featured
@@ -246,6 +259,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         size: v.size || '',
         color: v.color || '',
         price: (v.retail_price || v.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+        stock: (v.stock !== undefined ? v.stock : (v.in_stock ? 10 : 0)).toString(),
         in_stock: v.in_stock
       })))
     } else {
@@ -528,9 +542,23 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         </div>
 
                         {variants.length === 0 ? (
-                          <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
-                            <p>Nenhuma variação adicionada.</p>
-                            <p className="text-xs mt-1">Uma variação padrão será criada automaticamente com o preço base.</p>
+                          <div className="p-4 border border-dashed rounded-lg bg-muted/10 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-semibold">Variação Padrão (Sem variações adicionais)</p>
+                                <p className="text-xs text-muted-foreground">O produto terá estoque e preço base unificados.</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs font-bold text-primary">Qtd. Estoque:</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={formData.stock}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                                  className="w-24 h-8 text-xs font-bold font-mono text-center"
+                                />
+                              </div>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -569,7 +597,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                     />
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                                   <div className="grid gap-1">
                                     <Label className="text-xs">Tamanho</Label>
                                     <Input
@@ -588,12 +616,23 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                       className="h-8 text-sm"
                                     />
                                   </div>
+                                  <div className="grid gap-1">
+                                    <Label className="text-xs font-bold text-primary">Qtd. Estoque</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={variant.stock}
+                                      onChange={(e) => updateVariant(index, 'stock', e.target.value)}
+                                      placeholder="10"
+                                      className="h-8 text-sm font-bold font-mono text-center"
+                                    />
+                                  </div>
                                   <div className="flex items-end gap-2 pb-0.5">
                                     <Switch
-                                      checked={variant.in_stock}
+                                      checked={variant.in_stock && parseInt(variant.stock || '0', 10) > 0}
                                       onCheckedChange={(checked) => updateVariant(index, 'in_stock', checked)}
                                     />
-                                    <Label className="text-xs">{variant.in_stock ? 'Em estoque' : 'Esgotado'}</Label>
+                                    <Label className="text-xs">{variant.in_stock && parseInt(variant.stock || '0', 10) > 0 ? 'Em estoque' : 'Esgotado'}</Label>
                                   </div>
                                 </div>
                               </div>

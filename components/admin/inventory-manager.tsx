@@ -46,6 +46,7 @@ interface VariantItem {
     retail_price: number
     cost_price: number
     in_stock: boolean
+    stock?: number
     size: string | null
     color: string | null
 }
@@ -79,8 +80,8 @@ export function InventoryManager() {
     const [statusFilter, setStatusFilter] = useState("all") // all, in_stock, out_of_stock
     const [savingId, setSavingId] = useState<string | null>(null)
 
-    // Local edits for cost / retail price before saving
-    const [priceEdits, setPriceEdits] = useState<Record<string, { retail_price?: string; cost_price?: string }>>({})
+    // Local edits for cost / retail price / stock quantity before saving
+    const [priceEdits, setPriceEdits] = useState<Record<string, { retail_price?: string; cost_price?: string; stock?: string }>>({})
 
     useEffect(() => {
         fetchInventory()
@@ -158,6 +159,13 @@ export function InventoryManager() {
                 const num = parseFloat(edit.cost_price.replace(/\./g, "").replace(",", "."))
                 if (!isNaN(num)) payload.cost_price = num
             }
+            if (edit.stock !== undefined) {
+                const s = parseInt(edit.stock, 10)
+                if (!isNaN(s)) {
+                    payload.stock = Math.max(0, s)
+                    payload.in_stock = s > 0
+                }
+            }
 
             const res = await fetchWithAuth("/api/admin/inventory", {
                 method: "PATCH",
@@ -166,7 +174,7 @@ export function InventoryManager() {
             })
 
             if (res.ok) {
-                toast.success("Preços atualizados com sucesso!")
+                toast.success("Dados do produto atualizados com sucesso!")
                 // Clear local edit for this variant
                 setPriceEdits((prev) => {
                     const copy = { ...prev }
@@ -323,6 +331,7 @@ export function InventoryManager() {
                             <TableHead className="w-16">Foto</TableHead>
                             <TableHead>Produto / Variação</TableHead>
                             <TableHead>Categoria</TableHead>
+                            <TableHead>Qtd. Estoque</TableHead>
                             <TableHead>Preço Venda (R$)</TableHead>
                             <TableHead>Preço Custo (R$)</TableHead>
                             <TableHead>Margem (%)</TableHead>
@@ -333,13 +342,13 @@ export function InventoryManager() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-12">
+                                <TableCell colSpan={9} className="text-center py-12">
                                     <Spinner />
                                 </TableCell>
                             </TableRow>
                         ) : filteredProducts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                                <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                                     Nenhum produto encontrado com os filtros aplicados.
                                 </TableCell>
                             </TableRow>
@@ -356,8 +365,14 @@ export function InventoryManager() {
                                             ? (priceEdits[variant.id]?.cost_price ?? "")
                                             : (variant.cost_price || 0).toString()
 
+                                    const stockVal =
+                                        priceEdits[variant.id]?.stock !== undefined
+                                            ? (priceEdits[variant.id]?.stock ?? "")
+                                            : (variant.stock !== undefined ? variant.stock : (variant.in_stock ? 10 : 0)).toString()
+
                                     const currentRetail = parseFloat((retailVal || "0").replace(/\./g, "").replace(",", ".")) || 0
                                     const currentCost = parseFloat((costVal || "0").replace(/\./g, "").replace(",", ".")) || 0
+                                    const numStock = parseInt(stockVal || "0", 10) || 0
                                     const margin =
                                         currentRetail > 0
                                             ? Math.round(((currentRetail - currentCost) / currentRetail) * 100)
@@ -366,7 +381,7 @@ export function InventoryManager() {
                                     const hasPendingEdit = !!priceEdits[variant.id]
 
                                     return (
-                                        <TableRow key={variant.id} className={!variant.in_stock ? "bg-muted/10" : ""}>
+                                        <TableRow key={variant.id} className={!variant.in_stock || numStock === 0 ? "bg-muted/10" : ""}>
                                             <TableCell>
                                                 <div className="w-10 h-10 rounded-md overflow-hidden bg-muted border flex items-center justify-center">
                                                     {product.thumbnail_url ? (
@@ -396,6 +411,28 @@ export function InventoryManager() {
                                                 <span className="text-xs text-muted-foreground">
                                                     {product.category_name}
                                                 </span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        className={`w-20 h-8 text-xs font-mono font-bold text-center ${
+                                                            numStock === 0 ? "border-red-400 bg-red-50 text-red-700" : ""
+                                                        }`}
+                                                        value={stockVal}
+                                                        onChange={(e) => {
+                                                            setPriceEdits((prev) => ({
+                                                                ...prev,
+                                                                [variant.id]: {
+                                                                    ...prev[variant.id],
+                                                                    stock: e.target.value,
+                                                                },
+                                                            }))
+                                                        }}
+                                                    />
+                                                    <span className="text-[10px] text-muted-foreground">un</span>
+                                                </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Input
@@ -444,16 +481,16 @@ export function InventoryManager() {
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Switch
-                                                        checked={variant.in_stock}
+                                                        checked={variant.in_stock && numStock > 0}
                                                         onCheckedChange={() => handleToggleStock(variant)}
                                                         disabled={savingId === variant.id}
                                                     />
                                                     <span
                                                         className={`text-xs font-semibold ${
-                                                            variant.in_stock ? "text-emerald-700" : "text-red-600"
+                                                            variant.in_stock && numStock > 0 ? "text-emerald-700" : "text-red-600"
                                                         }`}
                                                     >
-                                                        {variant.in_stock ? "Em Estoque" : "Esgotado"}
+                                                        {variant.in_stock && numStock > 0 ? `Em Estoque (${numStock})` : "Esgotado"}
                                                     </span>
                                                 </div>
                                             </TableCell>
@@ -462,7 +499,7 @@ export function InventoryManager() {
                                                     <Button
                                                         size="sm"
                                                         variant="default"
-                                                        className="h-8 gap-1 text-xs"
+                                                        className="h-8 gap-1 text-xs font-bold"
                                                         onClick={() => handleSavePrices(variant)}
                                                         disabled={savingId === variant.id}
                                                     >

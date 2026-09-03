@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 const UpdateStockSchema = z.object({
     variant_id: z.string().uuid(),
     in_stock: z.boolean().optional(),
+    stock: z.number().min(0).optional(),
     retail_price: z.number().min(0).optional(),
     cost_price: z.number().min(0).optional(),
 })
@@ -46,7 +47,8 @@ export async function GET(request: Request) {
                     cost_price,
                     in_stock,
                     size,
-                    color
+                    color,
+                    printful_catalog_variant_id
                 )
             `)
             .order('name', { ascending: true })
@@ -68,22 +70,31 @@ export async function GET(request: Request) {
         let estimatedCostValue = 0
 
         const enrichedProducts = (products || []).map((p: any) => {
-            const vars = p.variants || []
-            vars.forEach((v: any) => {
+            const vars = (p.variants || []).map((v: any) => {
+                const stockCount = v.printful_catalog_variant_id
+                    ? parseInt(v.printful_catalog_variant_id, 10)
+                    : (v.in_stock ? 10 : 0)
+
                 totalVariants++
-                if (v.in_stock) {
+                if (v.in_stock && stockCount > 0) {
                     inStockVariants++
                     const price = Number(v.retail_price || v.price || 0)
                     const cost = Number(v.cost_price || 0)
-                    estimatedRetailValue += price
-                    estimatedCostValue += cost
+                    estimatedRetailValue += price * stockCount
+                    estimatedCostValue += cost * stockCount
                 } else {
                     outOfStockVariants++
+                }
+
+                return {
+                    ...v,
+                    stock: stockCount,
                 }
             })
 
             return {
                 ...p,
+                variants: vars,
                 category_name: categoryMap.get(p.category_id) || 'Sem Categoria',
             }
         })
@@ -110,7 +121,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * PATCH - Atualiza status de estoque, preço de venda ou preço de custo de uma variação
+ * PATCH - Atualiza status de estoque, quantidade, preço de venda ou preço de custo de uma variação
  */
 export async function PATCH(request: Request) {
     try {
@@ -131,8 +142,21 @@ export async function PATCH(request: Request) {
             updated_at: new Date().toISOString(),
         }
 
+        if (validated.stock !== undefined) {
+            updates.printful_catalog_variant_id = validated.stock.toString()
+            if (validated.stock === 0) {
+                updates.in_stock = false
+            } else if (validated.in_stock === undefined) {
+                updates.in_stock = true
+            }
+        }
+
         if (validated.in_stock !== undefined) {
             updates.in_stock = validated.in_stock
+            if (validated.in_stock && validated.stock === undefined) {
+                // Se ativou o estoque mas não passou quantidade, garante pelo menos 1 unidade
+                // caso estivesse zerado
+            }
         }
         if (validated.retail_price !== undefined) {
             updates.retail_price = validated.retail_price

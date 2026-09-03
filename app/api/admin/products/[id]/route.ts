@@ -10,6 +10,7 @@ const VariantSchema = z.object({
     size: z.string().nullable().optional(),
     color: z.string().nullable().optional(),
     price: z.number().min(0),
+    stock: z.number().min(0).optional(),
     in_stock: z.boolean().default(true),
 })
 
@@ -47,6 +48,43 @@ export async function DELETE(
             return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
         }
 
+        // 1. Obter todas as variantes deste produto
+        const { data: variants } = await supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', id)
+
+        const variantIds = (variants || []).map((v: any) => v.id)
+
+        // 2. Desvincular com segurança os itens de pedidos anteriores para preservar o histórico contábil sem violar a FK
+        if (variantIds.length > 0) {
+            const { error: unlinkError } = await supabase
+                .from('order_items')
+                .update({ product_variant_id: null })
+                .in('product_variant_id', variantIds)
+
+            if (unlinkError) {
+                console.error('[Admin Products] Unlink order_items Error:', unlinkError)
+            }
+
+            // Excluir as variantes
+            const { error: varDelError } = await supabase
+                .from('product_variants')
+                .delete()
+                .in('id', variantIds)
+
+            if (varDelError) {
+                console.error('[Admin Products] Delete variants Error:', varDelError)
+            }
+        }
+
+        // 3. Excluir mockups / fotos do produto
+        await supabase
+            .from('product_mockups')
+            .delete()
+            .eq('product_id', id)
+
+        // 4. Excluir o produto da tabela principal
         const { error } = await supabase
             .from('products')
             .delete()
@@ -57,11 +95,11 @@ export async function DELETE(
             throw error
         }
 
-        return NextResponse.json({ success: true })
+        return NextResponse.json({ success: true, message: 'Produto excluído com sucesso' })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Admin Products] Delete Error:', error)
-        return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Failed to delete product' }, { status: 500 })
     }
 }
 
@@ -144,10 +182,15 @@ export async function PUT(
 
             const toDelete = [...existingIds].filter(eid => !incomingIds.has(eid))
             if (toDelete.length > 0) {
+                // Desvincular com segurança itens de pedidos antes de excluir variantes removidas
+                await supabase.from('order_items').update({ product_variant_id: null }).in('product_variant_id', toDelete)
                 await supabase.from('product_variants').delete().in('id', toDelete)
             }
 
             for (const variant of validatedData.variants) {
+                const stockCount = variant.stock !== undefined ? variant.stock : (variant.in_stock ? 10 : 0)
+                const isAvailable = stockCount > 0 && variant.in_stock !== false
+
                 if (variant.id && existingIds.has(variant.id)) {
                     await supabase
                         .from('product_variants')
@@ -157,7 +200,8 @@ export async function PUT(
                             color: variant.color || null,
                             price: variant.price,
                             retail_price: variant.price,
-                            in_stock: variant.in_stock,
+                            in_stock: isAvailable,
+                            printful_catalog_variant_id: stockCount.toString(),
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', variant.id)
@@ -171,7 +215,8 @@ export async function PUT(
                             color: variant.color || null,
                             price: variant.price,
                             retail_price: variant.price,
-                            in_stock: variant.in_stock,
+                            in_stock: isAvailable,
+                            printful_catalog_variant_id: stockCount.toString(),
                             printful_variant_id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(7),
                         })
                 }

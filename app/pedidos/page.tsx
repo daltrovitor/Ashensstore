@@ -10,9 +10,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Truck, Eye, RefreshCw, LogOut, ShoppingBag, User } from "lucide-react"
+import { Package, Search, Truck, Eye, RefreshCw, LogOut, ShoppingBag, User, MapPin, CreditCard, Calendar } from "lucide-react"
 import { useRequireAuth } from "@/hooks/use-auth"
 import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,14 +35,19 @@ interface Order {
   id: string
   external_id: string
   status: string
+  payment_status?: string
   customer_name: string
   customer_email: string
+  subtotal?: number
+  shipping_cost?: number
   total: number
   currency: string
   payment_method?: string
   printful_order_id?: string
   tracking_number?: string
   tracking_url?: string
+  shipping_address?: any
+  items?: any[]
   is_test: boolean
   created_at: string
   updated_at: string
@@ -49,6 +61,8 @@ function OrdersContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -332,7 +346,15 @@ function OrdersContent() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" title="Ver Detalhes">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Ver Resumo do Pedido"
+                            onClick={() => {
+                              setSelectedOrder(order)
+                              setDetailsOpen(true)
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
 
@@ -411,6 +433,128 @@ function OrdersContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Detalhes / Resumo do Pedido */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedOrder && (
+            <div className="space-y-6">
+              <DialogHeader>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <DialogTitle className="text-xl font-bold font-serif">
+                      Resumo do Pedido #{selectedOrder.external_id}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      Realizado em {new Date(selectedOrder.created_at).toLocaleString('pt-BR')}
+                    </DialogDescription>
+                  </div>
+                  <Badge className={getStatusBadge(selectedOrder.status)}>
+                    {formatStatus(selectedOrder.status)}
+                  </Badge>
+                </div>
+              </DialogHeader>
+
+              {/* Itens do Pedido */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Itens do Pedido ({selectedOrder.items?.length || 0})
+                </h4>
+                <div className="divide-y border rounded-lg bg-card overflow-hidden">
+                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                    selectedOrder.items.map((item: any, idx: number) => {
+                      const img = item.product_variant?.product?.thumbnail_url
+                      return (
+                        <div key={idx} className="p-3.5 flex items-center gap-3">
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden border shrink-0">
+                            {img ? (
+                              <img src={img} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="w-5 h-5 text-muted-foreground/40" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold truncate">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Qtd: {item.quantity} × {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_price)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold font-mono">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total_price || item.unit_price * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="p-4 text-center text-xs text-muted-foreground">
+                      Itens do pedido não detalhados.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Dados de Entrega e Pagamento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Entrega */}
+                <div className="p-4 rounded-lg border bg-muted/20 space-y-2 text-xs">
+                  <h4 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
+                    <MapPin className="w-4 h-4 text-primary" /> Endereço de Entrega
+                  </h4>
+                  {selectedOrder.shipping_address ? (
+                    <div className="space-y-0.5 text-muted-foreground">
+                      <p className="font-medium text-foreground">{selectedOrder.shipping_address.name || selectedOrder.customer_name}</p>
+                      <p>{selectedOrder.shipping_address.address1}</p>
+                      {selectedOrder.shipping_address.address2 && <p>{selectedOrder.shipping_address.address2}</p>}
+                      <p>{selectedOrder.shipping_address.city} - {selectedOrder.shipping_address.state_code || selectedOrder.shipping_address.state}</p>
+                      <p>CEP: {selectedOrder.shipping_address.zip}</p>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">Retirada no balcão / Entrega combinada</p>
+                  )}
+                </div>
+
+                {/* Pagamento */}
+                <div className="p-4 rounded-lg border bg-muted/20 space-y-2 text-xs">
+                  <h4 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
+                    <CreditCard className="w-4 h-4 text-primary" /> Forma de Pagamento
+                  </h4>
+                  <div className="space-y-1 text-muted-foreground">
+                    <p className="font-medium text-foreground capitalize">
+                      {selectedOrder.payment_method === 'pix' ? '🟢 PIX Direto (CNPJ)' : selectedOrder.payment_method?.includes('card') ? '🔵 Cartão de Crédito/Débito' : selectedOrder.payment_method || 'Pagamento na Entrega'}
+                    </p>
+                    <p>Status: <strong className="text-foreground">{selectedOrder.payment_status === 'completed' || selectedOrder.status === 'PAID' ? 'Pago' : 'Aguardando Pagamento'}</strong></p>
+                    {selectedOrder.tracking_number && (
+                      <div className="pt-2 border-t mt-2">
+                        <p className="font-semibold text-foreground">Rastreio:</p>
+                        <a href={selectedOrder.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
+                          <Truck className="w-3.5 h-3.5" /> {selectedOrder.tracking_number}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Total do Pedido */}
+              <div className="p-4 rounded-lg bg-muted/40 border space-y-2 text-sm">
+                <div className="flex justify-between text-muted-foreground text-xs">
+                  <span>Subtotal</span>
+                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.subtotal || (selectedOrder.total - (selectedOrder.shipping_cost || 0)))}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground text-xs">
+                  <span>Frete</span>
+                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.shipping_cost || 0)}</span>
+                </div>
+                <div className="flex justify-between font-black text-lg pt-2 border-t text-foreground">
+                  <span>Total Pago</span>
+                  <span className="text-primary">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

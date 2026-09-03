@@ -12,6 +12,7 @@ const VariantSchema = z.object({
     size: z.string().nullable().optional(),
     color: z.string().nullable().optional(),
     price: z.number().min(0),
+    stock: z.number().min(0).optional(),
     in_stock: z.boolean().default(true),
 })
 
@@ -55,8 +56,16 @@ export async function GET(request: Request) {
 
         if (error) throw error
 
+        const formattedProducts = (data || []).map((prod: any) => ({
+            ...prod,
+            variants: (prod.variants || []).map((v: any) => ({
+                ...v,
+                stock: v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
+            }))
+        }))
+
         return NextResponse.json({
-            products: data || [],
+            products: formattedProducts,
             total: count || 0,
             page,
             totalPages: Math.ceil((count || 0) / limit)
@@ -130,16 +139,21 @@ export async function POST(request: Request) {
 
         // 2. Create Variants
         if (validatedData.variants && validatedData.variants.length > 0) {
-            const variantsToInsert = validatedData.variants.map((v: any) => ({
-                product_id: product.id,
-                name: v.name,
-                size: v.size || null,
-                color: v.color || null,
-                price: v.price,
-                retail_price: v.price,
-                in_stock: v.in_stock,
-                printful_variant_id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(7),
-            }))
+            const variantsToInsert = validatedData.variants.map((v: any) => {
+                const stockCount = v.stock !== undefined ? v.stock : (v.in_stock ? 10 : 0)
+                const isAvailable = stockCount > 0 && v.in_stock !== false
+                return {
+                    product_id: product.id,
+                    name: v.name,
+                    size: v.size || null,
+                    color: v.color || null,
+                    price: v.price,
+                    retail_price: v.price,
+                    in_stock: isAvailable,
+                    printful_catalog_variant_id: stockCount.toString(),
+                    printful_variant_id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(7),
+                }
+            })
 
             await supabase.from('product_variants').insert(variantsToInsert)
         } else {
@@ -149,6 +163,8 @@ export async function POST(request: Request) {
                 name: 'Padrão',
                 price: validatedData.price,
                 retail_price: validatedData.price,
+                in_stock: true,
+                printful_catalog_variant_id: '10',
                 printful_variant_id: 'local-' + Date.now(),
             })
         }

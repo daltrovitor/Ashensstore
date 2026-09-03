@@ -35,7 +35,19 @@ export async function GET(
             )
         }
 
-        return NextResponse.json(product)
+        const formattedProduct = {
+            ...product,
+            variants: (product.variants || []).map((v: any) => {
+                const stockNum = v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
+                return {
+                    ...v,
+                    stock: isNaN(stockNum) ? 0 : stockNum,
+                    in_stock: v.in_stock && stockNum > 0
+                }
+            })
+        }
+
+        return NextResponse.json(formattedProduct)
 
     } catch (error) {
         console.error('[Product API] Erro ao buscar produto:', error)

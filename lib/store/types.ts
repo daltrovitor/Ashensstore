@@ -35,6 +35,7 @@ export interface Variant {
     price?: number // Alias for compatibility if needed, but better to use retail_price
     sku?: string | null
     inventory_quantity?: number
+    stock?: number
     in_stock: boolean
 }
 
