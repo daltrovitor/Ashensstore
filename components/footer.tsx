@@ -24,11 +24,12 @@ export function Footer() {
             </p>
             <div className="flex gap-2 pt-1">
               <a
-                href="https://discord.gg"
+                href="https://discord.gg/gVVd46ZGKH"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 rounded-md bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/50 transition-all"
-                aria-label="Discord"
+                className="w-9 h-9 rounded-md bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-[#5865F2] hover:border-[#5865F2]/40 hover:bg-[#5865F2]/10 transition-all"
+                aria-label="Discord Oficial Ashens Store"
+                title="Entrar no Servidor do Discord"
               >
                 <FaDiscord className="w-4 h-4" />
               </a>
@@ -42,11 +43,12 @@ export function Footer() {
                 <FaInstagram className="w-4 h-4" />
               </a>
               <a
-                href="https://wa.me"
+                href="https://wa.me/5562984638578"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-md bg-neutral-50 border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50/50 transition-all"
                 aria-label="WhatsApp"
+                title="Atendimento via WhatsApp (62) 98463-8578"
               >
                 <FaWhatsapp className="w-4 h-4" />
               </a>
@@ -98,6 +100,17 @@ export function Footer() {
                   <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                   <span>Acompanhar Pedido & Chat</span>
                 </Link>
+              </li>
+              <li>
+                <a
+                  href="https://discord.gg/gVVd46ZGKH"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#5865F2] transition-colors flex items-center gap-1.5 font-medium text-neutral-800"
+                >
+                  <FaDiscord className="w-3.5 h-3.5 text-[#5865F2]" />
+                  <span>Comunidade Discord (Suporte & Sorteios)</span>
+                </a>
               </li>
               <li>
                 <Link href="/checkout" className="hover:text-blue-600 transition-colors">

@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift } from "lucide-react"
+import { FaDiscord } from "react-icons/fa"
 import { CartIcon, CartDrawer } from "@/components/ecommerce/Cart"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
@@ -164,6 +165,18 @@ function NavbarContent() {
 
               {/* Carrinho Minimalista */}
               <CartIcon />
+
+              {/* Botão Discord Oficial */}
+              <a
+                href="https://discord.gg/gVVd46ZGKH"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center gap-1.5 bg-[#5865F2]/10 hover:bg-[#5865F2] text-[#5865F2] hover:text-white px-3 py-1.5 rounded-sm text-xs font-semibold transition-all duration-200 border border-[#5865F2]/20 cursor-pointer shadow-2xs"
+                title="Entrar no Servidor Oficial do Discord"
+              >
+                <FaDiscord className="w-3.5 h-3.5" />
+                <span>Discord</span>
+              </a>
 
               {/* Menu do Usuário / Perfil */}
               <DropdownMenu>
@@ -374,6 +387,19 @@ function NavbarContent() {
                     </div>
                   </>
                 )}
+
+                <div className="pt-2">
+                  <a
+                    href="https://discord.gg/gVVd46ZGKH"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-sm text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <FaDiscord className="w-4 h-4" />
+                    <span>Entrar no Discord Oficial</span>
+                  </a>
+                </div>
               </div>
             </motion.div>
           )}

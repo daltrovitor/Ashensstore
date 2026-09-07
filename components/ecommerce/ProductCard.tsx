@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/use-shopping-cart"
 import { toast } from "sonner"
+import { ShoppingCart, Zap } from "lucide-react"
 import type { Product } from "@/lib/store/types"
 
 interface ProductCardProps {
@@ -20,6 +21,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     const prices = product.variants?.map(v => Number(v.retail_price || v.price || 0)) || []
     const basePrice = product.price ? Number(product.price) : (prices.length ? Math.min(...prices) : 0)
     const originalPrice = product.compare_at_price ? Number(product.compare_at_price) : 0
+    const discountPercent = originalPrice > basePrice ? Math.round(((originalPrice - basePrice) / originalPrice) * 100) : 0
 
     const formatPrice = (p: number) => {
         return new Intl.NumberFormat('pt-BR', {
@@ -63,71 +65,91 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     }
 
     return (
-        <div className="group flex flex-col bg-white border border-neutral-200 rounded-sm overflow-hidden hover:border-neutral-400 transition-colors">
-            {/* Imagem do Produto em Fundo Neutro Limpo */}
+        <div className="group flex flex-col bg-white border border-neutral-200/90 rounded-md overflow-hidden hover:border-[#48B9FA]/60 hover:shadow-md transition-all duration-200">
+            {/* Imagem do Produto */}
             <Link
                 href={`/produto/${product.slug}`}
-                className="block relative aspect-square bg-neutral-50 p-6 flex items-center justify-center overflow-hidden"
+                className="block relative aspect-square bg-gradient-to-b from-neutral-50 to-neutral-100/50 p-3 sm:p-5 flex items-center justify-center overflow-hidden"
             >
-                <Image
-                    src={imageUrl}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    className="object-contain p-4 transition-transform duration-300 group-hover:scale-105"
-                    priority={priority}
-                />
+                {/* Badges Flutuantes */}
+                <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                    {discountPercent > 0 ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-white shadow-xs">
+                            -{discountPercent}%
+                        </span>
+                    ) : product.is_featured ? (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-[#48B9FA] text-white shadow-xs flex items-center gap-0.5">
+                            <Zap className="w-2.5 h-2.5 fill-white" /> Destaque
+                        </span>
+                    ) : null}
+                </div>
+
+                <div className="relative w-full h-full flex items-center justify-center">
+                    <Image
+                        src={imageUrl}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-contain p-2 sm:p-3 transition-transform duration-300 group-hover:scale-105"
+                        priority={priority}
+                    />
+                </div>
             </Link>
 
             {/* Informações do Produto */}
-            <div className="p-4 flex flex-col flex-1 justify-between bg-white">
+            <div className="p-3 sm:p-4 flex flex-col flex-1 justify-between bg-white">
                 <div>
                     {/* Categoria */}
                     {product.category && (
-                        <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium mb-1">
+                        <p className="text-[10px] sm:text-[11px] text-neutral-400 uppercase tracking-wider font-semibold mb-1 truncate">
                             {product.category.name}
                         </p>
                     )}
 
                     {/* Nome do Produto */}
                     <Link href={`/produto/${product.slug}`} className="block mb-2">
-                        <h3 className="text-sm font-medium text-neutral-900 leading-snug line-clamp-2 group-hover:text-neutral-600 transition-colors">
+                        <h3 className="text-xs sm:text-sm font-semibold text-neutral-900 leading-snug line-clamp-2 min-h-[32px] sm:min-h-[38px] group-hover:text-[#48B9FA] transition-colors">
                             {product.name}
                         </h3>
                     </Link>
                 </div>
 
-                {/* Preço e Botões */}
-                <div className="pt-3 border-t border-neutral-100 mt-2 space-y-3">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-base font-semibold text-neutral-900">
-                            {formatPrice(basePrice)}
-                        </span>
-                        {originalPrice > basePrice && (
-                            <span className="text-xs text-neutral-400 line-through">
-                                {formatPrice(originalPrice)}
+                {/* Preço e Ações */}
+                <div className="pt-2.5 border-t border-neutral-100 mt-1 space-y-2.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-1">
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm sm:text-base font-bold text-neutral-900">
+                                {formatPrice(basePrice)}
                             </span>
-                        )}
-                        <span className="text-[11px] text-neutral-500 font-normal">
-                            no PIX
+                            {originalPrice > basePrice && (
+                                <span className="text-[11px] text-neutral-400 line-through">
+                                    {formatPrice(originalPrice)}
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                            PIX
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Botões de Ação Ergonômicos para Celular e Desktop */}
+                    <div className="flex items-center gap-1.5">
                         <button
                             type="button"
-                            onClick={handleAddToCart}
-                            className="w-full h-8 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 rounded-sm hover:border-[#48B9FA] hover:text-[#48B9FA] transition-colors cursor-pointer"
+                            onClick={handleDirectBuy}
+                            className="flex-1 h-8 sm:h-9 text-[11px] sm:text-xs font-semibold text-white bg-[#48B9FA] hover:bg-[#20a6f5] active:scale-[0.98] rounded transition-all shadow-xs cursor-pointer flex items-center justify-center"
                         >
-                            Carrinho
+                            Comprar
                         </button>
 
                         <button
                             type="button"
-                            onClick={handleDirectBuy}
-                            className="w-full h-8 text-xs font-medium text-white bg-[#48B9FA] hover:bg-[#20a6f5] rounded-sm transition-colors shadow-xs cursor-pointer"
+                            onClick={handleAddToCart}
+                            className="h-8 sm:h-9 w-8 sm:w-9 shrink-0 text-neutral-700 bg-neutral-100 hover:bg-neutral-200 hover:text-neutral-900 active:scale-[0.98] border border-neutral-200 rounded transition-all flex items-center justify-center cursor-pointer"
+                            title="Adicionar ao carrinho"
+                            aria-label="Adicionar ao carrinho"
                         >
-                            Comprar
+                            <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                     </div>
                 </div>

@@ -42,6 +42,7 @@ export async function POST(request: Request) {
         .insert({
             title: body.title || 'Banner Promocional',
             image_url: body.image_url,
+            mobile_image_url: body.mobile_image_url || null,
             link_url: body.link_url || '/loja',
             active: body.active !== false,
             display_order: Number(body.display_order) || 0
@@ -76,6 +77,7 @@ export async function PATCH(request: Request) {
     if (updates.active !== undefined) updatePayload.active = Boolean(updates.active)
     if (updates.title !== undefined) updatePayload.title = updates.title
     if (updates.image_url !== undefined) updatePayload.image_url = updates.image_url
+    if (updates.mobile_image_url !== undefined) updatePayload.mobile_image_url = updates.mobile_image_url
     if (updates.link_url !== undefined) updatePayload.link_url = updates.link_url
     if (updates.display_order !== undefined) updatePayload.display_order = Number(updates.display_order)
 

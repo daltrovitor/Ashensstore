@@ -19,7 +19,9 @@ import {
   Truck,
   X,
   Boxes,
-  DollarSign
+  DollarSign,
+  Users,
+  Menu
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
@@ -27,6 +29,7 @@ import { CategoriesManager } from "@/components/admin/categories-manager"
 import { ShippingManager } from "@/components/admin/shipping-manager"
 import { InventoryManager } from "@/components/admin/inventory-manager"
 import { FinancialManager } from "@/components/admin/financial-manager"
+import { AffiliatesManager } from "@/components/admin/affiliates-manager"
 import { ImageUpload } from "@/components/admin/image-upload"
 import { DigitalStockDialog } from "@/components/admin/digital-stock-dialog"
 import { Button } from "@/components/ui/button"
@@ -82,6 +85,7 @@ const emptyVariant: VariantForm = { name: '', size: '', color: '', price: '', st
 
 export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState("products")
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [newProductOpen, setNewProductOpen] = useState(false)
@@ -353,7 +357,62 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 flex">
+    <div className="min-h-screen bg-muted/20 flex flex-col md:flex-row">
+      {/* Mobile Top Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="relative w-8 h-8 rounded-md overflow-hidden border border-neutral-200 bg-white flex-shrink-0">
+            <NextImage src="/ashens-logo.jpg" alt="Logo" fill className="object-contain" />
+          </div>
+          <div>
+            <h1 className="font-bold text-xs text-neutral-900 leading-tight">Ashens Store</h1>
+            <span className="text-[10px] text-blue-600 font-medium">Painel Admin</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs px-2.5" onClick={() => window.location.href = '/'}>
+            <ArrowLeft className="w-3 h-3 mr-1" /> Loja
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setMobileNavOpen(!mobileNavOpen)}>
+            {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileNavOpen && (
+        <div className="md:hidden fixed inset-0 top-[53px] z-30 bg-white/95 backdrop-blur-sm p-4 space-y-2 flex flex-col justify-between border-b shadow-lg animate-in fade-in-50">
+          <nav className="space-y-1.5">
+            <Button variant={activeTab === 'products' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('products'); setMobileNavOpen(false); }}>
+              <ShoppingBag className="mr-2 h-4 w-4" /> Produtos
+            </Button>
+            <Button variant={activeTab === 'inventory' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('inventory'); setMobileNavOpen(false); }}>
+              <Boxes className="mr-2 h-4 w-4" /> Estoque
+            </Button>
+            <Button variant={activeTab === 'financial' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('financial'); setMobileNavOpen(false); }}>
+              <DollarSign className="mr-2 h-4 w-4" /> Financeiro
+            </Button>
+            <Button variant={activeTab === 'orders' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('orders'); setMobileNavOpen(false); }}>
+              <Package className="mr-2 h-4 w-4" /> Pedidos
+            </Button>
+            <Button variant={activeTab === 'affiliates' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('affiliates'); setMobileNavOpen(false); }}>
+              <Users className="mr-2 h-4 w-4 text-[#48B9FA]" /> Afiliados
+            </Button>
+            <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('banners'); setMobileNavOpen(false); }}>
+              <ImageIcon className="mr-2 h-4 w-4" /> Banners
+            </Button>
+            <Button variant={activeTab === 'categories' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('categories'); setMobileNavOpen(false); }}>
+              <GripVertical className="mr-2 h-4 w-4" /> Categorias
+            </Button>
+          </nav>
+          <div className="pt-3 border-t border-border space-y-2">
+            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 text-xs font-medium" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" /> Sair do Painel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col fixed inset-y-0">
         <div className="p-5 border-b border-border flex items-center gap-3">
@@ -378,6 +437,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <Button variant={activeTab === 'orders' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('orders')}>
             <Package className="mr-2 h-4 w-4" /> Pedidos
           </Button>
+          <Button variant={activeTab === 'affiliates' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('affiliates')}>
+            <Users className="mr-2 h-4 w-4 text-[#48B9FA]" /> Afiliados
+          </Button>
           <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('banners')}>
             <ImageIcon className="mr-2 h-4 w-4" /> Banners
           </Button>
@@ -397,7 +459,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-8">
+      <main className="flex-1 md:ml-64 p-4 sm:p-8 pt-18 md:pt-8 w-full">
         <div className="max-w-6xl mx-auto">
           {activeTab === 'products' && (
             <div className="space-y-6">
@@ -788,6 +850,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <div className="space-y-6">
               <h2 className="text-3xl font-serif font-bold">Gerenciar Pedidos</h2>
               <OrdersManager />
+            </div>
+          )}
+          {activeTab === 'affiliates' && (
+            <div className="space-y-6">
+              <AffiliatesManager />
             </div>
           )}
           {activeTab === 'banners' && (

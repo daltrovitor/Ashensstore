@@ -24,6 +24,7 @@ interface Banner {
     id: string
     title: string
     image_url: string
+    mobile_image_url?: string
     link_url?: string
     active: boolean
     display_order?: number
@@ -35,6 +36,7 @@ export function BannersManager() {
     const [loading, setLoading] = useState(true)
     const [title, setTitle] = useState("")
     const [imageUrl, setImageUrl] = useState("")
+    const [mobileImageUrl, setMobileImageUrl] = useState("")
     const [linkUrl, setLinkUrl] = useState("/loja")
     const [active, setActive] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,6 +77,7 @@ export function BannersManager() {
                 body: JSON.stringify({
                     title: title.trim() || 'Banner Promocional',
                     image_url: imageUrl.trim(),
+                    mobile_image_url: mobileImageUrl.trim() || undefined,
                     link_url: linkUrl.trim() || '/loja',
                     active,
                     display_order: banners.length,
@@ -85,6 +88,7 @@ export function BannersManager() {
                 toast.success("Banner adicionado com sucesso!")
                 setTitle("")
                 setImageUrl("")
+                setMobileImageUrl("")
                 setLinkUrl("/loja")
                 setActive(true)
                 fetchBanners()
@@ -254,6 +258,51 @@ export function BannersManager() {
                                         <img
                                             src={imageUrl}
                                             alt="Pré-visualização"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as HTMLElement).style.display = 'none'
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Imagem Opcional Específica para Celular */}
+                    <div className="space-y-3 p-4 bg-neutral-50/80 border border-neutral-200 rounded-md">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold text-neutral-800">
+                                Imagem Otimizada para Celular / Mobile (Opcional)
+                            </Label>
+                            <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">
+                                Recomendado: 1080x1080 ou 16:9
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-500">
+                            Se preenchida, esta imagem será exibida nos celulares no lugar do banner panorâmico de desktop, garantindo que nada fique cortado.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div className="space-y-2">
+                                <ImageUpload
+                                    value={mobileImageUrl}
+                                    onChange={(url: string) => setMobileImageUrl(url)}
+                                    disabled={isSubmitting}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Input
+                                    id="banner-mobile-url"
+                                    value={mobileImageUrl}
+                                    onChange={(e) => setMobileImageUrl(e.target.value)}
+                                    placeholder="Ou cole a URL da imagem mobile..."
+                                    className="border-neutral-300 text-xs font-mono bg-white"
+                                />
+                                {mobileImageUrl && (
+                                    <div className="mt-2 relative aspect-video max-w-[200px] rounded-md overflow-hidden border border-neutral-200 bg-white">
+                                        <img
+                                            src={mobileImageUrl}
+                                            alt="Preview Mobile"
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 (e.target as HTMLElement).style.display = 'none'
