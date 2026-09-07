@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react"
 import { toast } from "sonner"
+import { useAuth } from "@/hooks/use-auth"
 
 interface SignupFormProps {
   onSuccess?: () => void
@@ -17,6 +18,7 @@ interface SignupFormProps {
 
 export function SignupForm({ onSuccess, redirectTo }: SignupFormProps) {
   const router = useRouter()
+  const { signIn } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -62,20 +64,32 @@ export function SignupForm({ onSuccess, redirectTo }: SignupFormProps) {
         throw new Error(data.error || "Falha ao criar conta")
       }
 
-      toast.success("Conta criada com sucesso! Verifique seu email.")
+      toast.success("Conta criada com sucesso! Entrando...")
       
-      if (onSuccess) {
-        onSuccess()
-      } else if (redirectTo) {
-        router.push(redirectTo)
-      } else {
-        router.push("/login?message=check-email")
+      try {
+        await signIn(email, password)
+        if (onSuccess) {
+          onSuccess()
+        } else if (redirectTo) {
+          router.push(redirectTo)
+        } else {
+          router.push("/loja")
+        }
+      } catch (loginErr) {
+        if (onSuccess) {
+          onSuccess()
+        } else if (redirectTo) {
+          router.push(redirectTo)
+        } else {
+          router.push("/login?message=created")
+        }
       }
 
     } catch (error) {
       console.error("Signup error:", error)
-      setError(error instanceof Error ? error.message : "Falha ao criar conta")
-      toast.error("Falha ao criar conta")
+      const msg = error instanceof Error ? error.message : "Falha ao criar conta"
+      setError(msg)
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -174,7 +188,11 @@ export function SignupForm({ onSuccess, redirectTo }: SignupFormProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-[#48B9FA] hover:bg-[#20a6f5] text-white cursor-pointer"
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -190,7 +208,7 @@ export function SignupForm({ onSuccess, redirectTo }: SignupFormProps) {
           Já tem uma conta?{" "}
           <a
             href="/login"
-            className="text-primary hover:underline"
+            className="text-[#48B9FA] hover:text-[#20a6f5] font-semibold hover:underline"
           >
             Faça login
           </a>

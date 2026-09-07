@@ -1,43 +1,29 @@
-
 /**
  * POST /api/checkout/create
- * Cria uma sessão de checkout para pagamento
+ * Criação de pedido exclusivo via PIX para entrega digital no Roblox / Blox Fruits
  */
 
 import { NextResponse } from 'next/server'
-import { createStripeCheckoutSession } from '@/lib/payments/stripe'
 import { createOrder } from '@/lib/orders/service'
 import { generatePixPayload, COMPANY_PIX_DATA } from '@/lib/pix/brcode'
 import { z } from 'zod'
 
-// Schema de validação
+// Schema de validação adaptado para entrega digital
 const CheckoutSchema = z.object({
-    payment_method: z.enum(['card', 'pix']).default('card'),
+    payment_method: z.literal('pix').default('pix'),
     items: z.array(z.object({
-        variant_id: z.string().uuid(),
+        variant_id: z.string().uuid().optional(),
         quantity: z.number().min(1),
         price: z.number().min(0),
         name: z.string(),
     })),
     customer: z.object({
-        name: z.string().min(1),
-        email: z.string().email(),
-        phone: z.string().optional(),
+        name: z.string().min(2, "Nome é obrigatório"),
+        email: z.string().email("E-mail inválido"),
+        phone: z.string().min(8, "Telefone/WhatsApp é obrigatório"),
+        roblox_username: z.string().min(2, "Nick do Roblox é obrigatório para entrega"),
+        delivery_notes: z.string().optional(),
     }),
-    shipping_address: z.object({
-        name: z.string(),
-        address1: z.string(),
-        address2: z.string().optional(),
-        city: z.string(),
-        state_code: z.string(),
-        country_code: z.string(),
-        zip: z.string(),
-        phone: z.string().optional(),
-        email: z.string().email(),
-    }),
-    shipping_cost: z.number().optional().default(0),
-    success_url: z.string().url(),
-    cancel_url: z.string().url(),
 })
 
 export async function POST(request: Request) {
@@ -55,64 +41,54 @@ export async function POST(request: Request) {
             customerName: validatedData.customer.name,
             customerEmail: validatedData.customer.email,
             customerPhone: validatedData.customer.phone,
-            shippingAddress: validatedData.shipping_address,
+            shippingAddress: {
+                name: validatedData.customer.name,
+                roblox_username: validatedData.customer.roblox_username,
+                phone: validatedData.customer.phone,
+                email: validatedData.customer.email,
+                delivery_notes: validatedData.customer.delivery_notes || '',
+                address1: 'Entrega Digital Roblox',
+                city: 'Roblox Blox Fruits',
+                state_code: 'DF',
+                country_code: 'BR',
+                zip: '00000-000',
+                chat_messages: [
+                    {
+                        id: 'msg-' + Date.now(),
+                        sender: 'system',
+                        sender_name: 'Ashens Store Suporte',
+                        message: `Olá, ${validatedData.customer.name}! Seu pedido foi criado com sucesso. Assim que o pagamento via PIX for confirmado, nossa equipe entrará em contato por aqui para entregar seus itens no Roblox (Nick informado: ${validatedData.customer.roblox_username}).`,
+                        timestamp: new Date().toISOString(),
+                    }
+                ]
+            },
             items: validatedData.items,
             isTest: isTestMode,
-            shippingCost: validatedData.shipping_cost,
-            paymentMethod: validatedData.payment_method,
-            orderType: 'ecommerce',
+            shippingCost: 0,
+            paymentMethod: 'pix',
+            orderType: 'digital_roblox',
         })
 
-        // Se o método for PIX, gera o código QR direto para a conta da empresa sem passar pela Stripe
-        if (validatedData.payment_method === 'pix') {
-            const cleanTxid = orderResult.orderId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
-            const pixCode = generatePixPayload({
-                key: COMPANY_PIX_DATA.cnpj,
-                name: COMPANY_PIX_DATA.name,
-                city: COMPANY_PIX_DATA.city,
-                amount: orderResult.total,
-                txid: cleanTxid,
-            })
-
-            return NextResponse.json({
-                success: true,
-                order_id: orderResult.orderId,
-                total: orderResult.total,
-                payment_method: 'pix',
-                pix_code: pixCode,
-                pix_key: COMPANY_PIX_DATA.cnpjFormatted,
-                recipient_name: COMPANY_PIX_DATA.name,
-            })
-        }
-
-        // Se for Cartão, cria sessão de checkout no Stripe (se configurado)
-        let checkoutUrl = null;
-        let checkoutSessionId = null;
-
-        if (process.env.STRIPE_SECRET_KEY) {
-            const checkoutSession = await createStripeCheckoutSession({
-                items: validatedData.items,
-                customerEmail: validatedData.customer.email,
-                successUrl: `${validatedData.success_url}?order_id=${orderResult.orderId}&session_id={CHECKOUT_SESSION_ID}`,
-                cancelUrl: validatedData.cancel_url,
-                shippingCost: validatedData.shipping_cost,
-                metadata: {
-                    order_id: orderResult.orderId,
-                    customer_name: validatedData.customer.name,
-                    customer_email: validatedData.customer.email,
-                },
-            })
-            checkoutUrl = checkoutSession.checkoutUrl;
-            checkoutSessionId = checkoutSession.sessionId;
-        }
+        // Gera o código QR PIX oficial padrão Banco Central (EMVCo)
+        const cleanTxid = orderResult.orderId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
+        const pixCode = generatePixPayload({
+            key: COMPANY_PIX_DATA.key,
+            name: COMPANY_PIX_DATA.name,
+            city: COMPANY_PIX_DATA.city,
+            amount: orderResult.total,
+            txid: cleanTxid,
+        })
 
         return NextResponse.json({
             success: true,
             order_id: orderResult.orderId,
             total: orderResult.total,
-            payment_method: 'card',
-            checkout_session_id: checkoutSessionId,
-            checkout_url: checkoutUrl,
+            payment_method: 'pix',
+            pix_code: pixCode,
+            pix_key: COMPANY_PIX_DATA.keyFormatted,
+            raw_pix_key: COMPANY_PIX_DATA.key,
+            recipient_name: COMPANY_PIX_DATA.name,
+            recipient_city: COMPANY_PIX_DATA.city,
         })
 
     } catch (error) {

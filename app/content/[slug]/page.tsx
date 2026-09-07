@@ -81,17 +81,16 @@ function ContentPageContent({ params }: ContentPageProps) {
   })()
 
   return (
-    <main className="bg-gradient-to-br from-background via-background to-background/95 min-h-screen">
+    <main className="bg-white min-h-screen">
       <Navbar />
 
       {/* Hero Section (fallback to placeholder.jpg when no image) */}
-      <div className="w-full h-80 md:h-96 overflow-hidden relative bg-black">
+      <div className="w-full h-80 md:h-96 overflow-hidden relative bg-neutral-100">
         <img
           src={content.image_url || "/placeholder.jpg"}
           alt={content.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black/40"></div>
       </div>
 
       {/* Blog Container */}
@@ -104,9 +103,9 @@ function ContentPageContent({ params }: ContentPageProps) {
             {/* Article Header */}
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm font-semibold text-primary uppercase tracking-wide">Artigo</span>
-                <span className="text-sm text-foreground/50">•</span>
-                <time className="text-sm text-foreground/60">
+                <span className="text-sm font-semibold text-[#48B9FA] uppercase tracking-wide">Artigo</span>
+                <span className="text-sm text-neutral-400">•</span>
+                <time className="text-sm text-neutral-500">
                   {new Date(content.updated_at).toLocaleDateString("pt-BR", {
                     year: "numeric",
                     month: "long",
@@ -115,19 +114,19 @@ function ContentPageContent({ params }: ContentPageProps) {
                 </time>
               </div>
 
-              <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 mb-4 leading-tight">
                 {content.title}
               </h1>
 
               {content.description && (
-                <p className="text-xl text-foreground/70 leading-relaxed font-light">
+                <p className="text-lg text-neutral-600 leading-relaxed">
                   {content.description}
                 </p>
               )}
             </div>
 
             {/* Divider */}
-            <div className="h-px bg-gradient-to-r from-primary/50 to-transparent mb-10"></div>
+            <div className="h-px bg-neutral-200 mb-10"></div>
 
             {/* Article Content */}
             {content.content && (

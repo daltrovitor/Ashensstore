@@ -1,4 +1,3 @@
-
 import { Metadata, ResolvingMetadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getSupabaseService } from '@/lib/supabase/server'
@@ -10,21 +9,58 @@ interface Props {
 }
 
 async function getProduct(slug: string): Promise<Product | null> {
-  const supabase = getSupabaseService()
-  if (!supabase) return null
+  try {
+    const supabase = getSupabaseService()
+    if (supabase) {
+      let { data, error } = await supabase
+        .from('products')
+        .select('*, variants:product_variants(*), mockups:product_mockups(*)')
+        .eq('slug', slug)
+        .maybeSingle()
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, category:store_categories(*), variants:product_variants(*)')
-    .eq('slug', slug)
-    .single()
+      if (!data && !error) {
+        // Tenta buscar por ID se slug não for encontrado
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)
+        if (isUUID) {
+          const res = await supabase
+            .from('products')
+            .select('*, variants:product_variants(*), mockups:product_mockups(*)')
+            .eq('id', slug)
+            .maybeSingle()
+          data = res.data
+        }
+      }
 
-  if (error || !data) {
-    console.error('Error fetching product:', error)
-    return null
+      if (data) {
+        // Carrega categoria associada se houver category_id
+        if (data.category_id) {
+          const { data: cat } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('id', data.category_id)
+            .maybeSingle()
+
+          if (cat) {
+            data.category = cat
+          } else {
+            const { data: storeCat } = await supabase
+              .from('store_categories')
+              .select('*')
+              .eq('id', data.category_id)
+              .maybeSingle()
+            if (storeCat) data.category = storeCat
+          }
+        }
+
+        return data as any
+      }
+    }
+  } catch (err) {
+    console.error('[Product Page] Erro ao buscar produto no banco:', err)
   }
 
-  return data as any
+  // Se não existir no banco de dados, retorna null (aciona notFound)
+  return null
 }
 
 export async function generateMetadata(
@@ -36,26 +72,26 @@ export async function generateMetadata(
 
   if (!product) {
     return {
-      title: 'Produto não encontrado',
+      title: 'Produto não encontrado | Ashens Store',
     }
   }
 
   const previousImages = (await parent).openGraph?.images || []
-  const productImage = product.thumbnail_url || product.images?.[0] || '/logo2.png'
+  const productImage = product.thumbnail_url || product.images?.[0] || '/ashens-logo.jpg'
 
   return {
-    title: product.name,
-    description: product.description?.substring(0, 160) || `Compre ${product.name} na Librás. Soluções abrasivas de alta qualidade.`,
+    title: `${product.name} | Ashens Store`,
+    description: product.description?.substring(0, 160) || `Compre ${product.name} no Blox Fruits com entrega garantida via PIX na Ashens Store.`,
     openGraph: {
-      title: `${product.name} | Librás`,
+      title: `${product.name} | Ashens Store`,
       description: product.description?.substring(0, 160),
-      url: `https://loja.libraslixas.com.br/produto/${slug}`,
+      url: `https://ashenstore.com.br/produto/${slug}`,
       images: [productImage, ...previousImages],
       type: 'article',
     },
     twitter: {
       card: 'summary_large_image',
-      title: product.name,
+      title: `${product.name} | Ashens Store`,
       description: product.description?.substring(0, 160),
       images: [productImage],
     },
@@ -70,23 +106,22 @@ export default async function Page({ params }: Props) {
     notFound()
   }
 
-  // Schema.org Product markup
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": product.name,
     "description": product.description,
-    "image": product.thumbnail_url || product.images?.[0],
+    "image": product.thumbnail_url || product.images?.[0] || '/ashens-logo.jpg',
     "sku": product.variants?.[0]?.sku || product.id,
     "offers": {
       "@type": "Offer",
-      "url": `https://loja.libraslixas.com.br/produto/${slug}`,
+      "url": `https://ashenstore.com.br/produto/${slug}`,
       "priceCurrency": "BRL",
-      "price": product.variants?.[0]?.retail_price || product.variants?.[0]?.price || 0,
+      "price": product.price || product.variants?.[0]?.retail_price || 0,
       "availability": "https://schema.org/InStock",
       "seller": {
         "@type": "Organization",
-        "name": "Librás"
+        "name": "Ashens Store"
       }
     }
   }

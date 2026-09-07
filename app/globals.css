@@ -2,8 +2,8 @@
 @import "tw-animate-css";
 
 @theme inline {
-  --font-sans: "Google Sans", "Product Sans", "Inter", "Geist", system-ui, sans-serif;
-  --font-serif: "Playfair Display", "Georgia", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -24,72 +24,126 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+
+  /* Paleta de Azul Oficial Ashens Store: #48B9FA */
+  --color-blue-50: #f0f9ff;
+  --color-blue-100: #e0f2fe;
+  --color-blue-200: #bae6fd;
+  --color-blue-300: #7dd3fc;
+  --color-blue-400: #60c5fa;
+  --color-blue-500: #48b9fa;
+  --color-blue-600: #48b9fa;
+  --color-blue-700: #20a6f5;
+  --color-blue-800: #0f8fd9;
+  --color-blue-900: #0c4a6e;
+  --color-ashen: #48b9fa;
+  --color-ashen-hover: #20a6f5;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
 :root {
-  /* Librás - Clean & Professional Theme */
+  /* Ashens Store - Clean White Base with Official #48B9FA Blue Highlights */
 
-  /* Background & Foreground - White & Dark Grey */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2 0.01 0);
+  /* White Background & High Contrast Neutral Foreground */
+  --background: #ffffff;
+  --foreground: #0f172a;
 
-  /* Cards */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.01 0);
+  /* Cards - Pure White Surface with crisp borders */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
 
   /* Popover */
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 0);
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
 
-  /* Primary - Red Brand Color */
-  --primary: oklch(0.55 0.22 25);
-  /* Strong Red */
-  --primary-foreground: oklch(1 0 0);
+  /* Primary - #48B9FA */
+  --primary: #48b9fa;
+  --primary-foreground: #ffffff;
 
-  /* Secondary - Light Grey */
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.2 0.01 0);
+  /* Secondary - Soft Sky / Azure Mist */
+  --secondary: #f0f9ff;
+  --secondary-foreground: #0284c7;
 
-  /* Muted - Grey */
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.55 0 0);
+  /* Muted - Soft Neutral Gray */
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
 
-  /* Accent - Light Red */
-  --accent: oklch(0.95 0.05 25);
-  --accent-foreground: oklch(0.2 0.01 0);
+  /* Accent - Subtle Blue Hover */
+  --accent: #e0f2fe;
+  --accent-foreground: #0369a1;
 
-  /* Destructive */
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
+  /* Destructive - Crisp Red */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
 
-  /* Border & Input */
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.55 0.22 25);
+  /* Border & Input - Hairline Crisp Light Blue / Neutral */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #48b9fa;
 
-  /* Radius */
-  --radius: 0.5rem;
+  /* Radius - Subtle & Refined */
+  --radius: 0.25rem;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: #ffffff;
+    color: #111827;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #111827;
   }
+
+  /* Pointer obrigatório em todos os botões e elementos clicáveis */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a[role="button"],
+  .btn,
+  button * {
+    cursor: pointer !important;
+  }
+
+  button:disabled,
+  button[disabled],
+  [role="button"][aria-disabled="true"],
+  button:disabled *,
+  button[disabled] * {
+    cursor: not-allowed !important;
+  }
+}
+
+/* Custom Minimalist Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }

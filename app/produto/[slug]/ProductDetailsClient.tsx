@@ -1,17 +1,27 @@
-
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Truck, Check, ShieldCheck, Heart, ShoppingCart } from "lucide-react"
+import {
+  Zap,
+  ShieldCheck,
+  ShoppingCart,
+  Gamepad2,
+  MessageSquare,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  HelpCircle
+} from "lucide-react"
 import { toast } from "sonner"
 import type { Product, Variant } from "@/lib/store/types"
 import { useCart } from "@/hooks/use-shopping-cart"
+import { PIX_CONFIG } from "@/lib/config/pix"
 
 const formatPrice = (p: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -22,8 +32,9 @@ const formatPrice = (p: number) => {
 
 export default function ProductDetailsClient({ initialProduct }: { initialProduct: Product }) {
     const { addItem, openCart } = useCart()
+    const router = useRouter()
 
-    const [product, setProduct] = useState<Product>(initialProduct)
+    const [product] = useState<Product>(initialProduct)
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(() => {
         if (initialProduct.variants?.length > 0) {
             const firstAvailable = initialProduct.variants.find((v: Variant) => v.in_stock) || initialProduct.variants[0]
@@ -33,188 +44,140 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
     })
     const [quantity, setQuantity] = useState(1)
 
-    const handleAddToCart = () => {
-        if (!selectedVariantId || !product) return
-
-        const variant = product.variants?.find(v => v.id === selectedVariantId)
-        if (!variant || !variant.in_stock) {
-            toast.error('Variante selecionada não está disponível')
-            return
-        }
-
-        addItem({
-            id: variant.id,
-            product_id: product.id,
-            variant_id: variant.id,
-            name: product.name,
-            price: variant.retail_price || variant.price || 0,
-            quantity: quantity,
-            image: product.thumbnail_url || product.images?.[0] || '/placeholder.jpg',
-            size: variant.size || undefined,
-            color: variant.color || undefined
-        })
-
-        toast.success('Produto adicionado ao carrinho!')
-    }
-
-    const handleBuyNow = () => {
-        handleAddToCart()
-        openCart()
-    }
-
-    const selectedVariant = product.variants?.find(v => v.id === selectedVariantId)
+    const selectedVariant = product.variants?.find(v => v.id === selectedVariantId) || product.variants?.[0]
+    const price = selectedVariant?.retail_price || selectedVariant?.price || product.price || 0
+    const originalPrice = product.compare_at_price || (price > 0 ? price * 1.3 : 0)
 
     const mainImage = product.mockups?.find(m => m.is_main)?.image_url ||
         product.mockups?.[0]?.image_url ||
         product.thumbnail_url ||
         product.images?.[0] ||
-        '/placeholder.jpg'
+        '/ashens-logo.jpg'
 
-    const additionalImages = product.mockups?.map(m => m.image_url) || product.images || []
+    const handleAddToCart = () => {
+        addItem({
+            id: selectedVariant?.id || product.id,
+            product_id: product.id,
+            variant_id: selectedVariant?.id,
+            name: product.name,
+            price: price,
+            quantity: quantity,
+            image: mainImage,
+        })
+        toast.success(`"${product.name}" adicionado ao carrinho!`)
+    }
+
+    const handleBuyNow = () => {
+        handleAddToCart()
+        router.push('/checkout')
+    }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-white text-neutral-900 flex flex-col">
             <Navbar />
 
-            <main className="container mx-auto px-4 py-8 pt-32">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                    {/* Imagens */}
-                    <div className="space-y-6">
-                        <div className="relative aspect-square rounded-none border border-border overflow-hidden bg-muted">
-                            {mainImage ? (
-                                <Image
-                                    src={mainImage}
-                                    alt={product.name}
-                                    fill
-                                    className="object-cover"
-                                    priority
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full">
-                                    <p className="text-muted-foreground">Sem imagem</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Mockups adicionais */}
-                        {additionalImages.length > 1 && (
-                            <div className="grid grid-cols-4 gap-4">
-                                {additionalImages.slice(0, 4).map((img, index) => (
-                                    <div key={index} className="aspect-square border border-border cursor-pointer hover:border-primary transition-colors overflow-hidden bg-muted relative">
-                                        <Image
-                                            src={img}
-                                            alt={`${product.name} - ${index}`}
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                ))}
+            <main className="container mx-auto px-4 py-8 max-w-6xl flex-1">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                    {/* Imagem do Produto */}
+                    <div className="space-y-4">
+                        <div className="relative aspect-square rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 p-6 flex items-center justify-center">
+                            <Image
+                                src={mainImage}
+                                alt={product.name}
+                                fill
+                                className="object-contain p-6"
+                                priority
+                            />
+                            <div className="absolute top-4 left-4 text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-[#48B9FA] border border-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-[#48B9FA]" />
+                                <span>Blox Fruits Oficial</span>
                             </div>
-                        )}
+                        </div>
                     </div>
 
-                    {/* Informações do Produto */}
-                    <div className="space-y-8">
+                    {/* Dados e Compra */}
+                    <div className="space-y-6">
                         <div>
-                            <h1 className="text-4xl font-serif font-bold mb-3">{product.name}</h1>
                             {product.category && (
-                                <Badge variant="secondary" className="mb-4 text-xs uppercase tracking-wider rounded-sm">
+                                <p className="text-xs font-semibold text-[#48B9FA] uppercase tracking-wider mb-2">
                                     {product.category.name}
-                                </Badge>
-                            )}
-                            <div className="flex items-end gap-4 mt-2">
-                                <p className="text-3xl font-bold text-primary">
-                                    {selectedVariant ? formatPrice(selectedVariant.retail_price || selectedVariant.price || 0) : formatPrice(0)}
                                 </p>
+                            )}
+                            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight leading-tight">
+                                {product.name}
+                            </h1>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500">
+                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                    <CheckCircle2 className="w-4 h-4" /> Em Estoque
+                                </span>
+                                <span>•</span>
+                                <span>Entrega via Servidor VIP Roblox</span>
                             </div>
                         </div>
 
-                        {product.description && (
-                            <div className="prose prose-neutral max-w-none text-muted-foreground">
-                                <p>{product.description}</p>
+                        {/* Preço PIX */}
+                        <div className="p-5 rounded-lg bg-neutral-50 border border-neutral-200 space-y-2">
+                            <div className="flex items-baseline gap-3">
+                                {originalPrice > price && (
+                                    <span className="text-base text-neutral-400 line-through font-mono">
+                                        {formatPrice(originalPrice)}
+                                    </span>
+                                )}
+                                <span className="text-3xl sm:text-4xl font-bold text-neutral-900 font-sans tracking-tight">
+                                    {formatPrice(price)}
+                                </span>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+                                    No PIX
+                                </span>
                             </div>
-                        )}
+                            <p className="text-xs text-neutral-500">
+                                Pagamento rápido com QR Code dinâmico gerado instantaneamente no checkout.
+                            </p>
+                        </div>
 
-                        {/* Seleção de Variantes */}
-                        {product.variants && product.variants.length > 0 && (
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-bold text-sm uppercase tracking-wide">Opções</span>
-                                </div>
-                                <Select value={selectedVariantId || ''} onValueChange={setSelectedVariantId}>
-                                    <SelectTrigger className="w-full h-12">
-                                        <SelectValue placeholder="Selecione uma opção" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {product.variants.map((variant: Variant) => (
-                                            <SelectItem
-                                                key={variant.id}
-                                                value={variant.id}
-                                                disabled={!variant.in_stock}
-                                            >
-                                                {variant.name || variant.size} {!variant.in_stock && '(Esgotado)'}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                        {/* Descrição */}
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-sm text-neutral-900">Sobre este item:</h3>
+                            <p className="text-sm text-neutral-600 leading-relaxed">
+                                {product.description || "Item lendário e exclusivo de Blox Fruits entregue de forma imediata via trade em servidor seguro no Roblox."}
+                            </p>
+                        </div>
 
-                        {/* Quantidade e Ações */}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border">
-                            <div className="flex items-center border border-input rounded-md h-14 w-32">
-                                <button
-                                    className="px-3 h-full hover:bg-muted transition-colors"
-                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                >
-                                    -
-                                </button>
-                                <span className="flex-1 text-center font-bold">{quantity}</span>
-                                <button
-                                    className="px-3 h-full hover:bg-muted transition-colors"
-                                    onClick={() => setQuantity(quantity + 1)}
-                                >
-                                    +
-                                </button>
-                            </div>
+                        {/* Botões de Ação */}
+                        <div className="space-y-3 pt-2">
+                            <Button
+                                size="lg"
+                                onClick={handleBuyNow}
+                                className="w-full bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-semibold text-sm h-12 rounded-md shadow-xs cursor-pointer transition-all"
+                            >
+                                <Zap className="mr-2 h-4 w-4" />
+                                Comprar Agora via PIX
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
 
                             <Button
-                                className="flex-1 h-14 text-lg font-bold uppercase tracking-widest bg-primary hover:bg-primary/90 text-white"
-                                onClick={handleBuyNow}
-                                disabled={!selectedVariantId || !selectedVariant?.in_stock}
+                                size="lg"
+                                variant="outline"
+                                onClick={handleAddToCart}
+                                className="w-full border-neutral-300 text-neutral-800 hover:bg-neutral-50 font-semibold text-sm h-12 rounded-md cursor-pointer"
                             >
-                                <ShoppingCart className="h-5 w-5 mr-2" />
-                                Comprar
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                Adicionar ao Carrinho
                             </Button>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            className="w-full h-12 uppercase tracking-wide font-semibold"
-                            onClick={handleAddToCart}
-                            disabled={!selectedVariantId || !selectedVariant?.in_stock}
-                        >
-                            Adicionar ao Carrinho
-                        </Button>
-
-                        {/* Features */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 pt-8 text-sm text-muted-foreground">
-                            <div className="flex items-center space-x-3">
-                                <Truck className="h-5 w-5 text-primary" />
-                                <span>Frete calculado no checkout</span>
+                        {/* Card Informativo de Como Funciona a Entrega */}
+                        <div className="border border-neutral-200 rounded-lg p-5 bg-neutral-50 space-y-3">
+                            <div className="flex items-center gap-2 font-semibold text-sm text-neutral-900">
+                                <Gamepad2 className="w-4 h-4 text-[#48B9FA]" />
+                                <span>Como funciona a entrega?</span>
                             </div>
-                            <div className="flex items-center space-x-3">
-                                <ShieldCheck className="h-5 w-5 text-primary" />
-                                <span>Garantia de Qualidade Librás</span>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                                <Check className="h-5 w-5 text-primary" />
-                                <span>Estoque imediato</span>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                                <Heart className="h-5 w-5 text-primary" />
-                                <span>Compra segura</span>
-                            </div>
+                            <ul className="text-xs text-neutral-600 space-y-2 list-disc pl-5">
+                                <li>Você finaliza a compra informando seu <strong>Nick do Roblox</strong>.</li>
+                                <li>Realiza o pagamento via PIX (QR Code ou Copia e Cola gerado na hora).</li>
+                                <li>Acessa o <strong>Chat do Pedido</strong> aqui mesmo na loja.</li>
+                                <li>O vendedor entra em contato imediatamente com o link do servidor VIP para entregar seu item!</li>
+                            </ul>
                         </div>
                     </div>
                 </div>

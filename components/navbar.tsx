@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname, useSearchParams } from "next/navigation"
-import { Menu, X, Search, User, LogOut, ShoppingBag, Settings } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
+import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package } from "lucide-react"
 import { CartIcon, CartDrawer } from "@/components/ecommerce/Cart"
-import { useCart } from "@/hooks/use-shopping-cart"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,59 +16,63 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { motion, AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 
-export function Navbar() {
+function NavbarContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([])
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { openCart } = useCart()
   const { user, signOut } = useAuth()
 
-  // Detect scroll for transparent/solid background
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
+    let isMounted = true
+    async function loadNavbarCategories() {
+      try {
+        const res = await fetch('/api/categories')
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data)) {
+            setDbCategories(data)
+          }
+        }
+      } catch (err) {
+        console.error('Navbar: erro ao carregar categorias:', err)
+      }
     }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    loadNavbarCategories()
+    return () => { isMounted = false }
   }, [])
 
   const navLinks = [
     { name: "Início", href: "/" },
-    { name: "Todos os Produtos", href: "/loja" },
-    { name: "Novidades", href: "/loja?sort=newest" },
-    { name: "Destaques", href: "/loja?featured=true" },
+    { name: "Catálogo", href: "/loja" },
+    ...dbCategories.map((cat) => ({
+      name: cat.name,
+      href: `/loja?categoryId=${cat.slug || cat.id}`,
+    })),
   ]
 
   const isActive = (href: string) => {
     if (href === "/" && pathname !== "/") return false
-
-    // Check for query params match
     if (href.includes('?')) {
       const [path, query] = href.split('?')
       if (pathname !== path) return false
-
       const linkParams = new URLSearchParams(query)
       for (const [key, value] of Array.from(linkParams.entries())) {
         if (searchParams.get(key) !== value) return false
       }
       return true
     }
-
-    // For plain links (like /loja), ensure no conflicting params from other tabs exist
     if (href === '/loja') {
       if (pathname !== href) return false
-      if (searchParams.get('featured') === 'true') return false
-      if (searchParams.get('sort') === 'newest') return false
+      if (searchParams.get('categoryId')) return false
       return true
     }
-
     return pathname.startsWith(href)
   }
 
@@ -82,252 +84,293 @@ export function Navbar() {
     }
   }
 
-
-
   return (
     <>
-      <nav
-        className="relative z-40 bg-background border-b border-border/50"
-      >
+      <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
+          <div className="flex justify-between items-center h-16 sm:h-20">
+            {/* Logo Oficial Única (Sem texto adicional) */}
             <Link
               href="/"
-              className="flex items-center gap-3 group"
+              className="flex items-center transition-opacity hover:opacity-80"
               onClick={() => setMobileMenuOpen(false)}
             >
-              <Image
-                src="/logo2.png"
-                alt="Librás"
-                width={120}
-                height={40}
-                className="object-contain"
-                priority
-              />
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 overflow-hidden flex items-center justify-center">
+                <Image
+                  src="/ashens-logo.jpg"
+                  alt="Logo Oficial"
+                  width={48}
+                  height={48}
+                  className="object-contain w-full h-full"
+                  priority
+                />
+              </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            {/* Navegação Desktop Minimalista */}
+            <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative text-sm font-bold uppercase tracking-wide hover:text-primary transition-colors py-2 ${isActive(link.href) ? "text-primary" : "text-foreground/80"
-                    }`}
+                  className={`text-sm tracking-normal transition-colors py-1 cursor-pointer ${
+                    isActive(link.href)
+                      ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
+                      : "text-neutral-600 hover:text-[#48B9FA] font-normal"
+                  }`}
                 >
                   {link.name}
-                  {isActive(link.href) && (
-                    <motion.div
-                      layoutId="nav-underline"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                    />
-                  )}
                 </Link>
               ))}
-            </div>
+            </nav>
 
-            {/* Actions */}
-            <div className="flex items-center gap-4">
-              {/* Search Toggle (Optional implementation later) */}
-              {/* Search Toggle */}
+            {/* Ações à Direita: Busca, Carrinho e Conta */}
+            <div className="flex items-center gap-3 sm:gap-4">
+              {/* Campo de Busca Discreto */}
               {searchOpen ? (
-                <form onSubmit={(e) => {
-                  e.preventDefault()
-                  if (searchQuery.trim()) {
-                    router.push(`/loja?search=${encodeURIComponent(searchQuery)}`)
-                    setSearchOpen(false)
-                  }
-                }} className="relative flex items-center">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    if (searchQuery.trim()) {
+                      router.push(`/loja?search=${encodeURIComponent(searchQuery)}`)
+                      setSearchOpen(false)
+                    }
+                  }}
+                  className="relative flex items-center"
+                >
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar..."
-                    className="w-32 sm:w-64 bg-background border border-input rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Buscar itens..."
+                    className="w-36 sm:w-56 bg-neutral-50 border border-neutral-300 text-neutral-900 rounded-sm px-3 py-1.5 text-xs focus:outline-none focus:border-black"
                     autoFocus
-                    onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+                    onBlur={() => setTimeout(() => setSearchOpen(false), 250)}
                   />
-                  <button type="submit" className="absolute right-2 text-primary">
-                    <Search className="w-4 h-4" />
+                  <button type="submit" className="absolute right-2 text-neutral-500 hover:text-black">
+                    <Search className="w-3.5 h-3.5" />
                   </button>
                 </form>
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className="p-2 hover:bg-accent/10 rounded-lg transition-colors cursor-pointer text-foreground/80 hover:text-primary"
-                  aria-label="Buscar"
+                  className="p-2 text-neutral-600 hover:text-black transition-colors"
+                  aria-label="Buscar produtos"
                 >
-                  <Search className="w-5 h-5 cursor-pointer" />
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               )}
 
-              {/* Cart */}
+              {/* Carrinho Minimalista */}
               <CartIcon />
 
-              {/* User Menu */}
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <User className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      {user.full_name || user.email}
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/perfil" className="w-full cursor-pointer">
-                        Meu Perfil
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/pedidos" className="w-full cursor-pointer">
-                        Meus Pedidos
-                      </Link>
-                    </DropdownMenuItem>
-                    {(user.role === 'admin' || user.role === 'manager') && (
-                      <>
-                        <DropdownMenuSeparator />
+              {/* Menu do Usuário / Perfil */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 text-neutral-600 hover:text-black transition-colors cursor-pointer" aria-label="Conta e Perfil">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border border-neutral-200 text-neutral-900 rounded-sm p-1 shadow-lg" align="end">
+                  {user ? (
+                    <>
+                      <DropdownMenuLabel className="font-normal text-xs text-neutral-500 px-3 py-2">
+                        Conectado como <strong className="text-black block truncate">{user.full_name || user.email}</strong>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-neutral-100" />
+                      <DropdownMenuItem asChild>
+                        <Link href="/perfil" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
+                          <User className="w-4 h-4 text-neutral-500" />
+                          Meu Perfil
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/pedidos" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
+                          <Package className="w-4 h-4 text-neutral-500" />
+                          Acompanhar Pedido
+                        </Link>
+                      </DropdownMenuItem>
+                      {(user.role === 'admin' || user.role === 'manager') && (
                         <DropdownMenuItem asChild>
-                          <Link href="/admin" className="w-full cursor-pointer font-semibold text-primary">
-                            <Settings className="mr-2 h-4 w-4" />
-                            Painel Admin
+                          <Link href="/admin" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 text-black font-semibold hover:bg-neutral-50">
+                            <Settings className="w-4 h-4" />
+                            Painel do Vendedor
                           </Link>
                         </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sair
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/login">
-                      Entrar
-                    </Link>
-                  </Button>
-                  <Button size="sm" asChild>
-                    <Link href="/signup">
-                      Cadastrar
-                    </Link>
-                  </Button>
+                      )}
+                      <DropdownMenuSeparator className="bg-neutral-100" />
+                      <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer text-xs py-2 px-3 hover:bg-red-50">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sair
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuLabel className="font-normal text-xs text-neutral-500 px-3 py-2">
+                        Minha Conta
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-neutral-100" />
+                      <DropdownMenuItem asChild>
+                        <Link href="/pedidos" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
+                          <Package className="w-4 h-4 text-neutral-500" />
+                          Acompanhar Pedido
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-neutral-100" />
+                      <DropdownMenuItem asChild>
+                        <Link href="/login" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
+                          Entrar
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/signup" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 font-semibold text-[#48B9FA] hover:bg-neutral-50">
+                          Cadastrar
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {!user && (
+                <div className="hidden sm:flex items-center gap-3 text-xs">
+                  <Link
+                    href="/login"
+                    className="text-neutral-600 hover:text-black font-medium transition-colors cursor-pointer"
+                  >
+                    Entrar
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white px-3.5 py-1.5 rounded-sm font-medium transition-colors shadow-xs cursor-pointer"
+                  >
+                    Cadastrar
+                  </Link>
                 </div>
               )}
 
-              {/* Mobile Menu Button */}
+              {/* Botão Hambúrguer Mobile */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 hover:bg-accent/10 rounded-lg transition-colors"
-                aria-label="Menu"
+                className="md:hidden p-2 text-neutral-700 hover:text-black transition-colors cursor-pointer"
+                aria-label="Abrir Menu"
               >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="w-6 h-6" />
-                )}
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Menu Mobile Minimalista */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden overflow-hidden bg-background border-b border-border"
+              className="md:hidden bg-white border-b border-neutral-200 px-4 py-4 space-y-2"
             >
-              <div className="px-4 py-6 space-y-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`block text-lg font-bold uppercase tracking-wide hover:text-primary transition-colors ${isActive(link.href) ? "text-primary pl-2 border-l-4 border-primary" : "text-foreground/80"
-                      }`}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block text-sm py-2 px-3 rounded-sm transition-colors ${
+                    isActive(link.href)
+                      ? "bg-neutral-100 text-black font-semibold"
+                      : "text-neutral-600 hover:text-black hover:bg-neutral-50"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
 
-                <div className="pt-4 border-t border-border space-y-2">
-                  {user ? (
-                    <>
-                      <div className="px-2">
-                        <p className="text-sm text-muted-foreground">
-                          Logado como: {user.full_name || user.email}
-                        </p>
-                      </div>
+              <div className="pt-3 border-t border-neutral-100 space-y-2">
+                {user ? (
+                  <>
+                    <Link
+                      href="/perfil"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 text-sm text-neutral-800 p-2 rounded-sm hover:bg-neutral-50"
+                    >
+                      <User className="w-4 h-4 text-neutral-500" />
+                      Meu Perfil
+                    </Link>
+                    <Link
+                      href="/pedidos"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 text-sm text-neutral-800 p-2 rounded-sm hover:bg-neutral-50"
+                    >
+                      <Package className="w-4 h-4 text-neutral-500" />
+                      Acompanhar Pedido
+                    </Link>
+                    {(user.role === 'admin' || user.role === 'manager') && (
                       <Link
-                        href="/perfil"
+                        href="/admin"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block px-2 text-sm text-muted-foreground hover:text-foreground"
+                        className="flex items-center gap-2 text-sm text-neutral-900 font-semibold p-2 rounded-sm hover:bg-neutral-50"
                       >
-                        Meu Perfil
+                        <Settings className="w-4 h-4 text-neutral-500" />
+                        Painel do Vendedor
                       </Link>
-                      <Link
-                        href="/pedidos"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block px-2 text-sm text-muted-foreground hover:text-foreground"
-                      >
-                        Meus Pedidos
-                      </Link>
-                      {(user.role === 'admin' || user.role === 'manager') && (
-                        <Link
-                          href="/admin"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex items-center gap-2 px-2 text-sm font-semibold text-primary hover:text-primary/80"
-                        >
-                          <Settings className="h-4 w-4" />
-                          Painel Admin
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => {
-                          handleSignOut()
-                          setMobileMenuOpen(false)
-                        }}
-                        className="block w-full text-left px-2 text-sm text-red-600 hover:text-red-700"
-                      >
-                        Sair
-                      </button>
-                    </>
-                  ) : (
-                    <>
+                    )}
+                    <button
+                      onClick={() => {
+                        handleSignOut()
+                        setMobileMenuOpen(false)
+                      }}
+                      className="flex items-center gap-2 w-full text-left text-sm text-red-600 p-2 rounded-sm hover:bg-red-50 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/pedidos"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 text-sm text-neutral-800 p-2 rounded-sm hover:bg-neutral-50"
+                    >
+                      <Package className="w-4 h-4 text-neutral-500" />
+                      Acompanhar Pedido
+                    </Link>
+                    <div className="flex gap-2 pt-2">
                       <Link
                         href="/login"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block px-2 text-sm text-muted-foreground hover:text-foreground"
+                        className="w-1/2 text-center py-2 text-xs border border-neutral-300 rounded-sm text-neutral-800 font-medium hover:bg-neutral-50"
                       >
                         Entrar
                       </Link>
                       <Link
                         href="/signup"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block px-2 text-sm text-muted-foreground hover:text-foreground"
+                        className="w-1/2 text-center py-2 text-xs bg-[#48B9FA] hover:bg-[#20a6f5] text-white rounded-sm font-medium transition-colors cursor-pointer"
                       >
                         Cadastrar
                       </Link>
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </nav>
+      </header>
 
-      {/* Cart Drawer Component */}
+      {/* Cart Drawer */}
       <CartDrawer />
     </>
+  )
+}
+
+export function Navbar() {
+  return (
+    <Suspense fallback={
+      <header className="sticky top-0 z-50 bg-white border-b border-neutral-200 h-16 sm:h-20" />
+    }>
+      <NavbarContent />
+    </Suspense>
   )
 }

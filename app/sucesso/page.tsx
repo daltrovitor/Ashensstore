@@ -57,15 +57,15 @@ function SuccessContent() {
     }
 
     return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
+        <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center text-center px-4 py-16">
             <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.5, type: "spring" }}
-                className="mb-8"
+                className="mb-6"
             >
-                <div className="w-24 h-24 bg-white dark:bg-white rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-12 h-12 text-green-600 dark:text-green-600" />
+                <div className="w-20 h-20 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center mx-auto shadow-xs">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
                 </div>
             </motion.div>
 
@@ -73,37 +73,45 @@ function SuccessContent() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
+                className="max-w-xl mx-auto"
             >
-                <h1 className="text-4xl font-black font-serif mb-4 tracking-tighter">
-                    Pagamento Confirmado!
+                <h1 className="text-3xl sm:text-4xl font-bold mb-3 tracking-tight text-neutral-900">
+                    Pedido Registrado com Sucesso!
                 </h1>
-                <p className="text-xl text-muted-foreground max-w-lg mx-auto mb-8">
-                    Obrigado por sua compra. Seu pedido foi recebido e já estamos preparando tudo com muito carinho.
+                <p className="text-neutral-500 mb-8 text-sm sm:text-base leading-relaxed">
+                    Assim que seu PIX for confirmado, nossa equipe iniciará a entrega no Roblox. Você pode falar diretamente com o vendedor através do chat do pedido para combinar o servidor VIP ou trade.
                 </p>
 
                 {orderId && (
-                    <div className="bg-muted/50 py-3 px-6 rounded-lg inline-block mb-8 border border-border">
-                        <span className="text-sm text-muted-foreground mr-2">Número do Pedido:</span>
-                        <span className="font-mono font-bold text-primary">{orderId}</span>
+                    <div className="bg-neutral-50 border border-neutral-200 py-3 px-6 rounded-md inline-block mb-8">
+                        <span className="text-xs text-neutral-500 uppercase tracking-wider mr-2 font-medium">Código do Pedido:</span>
+                        <span className="font-mono font-bold text-neutral-900 text-sm">{orderId}</span>
                     </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button asChild size="lg" className="h-12 px-8 font-bold text-lg">
-                        <Link href="/loja">
-                            <ShoppingBag className="mr-2 h-5 w-5" />
-                            Continuar Comprando
-                        </Link>
-                    </Button>
-
-                    {orderId && (
-                        <Button asChild variant="outline" size="lg" className="h-12 px-8 font-bold text-lg bg-background">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    {orderId ? (
+                        <Button asChild size="lg" className="h-11 px-6 font-medium text-sm bg-[#48B9FA] hover:bg-[#20a6f5] text-white rounded-md shadow-xs cursor-pointer">
+                            <Link href={`/pedidos?order_id=${encodeURIComponent(orderId)}`}>
+                                Acompanhar & Chat com Vendedor
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    ) : (
+                        <Button asChild size="lg" className="h-11 px-6 font-medium text-sm bg-[#48B9FA] hover:bg-[#20a6f5] text-white rounded-md shadow-xs cursor-pointer">
                             <Link href="/pedidos">
-                                Ver Meus Pedidos
-                                <ArrowRight className="ml-2 h-5 w-5" />
+                                Acompanhar Pedidos
+                                <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                         </Button>
                     )}
+
+                    <Button asChild variant="outline" size="lg" className="h-11 px-6 font-medium text-sm border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 rounded-md cursor-pointer">
+                        <Link href="/loja">
+                            <ShoppingBag className="mr-2 h-4 w-4 text-neutral-500" />
+                            Continuar na Loja
+                        </Link>
+                    </Button>
                 </div>
             </motion.div>
         </div>
@@ -112,7 +120,7 @@ function SuccessContent() {
 
 export default function SuccessPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+        <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-neutral-500">Carregando...</div>}>
             <SuccessContent />
         </Suspense>
     )

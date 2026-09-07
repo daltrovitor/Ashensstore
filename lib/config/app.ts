@@ -4,24 +4,22 @@
  * Configurações globais da aplicação
  */
 
+import { PIX_CONFIG } from './pix'
+
 export const APP_CONFIG = {
+  name: 'Ashens Store',
+  slogan: 'Sua Loja Definitiva de Blox Fruits',
+  
   // Modo de operação
   isTestMode: process.env.PAYMENT_MODE === 'test',
 
   // URLs
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
 
-  // Pagamento
+  // Pagamento (Exclusivo PIX)
   payment: {
-    stripe: {
-      publishableKey: process.env.PAYMENT_MODE === 'test'
-        ? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST
-        : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-      secretKey: process.env.PAYMENT_MODE === 'test'
-        ? process.env.STRIPE_SECRET_KEY_TEST
-        : process.env.STRIPE_SECRET_KEY,
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-    },
+    method: 'pix' as const,
+    pix: PIX_CONFIG,
   },
 
   // Supabase
@@ -52,16 +50,10 @@ export function isTestMode(): boolean {
 }
 
 /**
- * Obtém configuração do Stripe baseada no modo
+ * Obtém configuração do PIX
  */
-export function getStripeConfig() {
-  const config = APP_CONFIG.payment.stripe
-
-  // Allow running without stripe keys if not needed immediately, 
-  // but if called, it should throw or return partial.
-  // Ideally, we just return what we have.
-
-  return config
+export function getPixConfig() {
+  return APP_CONFIG.payment.pix
 }
 
 /**

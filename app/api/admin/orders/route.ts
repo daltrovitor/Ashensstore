@@ -154,12 +154,17 @@ export async function POST(request: Request) {
                     )
                 }
 
+                const updateData: Record<string, any> = {
+                    status,
+                    updated_at: new Date().toISOString(),
+                }
+                if (status === 'PAID' || status === 'CONFIRMED') {
+                    updateData.payment_status = 'completed'
+                }
+
                 const { error } = await supabase
                     .from('orders')
-                    .update({
-                        status,
-                        updated_at: new Date().toISOString(),
-                    })
+                    .update(updateData)
                     .in('id', orderIds)
 
                 if (error) throw error
@@ -239,7 +244,7 @@ export async function POST(request: Request) {
                         payment_method: payment_method || 'pix',
                         customer_name,
                         customer_phone: customer_phone || null,
-                        customer_email: 'balcao@libras.com.br',
+                        customer_email: 'vendas@ashensstore.com.br',
                         subtotal: total || 0,
                         shipping_cost: 0,
                         total: total || 0,

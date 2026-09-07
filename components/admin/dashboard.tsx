@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import NextImage from "next/image"
 import { fetchWithAuth } from "@/lib/utils/fetch"
 import {
   LayoutDashboard,
@@ -341,8 +342,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     <div className="min-h-screen bg-muted/20 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col fixed inset-y-0">
-        <div className="p-6 border-b border-border">
-          <h1 className="font-serif font-black text-2xl text-primary">LIBRÁS<span className="text-foreground text-sm block font-sans font-normal tracking-wide">Admin</span></h1>
+        <div className="p-5 border-b border-border flex items-center gap-3">
+          <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-neutral-200 bg-white flex-shrink-0">
+            <NextImage src="/ashens-logo.jpg" alt="Logo" fill className="object-contain" />
+          </div>
+          <div>
+            <h1 className="font-bold text-sm text-neutral-900 leading-tight">Ashens Store</h1>
+            <span className="text-[11px] text-blue-600 font-medium">Painel Admin</span>
+          </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <Button variant={activeTab === 'products' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('products')}>
@@ -362,9 +369,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </Button>
           <Button variant={activeTab === 'categories' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('categories')}>
             <GripVertical className="mr-2 h-4 w-4" /> Categorias
-          </Button>
-          <Button variant={activeTab === 'shipping' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('shipping')}>
-            <Truck className="mr-2 h-4 w-4" /> Frete
           </Button>
         </nav>
         <div className="p-4 border-t border-border space-y-2">
@@ -742,12 +746,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <div className="space-y-6">
               <h2 className="text-3xl font-serif font-bold">Gerenciar Categorias</h2>
               <CategoriesManager />
-            </div>
-          )}
-          {activeTab === 'shipping' && (
-            <div className="space-y-6">
-              <h2 className="text-3xl font-serif font-bold">Gerenciar Frete</h2>
-              <ShippingManager />
             </div>
           )}
         </div>

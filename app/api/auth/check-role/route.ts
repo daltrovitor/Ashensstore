@@ -23,16 +23,20 @@ export async function POST(request: Request) {
 
         const { data: profile, error } = await supabaseAdmin
             .from('profiles')
-            .select('role')
+            .select('role, email, full_name')
             .eq('user_id', userId)
             .single()
 
-        if (error) {
-            console.error('Error fetching role (admin bypass):', error)
-            return NextResponse.json({ role: 'customer' }) // Fallback seguro
+        if (profile) {
+            let role = profile.role || 'customer'
+            if (role === 'costumer') role = 'customer'
+            return NextResponse.json({ role })
         }
 
-        return NextResponse.json({ role: profile?.role || 'customer' })
+        if (error) {
+            console.error('Error fetching role (admin bypass):', error)
+            return NextResponse.json({ role: 'customer' })
+        }
     } catch (error) {
         console.error('Server error checking role:', error)
         return NextResponse.json({ role: 'customer' }, { status: 500 })

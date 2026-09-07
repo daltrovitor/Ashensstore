@@ -190,7 +190,7 @@ export async function signIn(email: string, password: string) {
  */
 export async function signUp(email: string, password: string, fullName?: string) {
   try {
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseServer()
 
     const { data, error } = await supabase.auth.signUp({
       email,

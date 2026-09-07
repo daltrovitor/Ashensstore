@@ -8,14 +8,18 @@ import { createClient } from '@supabase/supabase-js'
 
 export interface OrderRecipient {
     name: string
-    address1: string
+    address1?: string
     address2?: string
-    city: string
-    state_code: string
-    country_code: string
-    zip: string
+    city?: string
+    state_code?: string
+    country_code?: string
+    zip?: string
     phone?: string
     email?: string
+    roblox_username?: string
+    delivery_notes?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chat_messages?: any[]
 }
 
 /**
@@ -48,43 +52,37 @@ export async function createOrder(params: {
     const orderItems: any[] = []
 
     for (const item of params.items) {
-        // Busca variante no banco
-        const { data: variant, error } = await supabase
-            .from('product_variants')
-            .select(`
-                id,
-                name,
-                price,
-                retail_price,
-                cost_price,
-                in_stock,
-                product:products(name)
-            `)
-            .eq('id', item.variant_id)
-            .single()
+        let price = Number(item.price) || 0
+        let variantId: string | null = null
+        let itemName = item.name
 
-        if (error || !variant) {
-            throw new Error(`Variante ${item.variant_id} não encontrada`)
+        if (item.variant_id && item.variant_id.length > 10) {
+            try {
+                const { data: variant } = await supabase
+                    .from('product_variants')
+                    .select('id, name, price, retail_price, in_stock')
+                    .eq('id', item.variant_id)
+                    .maybeSingle()
+
+                if (variant) {
+                    variantId = variant.id
+                    price = Number(variant.retail_price || variant.price || price)
+                    if (variant.name && variant.name !== 'Padrão') {
+                        itemName = `${item.name} (${variant.name})`
+                    }
+                }
+            } catch (err) {
+                console.warn('Erro ao buscar variante, usando dados do item:', err)
+            }
         }
-
-        if (!variant.in_stock) {
-            throw new Error(`Produto ${variant.name} está sem estoque`)
-        }
-
-        // Use retail_price if available, otherwise price
-        const price = variant.retail_price || variant.price;
-
-        // Valida preço (permitindo pequena margem de erro ou se preço mudou)
-        // Se o preço no banco for diferente, usar o do banco?
-        // Vamos confiar no banco.
 
         const itemTotal = price * item.quantity
         subtotal += itemTotal
 
         orderItems.push({
-            order_id: null, // Will be set after order creation
-            product_variant_id: item.variant_id,
-            name: variant.name || item.name,
+            order_id: null, // Será preenchido após criar o pedido
+            product_variant_id: variantId,
+            name: itemName,
             quantity: item.quantity,
             unit_price: price,
             total_price: itemTotal,
@@ -111,7 +109,7 @@ export async function createOrder(params: {
             external_id: externalId,
             status: params.isTest ? 'TEST_ORDER' : 'PENDING_PAYMENT',
             payment_status: 'pending',
-            payment_method: params.paymentMethod || 'card',
+            payment_method: params.paymentMethod || 'pix',
             customer_name: params.customerName,
             customer_email: params.customerEmail,
             customer_phone: params.customerPhone,

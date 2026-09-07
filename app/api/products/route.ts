@@ -1,13 +1,19 @@
-
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
     try {
-        const supabase = await getSupabaseServer()
         const { searchParams } = new URL(request.url)
         const categoryId = searchParams.get('categoryId')
         const featured = searchParams.get('featured') === 'true'
+        const search = searchParams.get('search')?.toLowerCase()
+
+        const supabase = await getSupabaseServer()
+        if (!supabase) {
+            return NextResponse.json([])
+        }
 
         let query = supabase
             .from('products')
@@ -18,11 +24,37 @@ export async function GET(request: Request) {
             `)
             .eq('is_active', true)
 
-        if (categoryId) {
-            query = query.eq('category_id', categoryId)
+        if (categoryId && categoryId !== 'all') {
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)
+            if (isUUID) {
+                query = query.eq('category_id', categoryId)
+            } else {
+                // Se foi passado slug, busca o ID da categoria correspondente
+                const { data: cat } = await supabase
+                    .from('categories')
+                    .select('id')
+                    .eq('slug', categoryId)
+                    .maybeSingle()
+
+                if (cat?.id) {
+                    query = query.eq('category_id', cat.id)
+                } else {
+                    const { data: storeCat } = await supabase
+                        .from('store_categories')
+                        .select('id')
+                        .eq('slug', categoryId)
+                        .maybeSingle()
+
+                    if (storeCat?.id) {
+                        query = query.eq('category_id', storeCat.id)
+                    } else {
+                        // Categoria inexistente no banco
+                        return NextResponse.json([])
+                    }
+                }
+            }
         }
 
-        const search = searchParams.get('search')
         if (search) {
             query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
         }
@@ -32,24 +64,16 @@ export async function GET(request: Request) {
         }
 
         const { data, error } = await query
-
-        if (error) throw error
-
-        // Transform data to match Product type if necessary
-        // The query returns snake_case which matches our DB, 
-        // and our types in lib/store/types.ts should ideally match this or be mapped.
-        // For now assuming snake_case in types.ts (I should check that).
-        // Check: lib/store/types.ts I wrote uses snake_case for most fields (created_at, is_active), 
-        // but camelCase for some (thumbnailUrl? No, I wrote thumbnail_url).
-        // Let's verify types.ts.
+        if (error) {
+            console.error('[Products API] Erro ao buscar produtos do banco:', error)
+            return NextResponse.json([])
+        }
 
         return NextResponse.json(data || [])
 
     } catch (error) {
-        console.error('[Products API] Error fetching products:', error)
-        return NextResponse.json(
-            { error: 'Failed to fetch products' },
-            { status: 500 }
-        )
+        console.error('[Products API] Erro fatal ao buscar produtos:', error)
+        return NextResponse.json([])
     }
 }
+

@@ -87,11 +87,11 @@ function LoginContent() {
 
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-md mx-auto">
-          {message === 'check-email' && (
-            <Alert className="mb-6">
-              <CheckCircle className="h-4 w-4" />
+          {(message === 'created' || message === 'check-email') && (
+            <Alert className="mb-6 border-blue-200 bg-blue-50 text-blue-900">
+              <CheckCircle className="h-4 w-4 text-[#48B9FA]" />
               <AlertDescription>
-                Cadastro realizado com sucesso! Verifique seu email para confirmar a conta.
+                Conta criada com sucesso! Faça login abaixo para acessar sua conta.
               </AlertDescription>
             </Alert>
           )}

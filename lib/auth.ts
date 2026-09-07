@@ -14,8 +14,8 @@ export async function validateAdminRequest(request?: Request) {
 
     // Dev shortcuts: accept a known DEV_ADMIN_TOKEN or Basic auth with dev credentials when not in production
     const DEV_ADMIN_TOKEN = process.env.DEV_ADMIN_TOKEN || 'DEV_ADMIN_TOKEN'
-    const DEV_ADMIN_EMAIL = 'admin@libras.com.br'
-    const DEV_ADMIN_PASSWORD = 'Libras@2024!'
+    const DEV_ADMIN_EMAIL = 'admin@ashensstore.com.br'
+    const DEV_ADMIN_PASSWORD = 'Ashens@2024!'
 
     // Bearer token path
     if (authHeader?.startsWith('Bearer ')) {

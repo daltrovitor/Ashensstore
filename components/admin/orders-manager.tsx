@@ -21,11 +21,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Eye, CreditCard, RefreshCw, MapPin, Package, Truck, CheckCircle2, Clock, XCircle, Store, ShoppingBag, Printer, QrCode } from "lucide-react"
+import { Eye, CreditCard, RefreshCw, MapPin, Package, Truck, CheckCircle2, Clock, XCircle, Store, ShoppingBag, Printer, QrCode, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
-import { NewOrderDialog } from "@/components/admin/new-order-dialog"
 import { OrderReceiptPrint } from "@/components/admin/order-receipt-print"
+import { OrderChat } from "@/components/chat/order-chat"
 
 interface Order {
     id: string
@@ -74,12 +74,13 @@ export function OrdersManager() {
     const [orders, setOrders] = useState<Order[]>([])
     const [loading, setLoading] = useState(true)
     const [statusFilter, setStatusFilter] = useState("all")
-    const [channelFilter, setChannelFilter] = useState("all") // all, ecommerce, local
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
     const [detailsOpen, setDetailsOpen] = useState(false)
     const [updatingStatus, setUpdatingStatus] = useState(false)
     const [printOrder, setPrintOrder] = useState<any | null>(null)
     const [printModalOpen, setPrintModalOpen] = useState(false)
+    const [chatOrder, setChatOrder] = useState<Order | null>(null)
+    const [chatModalOpen, setChatModalOpen] = useState(false)
 
     useEffect(() => {
         fetchOrders()
@@ -141,16 +142,7 @@ export function OrdersManager() {
         setPrintModalOpen(true)
     }
 
-    const filteredOrders = orders.filter((order) => {
-        if (channelFilter === "all") return true
-        const isLocal =
-            order.shipping_address?.order_type === "local" ||
-            order.shipping_address?.order_type === "loja" ||
-            order.shipping_address?.order_type === "balcao"
-        if (channelFilter === "local") return isLocal
-        if (channelFilter === "ecommerce") return !isLocal
-        return true
-    })
+    const filteredOrders = orders
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         setUpdatingStatus(true)
@@ -227,32 +219,18 @@ export function OrdersManager() {
                         </SelectContent>
                     </Select>
 
-                    <Select value={channelFilter} onValueChange={setChannelFilter}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Canal de Venda" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos os Canais</SelectItem>
-                            <SelectItem value="ecommerce">🛒 E-commerce (Online)</SelectItem>
-                            <SelectItem value="local">🏪 Venda Local (Balcão)</SelectItem>
-                        </SelectContent>
-                    </Select>
-
                     <Button variant="outline" size="icon" onClick={fetchOrders} title="Atualizar Lista">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
-
-                <NewOrderDialog onOrderCreated={fetchOrders} />
             </div>
 
             <Card>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>ID / Talão</TableHead>
-                            <TableHead>Canal</TableHead>
-                            <TableHead>Cliente</TableHead>
+                            <TableHead>ID do Pedido</TableHead>
+                            <TableHead>Cliente & Nick Roblox</TableHead>
                             <TableHead>Data</TableHead>
                             <TableHead>Pagamento</TableHead>
                             <TableHead>Status</TableHead>
@@ -263,52 +241,37 @@ export function OrdersManager() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8">
+                                <TableCell colSpan={7} className="text-center py-8">
                                     <Spinner />
                                 </TableCell>
                             </TableRow>
                         ) : filteredOrders.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                    Nenhum pedido encontrado.
+                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                    Nenhum pedido recebido até o momento.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredOrders.map((order) => {
-                                const isLocal =
-                                    order.shipping_address?.order_type === "local" ||
-                                    order.shipping_address?.order_type === "loja" ||
-                                    order.shipping_address?.order_type === "balcao"
-
                                 const method = (order.payment_method || "").toLowerCase()
 
                                 return (
                                     <TableRow key={order.id}>
-                                        <TableCell className="font-mono text-xs">
-                                            <div className="font-bold">{order.external_id}</div>
-                                            {order.shipping_address?.machine_number && (
-                                                <div className="text-[10px] text-red-600 font-sans font-medium">
-                                                    Máq: {order.shipping_address.machine_number}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {isLocal ? (
-                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[11px] font-semibold">
-                                                    <Store className="w-3 h-3" /> Venda Local
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 text-[11px] font-semibold">
-                                                    <ShoppingBag className="w-3 h-3" /> E-commerce
-                                                </Badge>
-                                            )}
+                                        <TableCell className="font-mono text-xs font-bold">
+                                            #{order.external_id}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-sm">{order.customer_name}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {order.shipping_address?.phone || order.customer_email}
-                                                </span>
+                                                <span className="font-medium text-sm text-foreground">{order.customer_name}</span>
+                                                {order.shipping_address?.roblox_username ? (
+                                                    <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                                                        🎮 {order.shipping_address.roblox_username}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {order.shipping_address?.phone || order.customer_email}
+                                                    </span>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-xs">
@@ -317,7 +280,7 @@ export function OrdersManager() {
                                         <TableCell>
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-xs font-semibold">
-                                                    {method === "pix" ? "🟢 PIX Direto" : method.includes("card") ? "🔵 Cartão" : method === "cash" ? "💵 Dinheiro" : method || "—"}
+                                                    {method === "pix" ? "🟢 PIX" : method || "—"}
                                                 </span>
                                                 <span className={`text-[10px] ${order.payment_status === "completed" || order.status === "PAID" ? "text-green-600 font-bold" : "text-yellow-600 font-medium"}`}>
                                                     {order.payment_status === "completed" || order.status === "PAID" ? "Pago" : "Pendente"}
@@ -331,20 +294,22 @@ export function OrdersManager() {
                                         </TableCell>
                                         <TableCell className="font-bold text-sm">{formatCurrency(order.total)}</TableCell>
                                         <TableCell className="text-right space-x-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setChatOrder(order)
+                                                    setChatModalOpen(true)
+                                                }}
+                                                className="h-8 gap-1 text-xs border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/10 font-bold"
+                                                title="Conversar com o comprador"
+                                            >
+                                                <MessageSquare className="h-3.5 w-3.5" />
+                                                Chat
+                                            </Button>
                                             <Button variant="ghost" size="sm" onClick={() => handleViewDetails(order)} title="Ver detalhes">
                                                 <Eye className="h-4 w-4" />
                                             </Button>
-                                            {isLocal && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handlePrintReceipt(order)}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    title="Imprimir Talão / Ordem de Serviço"
-                                                >
-                                                    <Printer className="h-4 w-4" />
-                                                </Button>
-                                            )}
                                         </TableCell>
                                     </TableRow>
                                 )
@@ -381,26 +346,33 @@ export function OrdersManager() {
                                 </div>
                                 <div className="bg-muted/30 rounded-lg p-4 border">
                                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                                        <div className="p-1.5 rounded-md bg-blue-500/10">
-                                            <MapPin className="h-4 w-4 text-blue-600" />
+                                        <div className="p-1.5 rounded-md bg-[#48B9FA]/10">
+                                            <Package className="h-4 w-4 text-[#48B9FA]" />
                                         </div>
-                                        Endereço de Entrega
+                                        Entrega Digital (Roblox)
                                     </h4>
-                                    {selectedOrder.shipping_address ? (
-                                        <div className="space-y-1">
-                                            <p className="font-medium">{selectedOrder.shipping_address.address1}</p>
-                                            {selectedOrder.shipping_address.address2 && (
-                                                <p className="text-muted-foreground">{selectedOrder.shipping_address.address2}</p>
-                                            )}
-                                            <p>{selectedOrder.shipping_address.city} - {selectedOrder.shipping_address.state_code}</p>
-                                            <p className="text-muted-foreground">CEP: {selectedOrder.shipping_address.zip}</p>
-                                            {selectedOrder.shipping_address.country_code && (
-                                                <p className="text-muted-foreground text-xs">País: {selectedOrder.shipping_address.country_code}</p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <p className="text-muted-foreground">Endereço não disponível</p>
-                                    )}
+                                    <div className="space-y-1 text-sm">
+                                        {selectedOrder.shipping_address?.roblox_username && (
+                                            <p>
+                                                <span className="text-muted-foreground font-medium">Nick no Roblox:</span>{" "}
+                                                <strong className="text-cyan-600 font-bold text-base">
+                                                    🎮 {selectedOrder.shipping_address.roblox_username}
+                                                </strong>
+                                            </p>
+                                        )}
+                                        {selectedOrder.shipping_address?.phone && (
+                                            <p>
+                                                <span className="text-muted-foreground font-medium">WhatsApp:</span>{" "}
+                                                {selectedOrder.shipping_address.phone}
+                                            </p>
+                                        )}
+                                        {selectedOrder.shipping_address?.delivery_notes && (
+                                            <p className="bg-muted/40 p-2.5 rounded text-xs mt-2">
+                                                <span className="text-muted-foreground font-medium block mb-0.5">Observações:</span>
+                                                {selectedOrder.shipping_address.delivery_notes}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -530,49 +502,7 @@ export function OrdersManager() {
                                 </div>
                             </div>
 
-                            {/* Informações de Venda Local / Oficina (se aplicável) */}
-                            {selectedOrder.shipping_address?.order_type === 'local' && (
-                                <div className="border-2 border-red-200 bg-red-50/20 rounded-md p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-red-700 flex items-center gap-2 text-sm">
-                                            <Store className="h-4 w-4" /> Dados do Talão / Oficina Librás
-                                        </h4>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => handlePrintReceipt(selectedOrder)}
-                                            className="bg-red-600 hover:bg-red-700 text-white font-bold h-8 text-xs gap-1.5"
-                                        >
-                                            <Printer className="w-3.5 h-3.5" /> Imprimir Talão
-                                        </Button>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                                        <div>
-                                            <span className="text-muted-foreground block">Nº da Máquina:</span>
-                                            <span className="font-bold text-red-800 font-mono">
-                                                {selectedOrder.shipping_address.machine_number || '—'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground block">CNPJ / CPF:</span>
-                                            <span className="font-medium">
-                                                {selectedOrder.shipping_address.customer_document || '—'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground block">Insc. Estadual:</span>
-                                            <span className="font-medium">
-                                                {selectedOrder.shipping_address.state_registration || '—'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground block">Setor (Bairro):</span>
-                                            <span className="font-medium">
-                                                {selectedOrder.shipping_address.neighborhood || '—'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
 
                             {/* Items */}
                             <div>
@@ -632,18 +562,40 @@ export function OrdersManager() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="text-right">
-                                    {selectedOrder.shipping_cost > 0 && (
-                                        <p className="text-xs text-muted-foreground mb-0.5">
-                                            Frete: {formatCurrency(selectedOrder.shipping_cost)}
-                                        </p>
-                                    )}
-                                    <div className="text-xl font-bold">
-                                        Total: {formatCurrency(selectedOrder.total)}
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        onClick={() => {
+                                            setChatOrder(selectedOrder)
+                                            setChatModalOpen(true)
+                                        }}
+                                        className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs gap-1.5 h-10"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Abrir Chat do Pedido
+                                    </Button>
+                                    <div className="text-right">
+                                        <div className="text-xl font-bold">
+                                            Total: {formatCurrency(selectedOrder.total)}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Chat Modal with Buyer */}
+            <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
+                <DialogContent className="max-w-3xl p-0 bg-[#070d19] border border-cyan-500/30 rounded-3xl overflow-hidden shadow-2xl">
+                    <DialogTitle className="sr-only">Chat com Comprador</DialogTitle>
+                    {chatOrder && (
+                        <OrderChat
+                            orderId={chatOrder.external_id || chatOrder.id}
+                            currentRole="seller"
+                            defaultSenderName="Vendedor Ashens"
+                            isModal={true}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

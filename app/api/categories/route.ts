@@ -7,35 +7,53 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseService() || await getSupabaseServer()
+    if (!supabase) {
+      return NextResponse.json([])
+    }
+
     const id = request.nextUrl.searchParams.get("id") ?? null
 
-    let query = supabase
-      .from("store_categories")
-      .select("*")
-      .order("display_order", { ascending: true })
-
     if (id) {
-      const { data, error } = await query.eq("id", id).single()
-      if (error && error.code !== "PGRST116") {
-        return NextResponse.json({ error: "Category not found" }, { status: 404 })
+      const { data, error } = await supabase
+        .from("store_categories")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle()
+
+      if (!data) {
+        // Tenta buscar na tabela categories
+        const { data: catData } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle()
+        return NextResponse.json(catData ?? null)
       }
       return NextResponse.json(data ?? null)
     }
 
-    const { data, error } = await query
-    if (error) {
-      console.error("GET /api/categories Database Error:", error)
-      throw error
+    // Busca todas as categorias da tabela store_categories
+    let { data, error } = await supabase
+      .from("store_categories")
+      .select("*")
+      .order("display_order", { ascending: true })
+
+    // Se estiver vazia ou com erro, tenta na tabela categories
+    if (!data || data.length === 0) {
+      const { data: catData } = await supabase
+        .from("categories")
+        .select("*")
+        .order("display_order", { ascending: true })
+
+      if (catData && catData.length > 0) {
+        data = catData
+      }
     }
 
-    console.log(`GET /api/categories: Found ${data?.length || 0} categories in store_categories`)
     return NextResponse.json(data || [])
   } catch (error: any) {
     console.error("GET /api/categories error:", error)
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch categories" },
-      { status: 500 }
-    )
+    return NextResponse.json([])
   }
 }
 

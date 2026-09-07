@@ -18,7 +18,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-const CART_STORAGE_KEY = 'libras_cart'
+const CART_STORAGE_KEY = 'ashens_cart'
 
 function calculateTotals(items: CartItem[]): { subtotal: number; total: number } {
     const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0)

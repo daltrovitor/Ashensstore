@@ -32,8 +32,8 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     try {
       // Dev fallback: permite login direto com credenciais conhecidas sem depender do Supabase
       if (
-        email === 'admin@libras.com.br' &&
-        password === 'Libras@2024!'
+        (email === 'admin@ashensstore.com.br' && password === 'Ashens@2024!') ||
+        (email === 'admin@libras.com.br' && password === 'Libras@2024!')
       ) {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem('ADMIN_ACCESS_TOKEN', 'DEV_ADMIN_TOKEN')

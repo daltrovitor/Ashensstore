@@ -72,7 +72,7 @@ export function generatePixPayload(config: PixConfig): string {
     payload += formatTLV('58', 'BR')
 
     // 59: Merchant Name
-    const merchantName = removeAccents(config.name).substring(0, 25) || 'LIBRAS'
+    const merchantName = removeAccents(config.name).substring(0, 25) || 'ASHENS STORE'
     payload += formatTLV('59', merchantName)
 
     // 60: Merchant City
@@ -91,9 +91,13 @@ export function generatePixPayload(config: PixConfig): string {
     return `${payload}${crc}`
 }
 
+import { PIX_CONFIG } from '@/lib/config/pix'
+
 export const COMPANY_PIX_DATA = {
-    cnpj: '00267195000130',
-    cnpjFormatted: '00.267.195/0001-30',
-    name: 'LIBRAS',
-    city: 'GOIANIA',
+    key: PIX_CONFIG.key,
+    keyFormatted: PIX_CONFIG.formattedKey,
+    cnpj: PIX_CONFIG.key, // Compatibilidade com código legado
+    cnpjFormatted: PIX_CONFIG.formattedKey,
+    name: PIX_CONFIG.name,
+    city: PIX_CONFIG.city,
 }

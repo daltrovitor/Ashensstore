@@ -1,14 +1,15 @@
 import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ashenstore.com.br'
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/perfil/', '/pedidos/', '/checkout/'],
+        disallow: ['/admin/', '/api/'],
       },
     ],
-    sitemap: 'https://loja.libraslixas.com.br/sitemap.xml',
+    sitemap: `${siteUrl}/sitemap.xml`,
   }
 }

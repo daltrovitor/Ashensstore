@@ -1,49 +1,48 @@
-
 import { NextResponse } from 'next/server'
-import { getStripeCheckoutSession } from '@/lib/payments/stripe'
 import { createClient } from '@supabase/supabase-js'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
-    const sessionId = searchParams.get('sessionId')
+    const orderId = searchParams.get('orderId') || searchParams.get('order_id')
 
-    if (!sessionId) {
-        return NextResponse.json({ error: 'Session ID required' }, { status: 400 })
+    if (!orderId) {
+        return NextResponse.json({ error: 'Order ID required' }, { status: 400 })
     }
 
     try {
-        const session = await getStripeCheckoutSession(sessionId)
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
 
-        if (session.payment_status === 'paid') {
-            const orderId = session.metadata?.order_id as string
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)
 
-            if (orderId) {
-                // Update Order Status
-                const supabase = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.SUPABASE_SERVICE_ROLE_KEY!
-                )
+        let query = supabase
+            .from('orders')
+            .select('id, external_id, status, payment_status, total, customer_name, customer_email, created_at')
 
-                const { error } = await supabase
-                    .from('orders')
-                    .update({
-                        status: session.metadata?.is_test === 'true' ? 'TEST_ORDER' : 'PAID',
-                        payment_status: 'completed',
-                        payment_id: session.payment_intent as string,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('external_id', orderId)
-
-                if (error) {
-                    console.error('Failed to update order status:', error)
-                    return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
-                }
-
-                return NextResponse.json({ success: true, status: 'paid', orderId })
-            }
+        if (isUuid) {
+            query = query.or(`external_id.eq.${orderId},id.eq.${orderId}`)
+        } else {
+            query = query.eq('external_id', orderId)
         }
 
-        return NextResponse.json({ success: true, status: session.payment_status })
+        const { data: order, error } = await query.single()
+
+        if (error || !order) {
+            return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 })
+        }
+
+        const isPaid = order.status === 'PAID' || order.status === 'CONFIRMED' || order.payment_status === 'completed'
+
+        return NextResponse.json({
+            success: true,
+            orderId: order.external_id,
+            status: order.status,
+            payment_status: order.payment_status,
+            isPaid,
+            total: order.total,
+        })
 
     } catch (error: any) {
         console.error('Verification error:', error)

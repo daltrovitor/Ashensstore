@@ -3,10 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 import { useCart } from "@/hooks/use-shopping-cart"
-import { Button } from "@/components/ui/button"
-import { ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
 import type { Product } from "@/lib/store/types"
 
@@ -16,11 +13,13 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-    // Determine price range
-    // types.ts has Variant.retail_price.
-    const prices = product.variants?.map(v => v.retail_price || v.price || 0) || []
-    const minPrice = prices.length ? Math.min(...prices) : 0
-    const maxPrice = prices.length ? Math.max(...prices) : 0
+    const { addItem } = useCart()
+    const router = useRouter()
+
+    // Determine price
+    const prices = product.variants?.map(v => Number(v.retail_price || v.price || 0)) || []
+    const basePrice = product.price ? Number(product.price) : (prices.length ? Math.min(...prices) : 0)
+    const originalPrice = product.compare_at_price ? Number(product.compare_at_price) : 0
 
     const formatPrice = (p: number) => {
         return new Intl.NumberFormat('pt-BR', {
@@ -29,130 +28,110 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         }).format(p)
     }
 
-    const priceDisplay =
-        minPrice === maxPrice
-            ? formatPrice(minPrice)
-            : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
-
     // Determine image
     const imageUrl =
         product.mockups?.find(m => m.is_main)?.image_url ||
         product.mockups?.[0]?.image_url ||
         product.thumbnail_url ||
-        "/placeholder.jpg"
+        (product.images && product.images[0]) ||
+        "/ashens-logo.jpg"
 
-    // Sizes
-    const availableSizes = product.variants
-        ?.filter((v) => v.in_stock && v.size)
-        .map((v) => v.size)
-        .filter((size, index, self) => self.indexOf(size) === index)
-        .slice(0, 5)
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
 
-    const { addItem } = useCart()
-    const router = useRouter()
+        const variant = product.variants && product.variants.length > 0 ? product.variants[0] : null
+
+        addItem({
+            id: variant?.id || product.id,
+            product_id: product.id,
+            variant_id: variant?.id,
+            name: product.name,
+            price: basePrice,
+            image: imageUrl,
+            quantity: 1,
+        })
+
+        toast.success(`"${product.name}" adicionado ao carrinho`)
+    }
+
+    const handleDirectBuy = (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        handleAddToCart(e)
+        router.push('/checkout')
+    }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="group h-full"
-        >
-            <div className="bg-card rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-lg h-full flex flex-col">
-                <Link href={`/produto/${product.slug}`} className="block relative aspect-square overflow-hidden bg-muted">
-                    {/* Imagem do produto */}
-                    <Image
-                        src={imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        priority={priority}
-                    />
+        <div className="group flex flex-col bg-white border border-neutral-200 rounded-sm overflow-hidden hover:border-neutral-400 transition-colors">
+            {/* Imagem do Produto em Fundo Neutro Limpo */}
+            <Link
+                href={`/produto/${product.slug}`}
+                className="block relative aspect-square bg-neutral-50 p-6 flex items-center justify-center overflow-hidden"
+            >
+                <Image
+                    src={imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-contain p-4 transition-transform duration-300 group-hover:scale-105"
+                    priority={priority}
+                />
+            </Link>
 
-                    {/* Badge de destaque */}
-                    {product.is_featured && (
-                        <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-sm uppercase tracking-wider">
-                            Destaque
-                        </div>
-                    )}
-                </Link>
-
-                {/* Informações do produto */}
-                <div className="p-4 flex flex-col flex-1">
+            {/* Informações do Produto */}
+            <div className="p-4 flex flex-col flex-1 justify-between bg-white">
+                <div>
                     {/* Categoria */}
                     {product.category && (
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                        <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium mb-1">
                             {product.category.name}
                         </p>
                     )}
 
+                    {/* Nome do Produto */}
                     <Link href={`/produto/${product.slug}`} className="block mb-2">
-                        {/* Nome */}
-                        <h3 className="font-serif font-bold text-foreground text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                        <h3 className="text-sm font-medium text-neutral-900 leading-snug line-clamp-2 group-hover:text-neutral-600 transition-colors">
                             {product.name}
                         </h3>
                     </Link>
+                </div>
 
-                    {/* Tamanhos disponíveis */}
-                    {availableSizes && availableSizes.length > 0 && (
-                        <div className="flex gap-1 mb-3">
-                            {availableSizes.map((size) => (
-                                <span
-                                    key={size}
-                                    className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm uppercase"
-                                >
-                                    {size}
-                                </span>
-                            ))}
-                            {product.variants && product.variants.filter((v) => v.in_stock && v.size).length > 5 && (
-                                <span className="text-[10px] text-muted-foreground">+</span>
-                            )}
-                        </div>
-                    )}
+                {/* Preço e Botões */}
+                <div className="pt-3 border-t border-neutral-100 mt-2 space-y-3">
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-base font-semibold text-neutral-900">
+                            {formatPrice(basePrice)}
+                        </span>
+                        {originalPrice > basePrice && (
+                            <span className="text-xs text-neutral-400 line-through">
+                                {formatPrice(originalPrice)}
+                            </span>
+                        )}
+                        <span className="text-[11px] text-neutral-500 font-normal">
+                            no PIX
+                        </span>
+                    </div>
 
-                    <div className="mt-auto">
-                        {/* Preço */}
-                        <div className="flex items-center justify-between mb-4">
-                            <p className="text-lg font-bold text-primary">
-                                {priceDisplay}
-                            </p>
-                        </div>
-
-                        {/* Botão de Adicionar */}
-                        <Button
-                            className="w-full transition-all"
-                            onClick={() => {
-                                // If multiple variants (e.g. sizes/colors), go to product page
-                                if (product.variants && product.variants.length > 1) {
-                                    router.push(`/produto/${product.slug}`)
-                                    return
-                                }
-
-                                // If single variant, add to cart immediately
-                                if (product.variants && product.variants.length === 1) {
-                                    const variant = product.variants[0]
-                                    addItem({
-                                        id: variant.id,
-                                        product_id: product.id,
-                                        name: product.name,
-                                        price: variant.retail_price || variant.price || 0,
-                                        image: product.thumbnail_url || product.images?.[0] || "",
-                                        quantity: 1
-                                    })
-                                    toast.success("Adicionado ao carrinho!")
-                                } else {
-                                    // Fallback if no variants (shouldn't happen ideally)
-                                    router.push(`/produto/${product.slug}`)
-                                }
-                            }}
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={handleAddToCart}
+                            className="w-full h-8 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 rounded-sm hover:border-[#48B9FA] hover:text-[#48B9FA] transition-colors cursor-pointer"
                         >
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            {(product.variants && product.variants.length > 1) ? "Ver Opções" : "Adicionar"}
-                        </Button>
+                            Carrinho
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleDirectBuy}
+                            className="w-full h-8 text-xs font-medium text-white bg-[#48B9FA] hover:bg-[#20a6f5] rounded-sm transition-colors shadow-xs cursor-pointer"
+                        >
+                            Comprar
+                        </button>
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </div>
     )
 }

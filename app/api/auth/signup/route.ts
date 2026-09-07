@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server'
 import { signUp } from '@/lib/auth/service'
+import { getSupabaseService } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const SignUpSchema = z.object({
@@ -18,14 +19,39 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, password, fullName } = SignUpSchema.parse(body)
 
-    const data = await signUp(email, password, fullName)
+    // Criação sem necessidade de confirmação por email
+    const supabaseAdmin = getSupabaseService()
+    let userId: string | undefined
+    let userEmail: string | undefined
+
+    if (supabaseAdmin) {
+      const { data: adminUser, error: adminErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName || email.split('@')[0],
+        },
+      })
+
+      if (adminErr) {
+        throw adminErr
+      }
+
+      userId = adminUser.user?.id
+      userEmail = adminUser.user?.email
+    } else {
+      const data = await signUp(email, password, fullName)
+      userId = data.user?.id
+      userEmail = data.user?.email
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Conta criada com sucesso! Verifique seu email para confirmar.',
+      message: 'Conta criada com sucesso! Você já pode entrar.',
       user: {
-        id: data.user?.id,
-        email: data.user?.email,
+        id: userId,
+        email: userEmail,
       }
     })
 
@@ -46,17 +72,17 @@ export async function POST(request: Request) {
     }
 
     // Erros do Supabase
-    if (error instanceof Error) {
-      if (error.message.includes('User already registered')) {
-        return NextResponse.json(
-          { error: 'Email já cadastrado' },
-          { status: 409 }
-        )
-      }
+    const errorMessage = error instanceof Error ? error.message : 'Falha ao criar conta'
+    
+    if (errorMessage.includes('User already registered')) {
+      return NextResponse.json(
+        { error: 'Email já cadastrado' },
+        { status: 409 }
+      )
     }
 
     return NextResponse.json(
-      { error: 'Falha ao criar conta' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

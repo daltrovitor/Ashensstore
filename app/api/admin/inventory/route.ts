@@ -44,11 +44,11 @@ export async function GET(request: Request) {
                     name,
                     price,
                     retail_price,
-                    cost_price,
+                    stock,
                     in_stock,
                     size,
                     color,
-                    printful_catalog_variant_id
+                    sku
                 )
             `)
             .order('name', { ascending: true })
@@ -71,17 +71,14 @@ export async function GET(request: Request) {
 
         const enrichedProducts = (products || []).map((p: any) => {
             const vars = (p.variants || []).map((v: any) => {
-                const stockCount = v.printful_catalog_variant_id
-                    ? parseInt(v.printful_catalog_variant_id, 10)
-                    : (v.in_stock ? 10 : 0)
+                const stockCount = typeof v.stock === 'number' ? v.stock : (v.in_stock ? 10 : 0)
+                const inStock = Boolean(v.in_stock && stockCount > 0)
 
                 totalVariants++
-                if (v.in_stock && stockCount > 0) {
+                if (inStock) {
                     inStockVariants++
                     const price = Number(v.retail_price || v.price || 0)
-                    const cost = Number(v.cost_price || 0)
                     estimatedRetailValue += price * stockCount
-                    estimatedCostValue += cost * stockCount
                 } else {
                     outOfStockVariants++
                 }
@@ -89,6 +86,8 @@ export async function GET(request: Request) {
                 return {
                     ...v,
                     stock: stockCount,
+                    in_stock: inStock,
+                    cost_price: 0,
                 }
             })
 
@@ -114,14 +113,14 @@ export async function GET(request: Request) {
     } catch (error: any) {
         console.error('[Admin Inventory] Erro ao carregar estoque:', error)
         return NextResponse.json(
-            { error: 'Falha ao carregar dados de estoque' },
+            { error: error.message || 'Falha ao carregar dados de estoque' },
             { status: 500 }
         )
     }
 }
 
 /**
- * PATCH - Atualiza status de estoque, quantidade, preço de venda ou preço de custo de uma variação
+ * PATCH - Atualiza status de estoque, quantidade ou preço de venda de uma variação
  */
 export async function PATCH(request: Request) {
     try {
@@ -138,12 +137,10 @@ export async function PATCH(request: Request) {
         const body = await request.json()
         const validated = UpdateStockSchema.parse(body)
 
-        const updates: Record<string, any> = {
-            updated_at: new Date().toISOString(),
-        }
+        const updates: Record<string, any> = {}
 
         if (validated.stock !== undefined) {
-            updates.printful_catalog_variant_id = validated.stock.toString()
+            updates.stock = validated.stock
             if (validated.stock === 0) {
                 updates.in_stock = false
             } else if (validated.in_stock === undefined) {
@@ -154,16 +151,21 @@ export async function PATCH(request: Request) {
         if (validated.in_stock !== undefined) {
             updates.in_stock = validated.in_stock
             if (validated.in_stock && validated.stock === undefined) {
-                // Se ativou o estoque mas não passou quantidade, garante pelo menos 1 unidade
-                // caso estivesse zerado
+                // Se ativou o estoque mas não passou quantidade, garante pelo menos 1 se estivesse 0
+                const { data: current } = await supabase
+                    .from('product_variants')
+                    .select('stock')
+                    .eq('id', validated.variant_id)
+                    .single()
+                if (current && (current.stock === 0 || current.stock === null)) {
+                    updates.stock = 5
+                }
             }
         }
+
         if (validated.retail_price !== undefined) {
             updates.retail_price = validated.retail_price
             updates.price = validated.retail_price
-        }
-        if (validated.cost_price !== undefined) {
-            updates.cost_price = validated.cost_price
         }
 
         const { data, error } = await supabase
@@ -177,7 +179,10 @@ export async function PATCH(request: Request) {
 
         return NextResponse.json({
             success: true,
-            variant: data,
+            variant: {
+                ...data,
+                cost_price: 0,
+            },
         })
     } catch (error: any) {
         console.error('[Admin Inventory] Erro ao atualizar estoque:', error)

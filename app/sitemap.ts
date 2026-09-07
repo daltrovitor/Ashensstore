@@ -1,13 +1,16 @@
 import { MetadataRoute } from 'next'
 import { getSupabaseService } from '@/lib/supabase/server'
+import { BLOX_PRODUCTS } from '@/data/blox-fruits'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const SITE_URL = 'https://loja.libraslixas.com.br'
+    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ashenstore.com.br'
 
     // Rotas estáticas
     const routes = [
         '',
         '/loja',
+        '/pedidos',
+        '/checkout',
         '/login',
         '/signup',
     ].map((route) => ({
@@ -19,17 +22,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     try {
         const supabase = getSupabaseService()
-        if (!supabase) return routes
+        let productSlugs: string[] = []
 
-        // Buscar todos os produtos
-        const { data: products } = await supabase
-            .from('products')
-            .select('slug, updated_at')
-            .eq('is_active', true)
+        if (supabase) {
+            const { data: products } = await supabase
+                .from('products')
+                .select('slug')
+                .eq('is_active', true)
 
-        const productEntries = (products || []).map((product) => ({
-            url: `${SITE_URL}/produto/${product.slug}`,
-            lastModified: product.updated_at || new Date().toISOString(),
+            if (products && products.length > 0) {
+                productSlugs = products.map(p => p.slug)
+            }
+        }
+
+        if (productSlugs.length === 0) {
+            productSlugs = BLOX_PRODUCTS.map(p => p.slug)
+        }
+
+        const productEntries = productSlugs.map((slug) => ({
+            url: `${SITE_URL}/produto/${slug}`,
+            lastModified: new Date().toISOString(),
             changeFrequency: 'weekly' as const,
             priority: 0.6,
         }))

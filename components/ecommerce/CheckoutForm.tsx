@@ -1,218 +1,126 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { useCart } from "@/hooks/use-shopping-cart"
-import { Loader2, QrCode, CreditCard, CheckCircle, ShieldCheck } from "lucide-react"
+import { Loader2, QrCode, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
-import { formatPhone, formatCEP } from "@/components/ui/inputMasks"
+import { formatPhone } from "@/components/ui/inputMasks"
 import { PixQrCode } from "@/components/ecommerce/pix-qr-code"
 
-const formatPrice = (p: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(p)
-}
-
 const checkoutSchema = z.object({
-    fullName: z.string().min(3, "Nome completo é obrigatório"),
-    email: z.string().email("Email inválido"),
-    phone: z.string().min(10, "Telefone inválido"),
-    cep: z.string().min(8, "CEP inválido"),
-    address: z.string().min(3, "Endereço obrigatório"),
-    number: z.string().min(1, "Número obrigatório"),
-    complement: z.string().optional(),
-    city: z.string().min(2, "Cidade obrigatória"),
-    state: z.string().length(2, "UF inválido"),
+    fullName: z.string().min(2, "Nome completo é obrigatório"),
+    robloxUsername: z.string().min(2, "Nick do Roblox é obrigatório para a entrega"),
+    email: z.string().email("E-mail válido é obrigatório"),
+    phone: z.string().min(10, "WhatsApp / Telefone válido é obrigatório"),
+    deliveryNotes: z.string().optional(),
 })
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>
 
 export function CheckoutForm() {
     const { cart, clearCart } = useCart()
+    const router = useRouter()
     const [isProcessing, setIsProcessing] = useState(false)
-    const [isSuccess, setIsSuccess] = useState(false)
-    const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix")
     const [pixData, setPixData] = useState<{
         pix_code: string
         order_id: string
         total: number
     } | null>(null)
 
-    const [shippingCost, setShippingCost] = useState(0)
-
     const {
         register,
         handleSubmit,
-        watch,
         setValue,
         formState: { errors },
     } = useForm<CheckoutFormData>({
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
-            state: '',
+            fullName: '',
+            robloxUsername: '',
+            email: '',
+            phone: '',
+            deliveryNotes: '',
         }
     })
 
-    const watchedState = watch("state")
-    const watchedCep = watch("cep")
-
-    // Auto-fill address from CEP
-    useEffect(() => {
-        const fetchAddress = async () => {
-            const cep = watchedCep?.replace(/\D/g, '')
-            if (cep?.length === 8) {
-                try {
-                    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                    const data = await res.json()
-                    if (!data.erro) {
-                        setValue('address', data.logradouro, { shouldValidate: true })
-                        setValue('city', data.localidade, { shouldValidate: true })
-                        setValue('state', data.uf, { shouldValidate: true })
-
-                        if (data.complemento) {
-                            setValue('complement', data.complemento, { shouldValidate: true })
-                        }
-
-                        toast.success("Endereço encontrado!")
-
-                        // Optional: Focus on number field
-                        // document.getElementById('number')?.focus()
-                    } else {
-                        toast.error("CEP não encontrado")
-                    }
-                } catch (error) {
-                    console.error("Erro ao buscar CEP", error)
-                }
-            }
-        }
-        fetchAddress()
-    }, [watchedCep, setValue])
-
-    // Calculate dynamic shipping
-    useEffect(() => {
-        const calculateShipping = async () => {
-            if (watchedState && watchedState.length === 2) {
-                try {
-                    const res = await fetch('/api/shipping/calculate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ state: watchedState })
-                    })
-                    if (res.ok) {
-                        const data = await res.json()
-                        setShippingCost(Number(data.price))
-                        if (Number(data.price) > 0) {
-                            toast.success(`Frete calculado: ${formatPrice(Number(data.price))}`)
-                        }
-                    }
-                } catch (e) {
-                    console.error("Shipping calc error", e)
-                }
-            }
-        }
-        calculateShipping()
-    }, [watchedState])
-
-    const total = cart.subtotal + shippingCost
+    const formatPrice = (p: number) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(p)
+    }
 
     const onSubmit = async (data: CheckoutFormData) => {
+        if (!cart.items || cart.items.length === 0) {
+            toast.error("Seu carrinho está vazio")
+            return
+        }
+
         setIsProcessing(true)
 
         try {
-            // Prepare order payload
-            const orderPayload = {
-                payment_method: paymentMethod,
+            const payload = {
+                payment_method: 'pix' as const,
                 items: cart.items.map(item => ({
-                    variant_id: item.id,
+                    variant_id: item.variant_id,
+                    name: item.name,
                     quantity: item.quantity,
                     price: item.price,
-                    name: item.name
                 })),
                 customer: {
                     name: data.fullName,
+                    roblox_username: data.robloxUsername,
                     email: data.email,
-                    phone: data.phone
-                },
-                shipping_address: {
-                    name: data.fullName,
-                    address1: `${data.address}, ${data.number}`,
-                    address2: data.complement,
-                    city: data.city,
-                    state_code: data.state,
-                    country_code: 'BR',
-                    zip: data.cep,
                     phone: data.phone,
-                    email: data.email
+                    delivery_notes: data.deliveryNotes,
                 },
-                shipping_cost: shippingCost,
-                success_url: `${window.location.origin}/sucesso`,
-                cancel_url: `${window.location.origin}/checkout`
             }
 
-            const response = await fetch('/api/checkout/create', {
+            const res = await fetch('/api/checkout/create', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(orderPayload),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || 'Falha ao processar pagamento')
+            const result = await res.json()
+
+            if (!res.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Erro ao processar pedido')
             }
 
-            const result = await response.json()
+            setPixData({
+                pix_code: result.pix_code,
+                order_id: result.order_id,
+                total: result.total,
+            })
 
-            // Se for Pix, exibe a tela de QR Code e Copia e Cola
-            if (result.payment_method === 'pix' && result.pix_code) {
-                setPixData({
-                    pix_code: result.pix_code,
-                    order_id: result.order_id,
-                    total: result.total || total,
-                })
-                clearCart()
-                toast.success('Pedido gerado! Conclua o pagamento via Pix.')
-                return
-            }
+            // Limpa o carrinho após gerar o pedido
+            clearCart()
+            toast.success("Pedido gerado com sucesso!")
 
-            // If we have a checkout URL (e.g. Stripe Card), redirect
-            if (result.checkout_url) {
-                window.location.href = result.checkout_url
-                clearCart()
-            } else {
-                setIsSuccess(true)
-                clearCart()
-            }
-
-        } catch (error) {
-            console.error('Checkout error:', error)
-            toast.error('Erro ao processar pedido. Tente novamente.')
+        } catch (error: any) {
+            console.error('Erro no checkout:', error)
+            toast.error(error.message || "Falha ao gerar pedido. Tente novamente.")
         } finally {
             setIsProcessing(false)
         }
     }
 
+    // Se o pedido PIX foi gerado, exibe o QR Code Pix diretamente
     if (pixData) {
         return (
             <div className="space-y-6">
-                <div className="text-center">
-                    <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
-                        <CheckCircle className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-2xl font-serif font-black">Pedido Recebido com Sucesso!</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Pedido <span className="font-mono font-bold text-foreground">#{pixData.order_id}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                        Efetue o pagamento via Pix para confirmar seu pedido imediatamente.
+                <div className="bg-neutral-50 border border-neutral-200 rounded-sm p-6 text-center space-y-2">
+                    <h2 className="text-xl font-bold text-neutral-900">Pedido #{pixData.order_id}</h2>
+                    <p className="text-xs text-neutral-600 max-w-md mx-auto leading-relaxed">
+                        Escaneie o QR Code abaixo com o app do seu banco para pagar via PIX. Após pagar, clique no botão azul abaixo <strong>&quot;Já realizei o pagamento / Acompanhar Pedido&quot;</strong> para acompanhar a confirmação em tempo real e receber seus itens no Roblox.
                     </p>
                 </div>
 
@@ -221,240 +129,165 @@ export function CheckoutForm() {
                     amount={pixData.total}
                     orderId={pixData.order_id}
                     onConfirm={() => {
-                        setIsSuccess(true)
-                        setPixData(null)
+                        router.push(`/pedidos?order_id=${encodeURIComponent(pixData.order_id)}`)
                     }}
                 />
             </div>
         )
     }
 
-    if (isSuccess) {
-        return (
-            <div className="text-center py-12">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary animate-bounce">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </div>
-                <h2 className="text-3xl font-black uppercase tracking-tight mb-2">Pedido Confirmado!</h2>
-                <p className="text-muted-foreground mb-8">
-                    Seu pedido foi recebido com sucesso.<br />
-                    Enviaremos as atualizações para seu email.
-                </p>
-                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest">
-                    <a href="/loja">Continuar Comprando</a>
-                </Button>
-            </div>
-        )
-    }
-
-    if (cart.items.length === 0 && !isSuccess) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">Seu carrinho está vazio.</p>
-                <Button asChild variant="outline">
-                    <a href="/loja">Voltar para Loja</a>
-                </Button>
-            </div>
-        )
-    }
-
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Dados Pessoais e Entrega */}
-            <div className="bg-card p-6 rounded-xl border border-border">
-                <h3 className="text-xl font-bold font-serif mb-6 flex items-center gap-2">
-                    1. Entrega
-                </h3>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Informações da Entrega no Roblox */}
+            <div className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4">
+                <div className="border-b border-neutral-200 pb-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-900">
+                        1. Dados para Entrega no Roblox
+                    </h3>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="fullName">Nome Completo</Label>
-                        <Input id="fullName" {...register("fullName")} className={errors.fullName ? "border-red-500" : ""} />
-                        {errors.fullName && <span className="text-xs text-red-500">{errors.fullName.message}</span>}
+                {/* Nick do Roblox */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="robloxUsername" className="text-neutral-800 text-xs font-medium">
+                        Nome de Usuário no Roblox (Nick) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                        id="robloxUsername"
+                        placeholder="Ex: SeuNickNoRoblox"
+                        {...register("robloxUsername")}
+                        className="bg-neutral-50 border-neutral-300 focus-visible:ring-[#48B9FA] text-neutral-900 text-xs h-10 rounded-sm"
+                    />
+                    {errors.robloxUsername && (
+                        <p className="text-xs text-red-500">{errors.robloxUsername.message}</p>
+                    )}
+                    <p className="text-[11px] text-neutral-400">
+                        Informe o @usuário exato da sua conta para realizarmos a entrega via trade ou servidor VIP.
+                    </p>
+                </div>
+
+                {/* Observações de Entrega */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="deliveryNotes" className="text-neutral-800 text-xs font-medium">
+                        Instruções ou Observações (Opcional)
+                    </Label>
+                    <Textarea
+                        id="deliveryNotes"
+                        placeholder="Ex: Estou no Segundo Mar, posso receber hoje à noite..."
+                        rows={2}
+                        {...register("deliveryNotes")}
+                        className="bg-neutral-50 border-neutral-300 focus-visible:ring-[#48B9FA] text-neutral-900 text-xs rounded-sm resize-none"
+                    />
+                </div>
+            </div>
+
+            {/* Informações do Comprador */}
+            <div className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4">
+                <div className="border-b border-neutral-200 pb-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-900">
+                        2. Dados de Contato
+                    </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Nome Completo */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="fullName" className="text-neutral-800 text-xs font-medium">
+                            Nome Completo <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="fullName"
+                            placeholder="Seu nome completo"
+                            {...register("fullName")}
+                            className="bg-neutral-50 border-neutral-300 focus-visible:ring-[#48B9FA] text-neutral-900 text-xs h-10 rounded-sm"
+                        />
+                        {errors.fullName && (
+                            <p className="text-xs text-red-500">{errors.fullName.message}</p>
+                        )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" {...register("email")} className={errors.email ? "border-red-500" : ""} />
-                        {errors.email && <span className="text-xs text-red-500">{errors.email.message}</span>}
+                    {/* WhatsApp / Telefone */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="phone" className="text-neutral-800 text-xs font-medium">
+                            WhatsApp / Celular <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="phone"
+                            placeholder="(00) 00000-0000"
+                            {...register("phone")}
+                            onChange={(e) => setValue("phone", formatPhone(e.target.value), { shouldValidate: true })}
+                            className="bg-neutral-50 border-neutral-300 focus-visible:ring-[#48B9FA] text-neutral-900 text-xs h-10 rounded-sm"
+                        />
+                        {errors.phone && (
+                            <p className="text-xs text-red-500">{errors.phone.message}</p>
+                        )}
                     </div>
 
-                                        <div className="space-y-2">
-                                                <Label htmlFor="phone">Telefone</Label>
-                                                <Input id="phone" {...register("phone")} placeholder="(00) 00000-0000" className={errors.phone ? "border-red-500" : ""}
-                                                    onInput={(e) => {
-                                                        const input = e.currentTarget as HTMLInputElement
-                                                        const pos = input.selectionStart || input.value.length
-                                                        input.value = formatPhone(input.value)
-                                                        // try to restore caret - set to end if not available
-                                                        input.setSelectionRange(input.value.length, input.value.length)
-                                                    }}
-                                                />
-                                                {errors.phone && <span className="text-xs text-red-500">{errors.phone.message}</span>}
-                                        </div>
-
-                                        <div className="space-y-2">
-                                                <Label htmlFor="cep">CEP</Label>
-                                                <Input id="cep" {...register("cep")} placeholder="00000-000" className={errors.cep ? "border-red-500" : ""}
-                                                    onInput={(e) => {
-                                                        const input = e.currentTarget as HTMLInputElement
-                                                        input.value = formatCEP(input.value)
-                                                    }}
-                                                />
-                                                {errors.cep && <span className="text-xs text-red-500">{errors.cep.message}</span>}
-                                        </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="address">Endereço</Label>
-                        <Input id="address" {...register("address")} className={errors.address ? "border-red-500" : ""} />
-                        {errors.address && <span className="text-xs text-red-500">{errors.address.message}</span>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="number">Número</Label>
-                        <Input id="number" {...register("number")} className={errors.number ? "border-red-500" : ""} />
-                        {errors.number && <span className="text-xs text-red-500">{errors.number.message}</span>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="complement">Complemento</Label>
-                        <Input id="complement" {...register("complement")} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="city">Cidade</Label>
-                        <Input id="city" {...register("city")} className={errors.city ? "border-red-500" : ""} />
-                        {errors.city && <span className="text-xs text-red-500">{errors.city.message}</span>}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="state">Estado</Label>
-                        <Input id="state" {...register("state")} maxLength={2} placeholder="UF" className={errors.state ? "border-red-500" : ""} />
-                        {errors.state && <span className="text-xs text-red-500">{errors.state.message}</span>}
+                    {/* E-mail */}
+                    <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor="email" className="text-neutral-800 text-xs font-medium">
+                            E-mail <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="seuemail@exemplo.com"
+                            {...register("email")}
+                            className="bg-neutral-50 border-neutral-300 focus-visible:ring-[#48B9FA] text-neutral-900 text-xs h-10 rounded-sm"
+                        />
+                        {errors.email && (
+                            <p className="text-xs text-red-500">{errors.email.message}</p>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* 2. Seleção do Método de Pagamento */}
-            <div className="bg-card p-6 rounded-xl border border-border space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold font-serif flex items-center gap-2">
-                        2. Forma de Pagamento
+            {/* Resumo do Pedido & Total */}
+            <div className="bg-white border border-neutral-200 rounded-sm p-6 space-y-4">
+                <div className="border-b border-neutral-200 pb-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-900">
+                        3. Resumo & Pagamento PIX
                     </h3>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" /> Checkout Seguro
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {cart.items.map((item) => (
+                        <div key={item.id} className="flex justify-between items-center text-xs py-1.5 border-b border-neutral-100">
+                            <span className="text-neutral-700">
+                                {item.quantity}x {item.name}
+                            </span>
+                            <span className="font-medium text-neutral-900">
+                                {formatPrice(item.price * item.quantity)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="pt-2 flex justify-between items-baseline border-t border-neutral-200">
+                    <span className="text-sm font-medium text-neutral-900">Total a pagar via PIX:</span>
+                    <span className="text-xl font-semibold text-neutral-900">
+                        {formatPrice(cart.total)}
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Opção PIX */}
-                    <div
-                        onClick={() => setPaymentMethod("pix")}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            paymentMethod === "pix"
-                                ? "border-emerald-500 bg-emerald-50/30 shadow-sm"
-                                : "border-border hover:border-muted-foreground/30 bg-card"
-                        }`}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2.5 rounded-lg ${paymentMethod === "pix" ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
-                                    <QrCode className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-base">PIX</h4>
-                                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                            Aprovação Rápida
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        QR Code & Copia e Cola direto na conta
-                                    </p>
-                                </div>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                paymentMethod === "pix" ? "border-emerald-500 bg-emerald-500" : "border-muted-foreground/40"
-                            }`}>
-                                {paymentMethod === "pix" && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
-                            Chave CNPJ oficial da Librás: <strong className="font-mono text-foreground">00.267.195/0001-30</strong>
-                        </div>
-                    </div>
-
-                    {/* Opção Cartão (Stripe) */}
-                    <div
-                        onClick={() => setPaymentMethod("card")}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            paymentMethod === "card"
-                                ? "border-blue-500 bg-blue-50/30 shadow-sm"
-                                : "border-border hover:border-muted-foreground/30 bg-card"
-                        }`}
-                    >
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2.5 rounded-lg ${paymentMethod === "card" ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"}`}>
-                                    <CreditCard className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-base">Cartão de Crédito / Débito</h4>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        Visa, Mastercard, Elo, Hipercard, Amex
-                                    </p>
-                                </div>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                paymentMethod === "card" ? "border-blue-500 bg-blue-500" : "border-muted-foreground/40"
-                            }`}>
-                                {paymentMethod === "card" && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
-                            Processado em ambiente seguro com criptografia pela <strong>Stripe</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Resumo do Pedido */}
-            <div className="bg-muted/30 p-6 rounded-xl border border-border">
-                <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>{formatPrice(cart.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Frete</span>
-                        <span>{formatPrice(shippingCost)}</span>
-                    </div>
-                </div>
-                <div className="flex justify-between text-xl font-black uppercase pt-4 border-t border-border mb-6">
-                    <span>Total</span>
-                    <span className="text-primary">{formatPrice(total)}</span>
-                </div>
-
-                <Button
+                {/* Botão de Finalizar */}
+                <button
                     type="submit"
-                    size="lg"
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-14 text-lg uppercase tracking-widest"
                     disabled={isProcessing || cart.items.length === 0}
+                    className="w-full h-12 bg-[#48B9FA] hover:bg-[#20a6f5] disabled:opacity-50 text-white font-semibold text-sm rounded-sm transition-colors flex items-center justify-center gap-2 mt-4 cursor-pointer shadow-xs"
                 >
                     {isProcessing ? (
                         <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Gerando QR Code PIX...</span>
                         </>
-                    ) : paymentMethod === "pix" ? (
-                        `Gerar Pix • ${formatPrice(total)}`
                     ) : (
-                        `Pagar com Cartão • ${formatPrice(total)}`
+                        <>
+                            <QrCode className="h-4 w-4" />
+                            <span>Gerar QR Code PIX</span>
+                            <ArrowRight className="h-4 w-4" />
+                        </>
                     )}
-                </Button>
+                </button>
             </div>
         </form>
     )

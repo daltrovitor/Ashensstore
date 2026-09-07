@@ -6,12 +6,12 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from 'sonner'
 import { CartProvider } from '@/hooks/use-shopping-cart'
 
-const SITE_NAME = 'Librás - Loja de Abrasivos e Lixas'
-const SITE_DESCRIPTION = 'Soluções abrasivas de alta performance para indústria, marcenaria, marmoraria e construção civil. Precisão e durabilidade em cada grão. Encontre lixas, discos e muito mais.'
-const SITE_URL = 'https://loja.libraslixas.com.br'
+const SITE_NAME = 'Ashens Store | Loja de Blox Fruits'
+const SITE_DESCRIPTION = 'Sua loja definitiva de Blox Fruits! Frutas Míticas (Kitsune, Dragon, Leopard), Gamepasses com desconto, Contas Level 2550 e Raças V4. Entrega rápida no Roblox e 100% segura via PIX.'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ashenstore.com.br'
 
 export const viewport: Viewport = {
-  themeColor: '#8B0000', // Deep red matching brand
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
 }
@@ -19,20 +19,22 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: {
     default: SITE_NAME,
-    template: `%s | ${SITE_NAME}`,
+    template: `%s | Ashens Store`,
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    'Loja de abrasivos',
-    'lixas profissionais',
-    'discos de corte',
-    'abrasivos para indústria',
-    'marcenaria',
-    'marmoraria',
-    'cutelaria',
-    'funilaria',
-    'construção civil',
-    'Librás lixas',
+    'Blox Fruits',
+    'Roblox',
+    'Frutas Míticas Blox Fruits',
+    'Kitsune Fruit',
+    'Dragon Fruit',
+    'Leopard Fruit',
+    'Gamepasses Blox Fruits',
+    'Contas Blox Fruits',
+    'Raças V4 Blox Fruits',
+    'Ashens Store',
+    'Loja Blox Fruits Barata',
+    'Comprar Fruta Blox Fruits PIX',
   ],
   metadataBase: new URL(SITE_URL),
   alternates: {
@@ -41,14 +43,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    siteName: SITE_NAME,
+    siteName: 'Ashens Store',
     url: SITE_URL,
     images: [
       {
-        url: '/logo2.png',
-        width: 1200,
-        height: 630,
-        alt: 'Librás - A Casa das Lixas',
+        url: '/ashens-logo.jpg',
+        width: 1024,
+        height: 1024,
+        alt: 'Ashens Store - Blox Fruits',
       },
     ],
     type: 'website',
@@ -58,24 +60,16 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: ['/logo2.png'],
+    images: ['/ashens-logo.jpg'],
   },
   icons: {
-    icon: '/logo.ico',
-    apple: '/apple-touch-icon.png',
+    icon: '/ashens-logo.jpg',
+    apple: '/ashens-logo.jpg',
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
   },
-  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
@@ -85,46 +79,22 @@ export default function RootLayout({
 }>) {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Store",
-    "name": "Librás - A Casa das Lixas",
+    "@type": "OnlineStore",
+    "name": "Ashens Store",
     "description": SITE_DESCRIPTION,
     "url": SITE_URL,
-    "logo": `${SITE_URL}/logo2.png`,
-    "image": `${SITE_URL}/logo2.png`,
-    "telephone": "+5562982714849",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Goiânia",
-      "addressRegion": "GO",
-      "addressCountry": "BR"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": -16.6869, // Exemplo Goiânia, ajuste se necessário
-      "longitude": -49.2648
-    },
-    "openingHoursSpecification": [
-      {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        "opens": "08:00",
-        "closes": "18:00"
-      }
-    ],
-    "sameAs": [
-      "https://www.instagram.com/libras.casadaslixas/",
-      "https://www.facebook.com/p/Libr%C3%A1s-A-Casa-Das-Lixas-100064505036066/"
-    ],
+    "logo": `${SITE_URL}/ashens-logo.jpg`,
+    "image": `${SITE_URL}/ashens-logo.jpg`,
     "priceRange": "$$"
   }
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
         <script
@@ -132,14 +102,14 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="font-sans antialiased bg-background selection:bg-primary/30 selection:text-white text-foreground flex flex-col min-h-screen">
+      <body suppressHydrationWarning className="font-sans antialiased bg-white selection:bg-[#48B9FA]/20 selection:text-neutral-900 text-neutral-900 flex flex-col min-h-screen">
         <CartProvider>
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-white">
             {children}
           </div>
-          <Analytics />
+          {process.env.NODE_ENV === 'production' && <Analytics />}
           <Toaster />
-          <SonnerToaster richColors position="top-right" />
+          <SonnerToaster richColors position="top-right" theme="light" />
         </CartProvider>
       </body>
     </html>

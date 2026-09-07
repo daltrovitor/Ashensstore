@@ -134,7 +134,7 @@ export function CategoriesManager() {
                                         // or we can pre-fill it here visually if we want.
                                     }
                                 }}
-                                placeholder="Ex: Abrasivos"
+                                placeholder="Ex: Frutas Míticas"
                             />
                         </div>
                         <div className="space-y-2">
@@ -142,7 +142,7 @@ export function CategoriesManager() {
                             <Input
                                 value={slug}
                                 onChange={(e) => setSlug(e.target.value)}
-                                placeholder="abrasivos"
+                                placeholder="frutas-miticas"
                             />
                         </div>
                     </div>

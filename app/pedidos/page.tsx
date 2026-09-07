@@ -1,17 +1,30 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Truck, Eye, RefreshCw, LogOut, ShoppingBag, User, MapPin, CreditCard, Calendar } from "lucide-react"
-import { useRequireAuth } from "@/hooks/use-auth"
+import {
+  Package,
+  Search,
+  CheckCircle2,
+  Clock,
+  Truck,
+  MessageSquare,
+  QrCode,
+  Gamepad2,
+  Copy,
+  Check,
+  ExternalLink,
+  ChevronRight,
+  ShieldAlert,
+  Sparkles,
+  ArrowLeft
+} from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -20,16 +33,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { OrderChat } from "@/components/chat/order-chat"
+import { PixQrCode } from "@/components/ecommerce/pix-qr-code"
+import { generatePixPayload, COMPANY_PIX_DATA } from "@/lib/pix/brcode"
+
+interface OrderItem {
+  id?: string
+  name: string
+  quantity: number
+  unit_price: number
+  total_price?: number
+}
 
 interface Order {
   id: string
@@ -38,532 +52,534 @@ interface Order {
   payment_status?: string
   customer_name: string
   customer_email: string
-  subtotal?: number
-  shipping_cost?: number
-  total: number
-  currency: string
-  payment_method?: string
-  printful_order_id?: string
-  tracking_number?: string
-  tracking_url?: string
+  customer_phone?: string
   shipping_address?: any
-  items?: any[]
-  is_test: boolean
+  total: number
   created_at: string
-  updated_at: string
+  items?: OrderItem[]
+}
+
+const ORDER_STEPS = [
+  { key: "PENDING_PAYMENT", label: "Aguardando PIX", icon: Clock },
+  { key: "PAID", label: "Pagamento Aprovado", icon: CheckCircle2 },
+  { key: "IN_PRODUCTION", label: "Em Preparação", icon: Package },
+  { key: "SHIPPED", label: "Em Entrega no Jogo", icon: Truck },
+  { key: "DELIVERED", label: "Entregue com Sucesso", icon: CheckCircle2 },
+]
+
+function getStepIndex(status: string): number {
+  if (status === 'CONFIRMED') return 1
+  const idx = ORDER_STEPS.findIndex(s => s.key === status)
+  return idx >= 0 ? idx : 0
 }
 
 function OrdersContent() {
+  const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, loading: authLoading, signOut } = useRequireAuth()
+  const { user } = useAuth()
+
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [orderToCancel, setOrderToCancel] = useState<string | null>(null)
+  const [searchInput, setSearchInput] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [pixModalOpen, setPixModalOpen] = useState(false)
+  const [activePixPayload, setActivePixPayload] = useState<string>("")
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const urlOrderId = searchParams.get('order_id') || searchParams.get('orderId') || searchParams.get('id')
+
+  const prevStatusRef = useRef<Record<string, string>>({})
+
+  const fetchOrders = async (queryId?: string, isSilent = false) => {
+    try {
+      if (!isSilent) setLoading(true)
+      const targetId = queryId || urlOrderId
+
+      if (targetId) {
+        // Busca pedido específico por ID
+        const res = await fetch(`/api/orders/${targetId}/chat`, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.order) {
+            const ord = data.order
+            const prev = prevStatusRef.current[ord.id] || prevStatusRef.current[ord.external_id]
+            if (prev && prev === 'PENDING_PAYMENT' && (ord.status === 'PAID' || ord.status === 'CONFIRMED')) {
+              toast.success("🎉 Pagamento confirmado pelo vendedor! A entrega dos seus itens foi liberada.")
+            }
+            prevStatusRef.current[ord.id] = ord.status
+            prevStatusRef.current[ord.external_id] = ord.status
+
+            setOrders([ord])
+            setSelectedOrder(ord)
+          }
+        } else if (!isSilent) {
+          toast.error("Pedido não encontrado")
+        }
+      } else if (user?.email) {
+        // Busca pedidos do usuário logado
+        const res = await fetch('/api/user/orders', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const list: Order[] = data.orders || []
+          list.forEach((ord) => {
+            const prev = prevStatusRef.current[ord.id] || prevStatusRef.current[ord.external_id]
+            if (prev && prev === 'PENDING_PAYMENT' && (ord.status === 'PAID' || ord.status === 'CONFIRMED')) {
+              toast.success(`🎉 Pagamento do pedido #${ord.external_id} confirmado pelo vendedor!`)
+            }
+            prevStatusRef.current[ord.id] = ord.status
+            prevStatusRef.current[ord.external_id] = ord.status
+          })
+          setOrders(list)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar pedidos:', error)
+    } finally {
+      if (!isSilent) setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    if (user) {
-      fetchOrders()
-    }
-  }, [user])
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/user/orders')
-      if (res.ok) {
-        const data = await res.json()
-        setOrders(data.orders || [])
-      } else {
-        throw new Error('Failed to fetch orders')
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-      toast.error('Falha ao carregar pedidos')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLogout = async () => {
-    try {
-      await signOut()
-      router.push('/login')
-    } catch (error) {
-      console.error('Logout error:', error)
-      router.push('/login')
-    }
-  }
-
-  const handlePay = async (orderId: string) => {
-    try {
-      const res = await fetch('/api/checkout/retry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId }),
-      })
-
-      if (res.ok) {
-        const { checkoutUrl } = await res.json()
-        window.location.href = checkoutUrl
-      } else {
-        const data = await res.json()
-        toast.error(data.error || 'Falha ao iniciar pagamento')
-      }
-    } catch (error) {
-      console.error('Payment retry error:', error)
-      toast.error('Erro ao conectar com servidor de pagamento')
-    }
-  }
-
-  const executeCancel = async () => {
-    if (!orderToCancel) return
-
-    try {
-      const res = await fetch('/api/user/orders/cancel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId: orderToCancel }),
-      })
-
-      if (res.ok) {
-        toast.success('Pedido cancelado com sucesso')
-        fetchOrders()
-      } else {
-        const data = await res.json()
-        toast.error(data.error || 'Falha ao cancelar pedido')
-      }
-    } catch (error) {
-      console.error('Cancel error:', error)
-      toast.error('Erro ao cancelar pedido')
-    } finally {
-      setOrderToCancel(null)
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      'PENDING_PAYMENT': 'bg-yellow-100 text-yellow-800',
-      'PAID': 'bg-green-100 text-green-800',
-      'IN_PRODUCTION': 'bg-blue-100 text-blue-800',
-      'SHIPPED': 'bg-purple-100 text-purple-800',
-      'DELIVERED': 'bg-emerald-100 text-emerald-800',
-      'CANCELED': 'bg-red-100 text-red-800',
-      'TEST_ORDER': 'bg-gray-100 text-gray-800'
-    }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-  }
-
-  const formatStatus = (status: string) => {
-    const labels: Record<string, string> = {
-      'PENDING_PAYMENT': 'Pagamento Pendente',
-      'PAID': 'Pago',
-      'IN_PRODUCTION': 'Em Produção',
-      'SHIPPED': 'Enviado',
-      'DELIVERED': 'Entregue',
-      'CANCELED': 'Cancelado',
-      'TEST_ORDER': 'Pedido Teste'
-    }
-    return labels[status] || status
-  }
-
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.external_id.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
-
-  const handleRefresh = () => {
     fetchOrders()
+
+    // Polling ativo a cada 5 segundos para refletir confirmação de pagamento imediatamente
+    const interval = setInterval(() => {
+      fetchOrders(undefined, true)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [user, urlOrderId])
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!searchInput.trim()) return
+    router.push(`/pedidos?order_id=${searchInput.trim()}`)
   }
 
-  // Mostra loading enquanto verifica auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Verificando autenticação...</p>
-        </div>
-      </div>
-    )
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    toast.success("Copiado para a área de transferência!")
+    setTimeout(() => setCopiedId(null), 2500)
+  }
+
+  const openPixForOrder = (order: Order) => {
+    const cleanTxid = order.external_id.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)
+    const code = generatePixPayload({
+      key: COMPANY_PIX_DATA.key,
+      name: COMPANY_PIX_DATA.name,
+      city: COMPANY_PIX_DATA.city,
+      amount: Number(order.total),
+      txid: cleanTxid,
+    })
+    setActivePixPayload(code)
+    setSelectedOrder(order)
+    setPixModalOpen(true)
+  }
+
+  const openChatForOrder = (order: Order) => {
+    setSelectedOrder(order)
+    setChatOpen(true)
+  }
+
+  const formatPrice = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+  }
+
+  const formatDate = (iso: string) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' às ' +
+           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white text-neutral-900 flex flex-col">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8" style={{ paddingTop: '6rem' }}>
-        {/* Welcome Banner */}
-        <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">
-                    Olá, {user?.full_name || user?.email?.split('@')[0] || 'Cliente'}! 👋
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.push('/loja')}>
-                  <ShoppingBag className="h-4 w-4 mr-2" />
-                  Voltar para a Loja
-                </Button>
-                <Button variant="destructive" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </Button>
-              </div>
+      <main className="container mx-auto px-4 py-8 max-w-5xl flex-1">
+        {/* Header da Página */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-200">
+          <div>
+            <div className="flex items-center gap-2 text-blue-600 text-xs font-semibold uppercase tracking-wider mb-1">
+              <Gamepad2 className="w-4 h-4 text-[#48B9FA]" />
+              <span>Central do Comprador Ashens Store</span>
             </div>
-          </CardContent>
-        </Card>
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">Meus Pedidos & Entregas</h1>
+            <p className="text-neutral-500 text-xs sm:text-sm mt-1">
+              Acompanhe o status em tempo real e converse com o vendedor para receber seus itens.
+            </p>
+          </div>
 
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Meus Pedidos</h1>
-          <p className="text-muted-foreground">
-            Acompanhe o status e o rastreamento dos seus pedidos
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          {/* Busca de Pedido por Código */}
+          <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-sm w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <Input
-                placeholder="Buscar pedidos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Buscar por ORD-..."
+                className="pl-9 bg-neutral-50 border-neutral-200 text-neutral-900 placeholder:text-neutral-400 rounded-md text-xs h-10 focus:border-[#48B9FA]"
               />
             </div>
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="PENDING_PAYMENT">Pagamento Pendente</SelectItem>
-              <SelectItem value="PAID">Pago</SelectItem>
-              <SelectItem value="IN_PRODUCTION">Em Produção</SelectItem>
-              <SelectItem value="SHIPPED">Enviado</SelectItem>
-              <SelectItem value="DELIVERED">Entregue</SelectItem>
-              <SelectItem value="CANCELED">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
+            <Button
+              type="submit"
+              className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-medium text-xs h-10 px-4 rounded-md shrink-0 cursor-pointer shadow-xs"
+            >
+              Buscar
+            </Button>
+          </form>
         </div>
 
-        {/* Orders List */}
+        {/* Lista de Pedidos */}
         {loading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <div className="h-4 bg-muted rounded w-32"></div>
-                      <div className="h-3 bg-muted rounded w-48"></div>
+          <div className="flex flex-col items-center justify-center py-20 text-neutral-400 gap-3">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#48B9FA]"></div>
+            <p className="text-sm">Carregando pedidos...</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-16 border border-neutral-200 rounded-lg bg-neutral-50/50 p-8 space-y-4">
+            <div className="w-14 h-14 rounded-full bg-blue-50 text-[#48B9FA] flex items-center justify-center mx-auto border border-blue-100">
+              <Package className="w-7 h-7 text-[#48B9FA]" />
+            </div>
+            <h3 className="text-lg font-semibold text-neutral-900">Nenhum pedido localizado</h3>
+            <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto">
+              Você pode buscar um pedido digitando o código (ex: ORD-...) no campo de busca acima ou explorando nossa loja.
+            </p>
+            <Button
+              onClick={() => router.push('/loja')}
+              className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-medium text-xs h-10 px-6 rounded-md cursor-pointer shadow-xs"
+            >
+              Explorar Catálogo Blox Fruits
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {orders.map((order) => {
+              const currentStep = getStepIndex(order.status)
+              const shippingData = (typeof order.shipping_address === 'object' && order.shipping_address) ? order.shipping_address : {}
+              const robloxNick = shippingData.roblox_username || order.customer_name
+
+              return (
+                <div
+                  key={order.id}
+                  className="bg-white border border-neutral-200 hover:border-neutral-300 rounded-lg p-6 shadow-xs space-y-6 transition-all"
+                >
+                  {/* Topo do Card: ID, Data, Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-base font-bold text-neutral-900">{order.external_id}</span>
+                        <button
+                          onClick={() => handleCopy(order.external_id, order.external_id)}
+                          title="Copiar ID do Pedido"
+                          className="p-1 hover:bg-neutral-100 rounded text-neutral-500 hover:text-neutral-900 transition cursor-pointer"
+                        >
+                          {copiedId === order.external_id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Criado em: {formatDate(order.created_at)}
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-muted rounded w-24"></div>
-                      <div className="h-3 bg-muted rounded w-20"></div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-neutral-500">Total:</span>
+                      <span className="text-xl font-bold text-neutral-900 font-sans">{formatPrice(order.total)}</span>
+                      <span className="text-xs text-blue-700 font-semibold bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                        PIX
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filteredOrders.length > 0 ? (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Rastreamento</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">#{order.external_id}</div>
-                          {order.is_test && (
-                            <Badge variant="outline" className="text-xs mt-1">TESTE</Badge>
-                          )}
+
+                  {/* Banner Inteligente de Status de Pagamento e Entrega */}
+                  {order.status === 'PENDING_PAYMENT' && (
+                    <div className="bg-amber-50/90 border-2 border-amber-300 rounded-lg p-4 sm:p-5 space-y-3 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-amber-100 rounded-full text-amber-700 shrink-0 mt-0.5 animate-pulse">
+                          <Clock className="w-5 h-5" />
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleDateString('pt-BR')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadge(order.status)}>
-                          {formatStatus(order.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>R$ {order.total.toFixed(2)}</TableCell>
-                      <TableCell>
-                        {order.tracking_number ? (
-                          <a
-                            href={order.tracking_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            <Truck className="h-4 w-4" />
-                            {order.tracking_number}
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-bold text-amber-950 text-sm sm:text-base flex items-center gap-2">
+                              ⏳ Aguardando Confirmação do Pagamento via PIX
+                            </h4>
+                            <span className="text-[11px] bg-amber-200/80 text-amber-900 font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border border-amber-300">
+                              <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
+                              Verificando em tempo real
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-900 leading-relaxed">
+                            Recebemos o aviso de pagamento do seu pedido! O vendedor está conferindo a confirmação do PIX na conta bancária. Assim que o pagamento for aprovado, seu pedido será atualizado <strong>automaticamente nesta tela</strong> e iniciaremos a entrega dos seus itens no Roblox.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-amber-200/80 text-xs">
+                        <span className="text-amber-900 font-medium">
+                          Já realizou o PIX? Se desejar agilizar, envie o comprovante ou converse com o vendedor:
+                        </span>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant="ghost"
+                            onClick={() => openPixForOrder(order)}
                             size="sm"
-                            title="Ver Resumo do Pedido"
-                            onClick={() => {
-                              setSelectedOrder(order)
-                              setDetailsOpen(true)
-                            }}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs h-8 px-3.5 rounded-md cursor-pointer shadow-xs"
                           >
-                            <Eye className="h-4 w-4" />
+                            <QrCode className="w-3.5 h-3.5 mr-1.5" />
+                            Ver QR Code PIX
                           </Button>
-
-                          {order.status === 'PENDING_PAYMENT' && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => handlePay(order.external_id)}
-                                title="Pagar Agora"
-                              >
-                                Pagar
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => setOrderToCancel(order.external_id)}
-                                title="Cancelar Pedido"
-                              >
-                                Cancelar
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            onClick={() => openChatForOrder(order)}
+                            size="sm"
+                            className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-semibold text-xs h-8 px-3.5 rounded-md cursor-pointer shadow-xs"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+                            Abrir Chat do Pedido
+                          </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">
-                {searchTerm || statusFilter !== "all"
-                  ? "Nenhum pedido encontrado com os filtros aplicados"
-                  : "Você ainda não fez nenhum pedido"
-                }
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                {searchTerm || statusFilter !== "all"
-                  ? "Tente ajustar os filtros ou buscar por outro termo"
-                  : "Explore nossa loja e faça seu primeiro pedido"
-                }
-              </p>
-              <Button asChild>
-                <a href="/loja">
-                  <ShoppingBag className="h-4 w-4 mr-2" />
-                  Explorar Produtos
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
+                      </div>
+                    </div>
+                  )}
+
+                  {(order.status === 'PAID' || order.status === 'CONFIRMED') && (
+                    <div className="bg-emerald-50/90 border-2 border-emerald-400 rounded-lg p-4 sm:p-5 space-y-3 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-emerald-100 rounded-full text-emerald-700 shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-bold text-emerald-950 text-sm sm:text-base flex items-center gap-2">
+                              ✅ Pagamento Confirmado com Sucesso!
+                            </h4>
+                            <span className="text-[11px] bg-emerald-200 text-emerald-900 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300">
+                              Pronto para Entrega
+                            </span>
+                          </div>
+                          <p className="text-xs text-emerald-900 leading-relaxed">
+                            O vendedor já confirmou seu pagamento! Nossa equipe está pronta para realizar a entrega dos seus itens no Roblox para o Nick <strong>&quot;{robloxNick}&quot;</strong>. Abra o chat abaixo para receber o link do servidor VIP ou combinar a troca no jogo.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-emerald-200 text-xs">
+                        <span className="text-emerald-900 font-medium">
+                          Fique atento ao chat do pedido para receber o link do servidor VIP:
+                        </span>
+                        <Button
+                          onClick={() => openChatForOrder(order)}
+                          className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-bold text-xs h-9 px-4 rounded-md cursor-pointer shadow-xs transition-all hover:scale-[1.02]"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1.5" />
+                          Abrir Chat e Receber Itens no Roblox
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(order.status === 'IN_PRODUCTION' || order.status === 'SHIPPED') && (
+                    <div className="bg-blue-50/90 border-2 border-[#48B9FA] rounded-lg p-4 sm:p-5 space-y-3 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-blue-100 rounded-full text-[#48B9FA] shrink-0 mt-0.5 animate-pulse">
+                          <Truck className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-bold text-blue-950 text-sm sm:text-base flex items-center gap-2">
+                              🚀 Entrega em Andamento no Roblox!
+                            </h4>
+                            <span className="text-[11px] bg-blue-200 text-blue-900 font-bold px-2.5 py-0.5 rounded-full border border-blue-300">
+                              Entrega no Jogo
+                            </span>
+                          </div>
+                          <p className="text-xs text-blue-900 leading-relaxed">
+                            O vendedor está online realizando a entrega para o jogador <strong>&quot;{robloxNick}&quot;</strong>. Entre no servidor VIP enviado no chat para receber seus itens.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-blue-200 text-xs">
+                        <Button
+                          onClick={() => openChatForOrder(order)}
+                          className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-bold text-xs h-9 px-4 rounded-md cursor-pointer shadow-xs"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1.5" />
+                          Ir para o Chat de Entrega
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {order.status === 'DELIVERED' && (
+                    <div className="bg-purple-50/90 border border-purple-200 rounded-lg p-4 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-full text-purple-700 shrink-0">
+                          <CheckCircle2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-purple-950 text-sm">Pedido Entregue com Sucesso!</h4>
+                          <p className="text-purple-800 text-xs">Todos os itens foram transferidos para sua conta no Roblox ({robloxNick}). Agradecemos pela preferência!</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => openChatForOrder(order)}
+                        variant="outline"
+                        size="sm"
+                        className="text-purple-900 border-purple-300 hover:bg-purple-100 text-xs font-medium h-8 rounded-md cursor-pointer"
+                      >
+                        Ver Histórico do Chat
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Informações de Entrega (Roblox Nick & Contato) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-neutral-50 p-4 rounded-md border border-neutral-200 text-xs">
+                    <div>
+                      <span className="text-neutral-500 block">Nick no Roblox:</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 font-bold text-neutral-900">
+                        <Gamepad2 className="w-4 h-4 text-[#48B9FA]" />
+                        <span>{robloxNick}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-neutral-500 block">Comprador:</span>
+                      <span className="font-medium text-neutral-900 block mt-0.5">{order.customer_name}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-neutral-500 block">Status Atual:</span>
+                      <span className="font-bold text-blue-600 block mt-0.5 uppercase">
+                        {ORDER_STEPS[currentStep]?.label || order.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Linha do Tempo / Timeline de Status */}
+                  <div className="py-2">
+                    <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Progresso do Pedido:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {ORDER_STEPS.map((step, idx) => {
+                        const isDone = idx <= currentStep
+                        const isCurrent = idx === currentStep
+                        const StepIcon = step.icon
+
+                        return (
+                          <div
+                            key={step.key}
+                            className={`flex flex-col items-center text-center p-3 rounded-md border transition-all ${
+                              isCurrent
+                                ? 'bg-blue-50 border-[#48B9FA] text-[#48B9FA] font-semibold'
+                                : isDone
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-neutral-50 border-neutral-200 text-neutral-400'
+                            }`}
+                          >
+                            <StepIcon className="w-4 h-4 mb-1.5" />
+                            <span className="text-[11px] font-medium leading-tight">{step.label}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Itens do Pedido */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="border-t border-neutral-100 pt-4 space-y-2">
+                      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Produtos do Pedido:</p>
+                      <div className="space-y-1.5">
+                        {order.items.map((it, i) => (
+                          <div key={i} className="flex justify-between items-center text-xs py-1.5 px-3 rounded-md bg-neutral-50 border border-neutral-100">
+                            <span className="text-neutral-800">
+                              <strong className="text-blue-600 mr-1.5">{it.quantity}x</strong>
+                              {it.name}
+                            </span>
+                            <span className="font-mono text-neutral-700">{formatPrice(it.unit_price * it.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botões de Ação do Pedido */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-neutral-100">
+                    <div className="flex gap-2">
+                      {order.status === 'PENDING_PAYMENT' && (
+                        <Button
+                          onClick={() => openPixForOrder(order)}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold text-xs h-10 px-4 rounded-md cursor-pointer"
+                        >
+                          <QrCode className="w-4 h-4 mr-1.5 text-amber-600" />
+                          Pagar via PIX (QR Code)
+                        </Button>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={() => openChatForOrder(order)}
+                      className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-medium text-xs h-10 px-5 rounded-md cursor-pointer shadow-xs"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-1.5" />
+                      Abrir Chat com o Vendedor
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         )}
       </main>
 
-      <Footer />
-
-      <AlertDialog open={!!orderToCancel} onOpenChange={(open) => !open && setOrderToCancel(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction onClick={executeCancel} className="bg-red-600 hover:bg-red-700">
-              Sim, Cancelar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal de Detalhes / Resumo do Pedido */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Modal de Chat com o Vendedor */}
+      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+        <DialogContent className="max-w-2xl bg-white border border-neutral-200 p-0 rounded-lg overflow-hidden shadow-lg">
+          <DialogTitle className="sr-only">Chat do Pedido</DialogTitle>
+          <DialogDescription className="sr-only">Conversa em tempo real entre comprador e vendedor</DialogDescription>
           {selectedOrder && (
-            <div className="space-y-6">
-              <DialogHeader>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <DialogTitle className="text-xl font-bold font-serif">
-                      Resumo do Pedido #{selectedOrder.external_id}
-                    </DialogTitle>
-                    <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      Realizado em {new Date(selectedOrder.created_at).toLocaleString('pt-BR')}
-                    </DialogDescription>
-                  </div>
-                  <Badge className={getStatusBadge(selectedOrder.status)}>
-                    {formatStatus(selectedOrder.status)}
-                  </Badge>
-                </div>
-              </DialogHeader>
-
-              {/* Itens do Pedido */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Package className="w-4 h-4" /> Itens do Pedido ({selectedOrder.items?.length || 0})
-                </h4>
-                <div className="divide-y border rounded-lg bg-card overflow-hidden">
-                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                    selectedOrder.items.map((item: any, idx: number) => {
-                      const img = item.product_variant?.product?.thumbnail_url
-                      return (
-                        <div key={idx} className="p-3.5 flex items-center gap-3">
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden border shrink-0">
-                            {img ? (
-                              <img src={img} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <Package className="w-5 h-5 text-muted-foreground/40" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">Qtd: {item.quantity} × {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unit_price)}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold font-mono">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total_price || item.unit_price * item.quantity)}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <div className="p-4 text-center text-xs text-muted-foreground">
-                      Itens do pedido não detalhados.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Dados de Entrega e Pagamento */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Entrega */}
-                <div className="p-4 rounded-lg border bg-muted/20 space-y-2 text-xs">
-                  <h4 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
-                    <MapPin className="w-4 h-4 text-primary" /> Endereço de Entrega
-                  </h4>
-                  {selectedOrder.shipping_address ? (
-                    <div className="space-y-0.5 text-muted-foreground">
-                      <p className="font-medium text-foreground">{selectedOrder.shipping_address.name || selectedOrder.customer_name}</p>
-                      <p>{selectedOrder.shipping_address.address1}</p>
-                      {selectedOrder.shipping_address.address2 && <p>{selectedOrder.shipping_address.address2}</p>}
-                      <p>{selectedOrder.shipping_address.city} - {selectedOrder.shipping_address.state_code || selectedOrder.shipping_address.state}</p>
-                      <p>CEP: {selectedOrder.shipping_address.zip}</p>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">Retirada no balcão / Entrega combinada</p>
-                  )}
-                </div>
-
-                {/* Pagamento */}
-                <div className="p-4 rounded-lg border bg-muted/20 space-y-2 text-xs">
-                  <h4 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
-                    <CreditCard className="w-4 h-4 text-primary" /> Forma de Pagamento
-                  </h4>
-                  <div className="space-y-1 text-muted-foreground">
-                    <p className="font-medium text-foreground capitalize">
-                      {selectedOrder.payment_method === 'pix' ? '🟢 PIX Direto (CNPJ)' : selectedOrder.payment_method?.includes('card') ? '🔵 Cartão de Crédito/Débito' : selectedOrder.payment_method || 'Pagamento na Entrega'}
-                    </p>
-                    <p>Status: <strong className="text-foreground">{selectedOrder.payment_status === 'completed' || selectedOrder.status === 'PAID' ? 'Pago' : 'Aguardando Pagamento'}</strong></p>
-                    {selectedOrder.tracking_number && (
-                      <div className="pt-2 border-t mt-2">
-                        <p className="font-semibold text-foreground">Rastreio:</p>
-                        <a href={selectedOrder.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
-                          <Truck className="w-3.5 h-3.5" /> {selectedOrder.tracking_number}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Total do Pedido */}
-              <div className="p-4 rounded-lg bg-muted/40 border space-y-2 text-sm">
-                <div className="flex justify-between text-muted-foreground text-xs">
-                  <span>Subtotal</span>
-                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.subtotal || (selectedOrder.total - (selectedOrder.shipping_cost || 0)))}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground text-xs">
-                  <span>Frete</span>
-                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.shipping_cost || 0)}</span>
-                </div>
-                <div className="flex justify-between font-black text-lg pt-2 border-t text-foreground">
-                  <span>Total Pago</span>
-                  <span className="text-primary">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedOrder.total)}</span>
-                </div>
-              </div>
-            </div>
+            <OrderChat
+              orderId={selectedOrder.external_id || selectedOrder.id}
+              currentRole="buyer"
+              defaultSenderName={selectedOrder.customer_name}
+              isModal={true}
+            />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal do PIX QR Code */}
+      <Dialog open={pixModalOpen} onOpenChange={setPixModalOpen}>
+        <DialogContent className="max-w-lg bg-white border border-neutral-200 p-6 rounded-lg overflow-hidden shadow-lg">
+          <DialogHeader>
+            <DialogTitle className="text-neutral-900 text-lg font-bold text-center">Pagamento via PIX</DialogTitle>
+            <DialogDescription className="text-neutral-500 text-xs text-center">
+              Pague com seu banco para liberar a entrega dos seus itens no Roblox.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrder && activePixPayload && (
+            <PixQrCode
+              pixCode={activePixPayload}
+              amount={selectedOrder.total}
+              orderId={selectedOrder.external_id}
+              onConfirm={() => {
+                setPixModalOpen(false)
+                setChatOpen(true)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Footer />
     </div>
   )
 }
 
-export default function OrdersPage() {
+export default function PedidosPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#48B9FA]"></div>
       </div>
     }>
       <OrdersContent />

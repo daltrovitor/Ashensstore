@@ -21,17 +21,20 @@ export function useAuth() {
       const supabase = getSupabaseClient()
       const { data, error } = await supabase
         .from('profiles')
-        .select('role, full_name, phone, avatar_url')
+        .select('*')
         .eq('user_id', userId)
         .single()
 
       const profile = data as any
       if (!error && profile) {
+        let userRole = profile.role || 'customer'
+        if (userRole === 'costumer') userRole = 'customer'
+
         setUser({
           id: userId,
           email: email,
           full_name: profile.full_name || fullName || email.split('@')[0],
-          role: profile.role || 'customer',
+          role: userRole,
           phone: profile.phone,
           avatar_url: profile.avatar_url,
         })
@@ -131,11 +134,12 @@ export function useAuth() {
           // Profile fetch logic inline to ensure control flow
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('role, full_name, phone, avatar_url')
+            .select('*')
             .eq('user_id', session.user.id)
             .single()
 
           let role = profile?.role || 'customer'
+          if (role === 'costumer') role = 'customer'
 
           // If role is customer, verify with API (bypasses RLS)
           if (role === 'customer') {

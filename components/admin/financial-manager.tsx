@@ -6,14 +6,14 @@ import {
     TrendingUp,
     CreditCard,
     QrCode,
-    Banknote,
-    FileText,
     ShoppingBag,
-    Store,
     RefreshCw,
     Calendar,
     ArrowUpRight,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    Clock,
+    Gamepad2,
+    CheckCircle2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -49,18 +49,30 @@ import {
     Cell,
 } from "recharts"
 
+interface TransactionItem {
+    id: string
+    external_id: string
+    customer_name: string
+    customer_email: string
+    roblox_username: string
+    payment_method: string
+    payment_status: string
+    status: string
+    total: number
+    created_at: string
+}
+
 interface FinancialData {
     kpis: {
         total_revenue: number
         today_revenue: number
         month_revenue: number
+        pending_revenue: number
         average_ticket: number
         paid_orders_count: number
+        pending_orders_count: number
         all_orders_count: number
-    }
-    channels: {
-        ecommerce: { total: number; count: number; percentage: number }
-        local: { total: number; count: number; percentage: number }
+        conversion_rate: number
     }
     payment_methods: Array<{
         id: string
@@ -72,20 +84,16 @@ interface FinancialData {
     }>
     daily_chart: Array<{
         date: string
-        ecommerce: number
-        local: number
-        total: number
+        revenue: number
+        orders: number
     }>
-    recent_transactions: any[]
+    recent_transactions: TransactionItem[]
 }
 
 const METHOD_ICONS: Record<string, any> = {
     pix: QrCode,
     credit_card: CreditCard,
-    debit_card: CreditCard,
     card: CreditCard,
-    cash: Banknote,
-    boleto: FileText,
     other: DollarSign,
 }
 
@@ -93,7 +101,7 @@ export function FinancialManager() {
     const [data, setData] = useState<FinancialData | null>(null)
     const [loading, setLoading] = useState(true)
     const [selectedMethodFilter, setSelectedMethodFilter] = useState("all")
-    const [selectedChannelFilter, setSelectedChannelFilter] = useState("all")
+    const [selectedStatusFilter, setSelectedStatusFilter] = useState("all")
 
     useEffect(() => {
         fetchFinancial()
@@ -122,13 +130,13 @@ export function FinancialManager() {
 
     const filteredTransactions = (data?.recent_transactions || []).filter((tx) => {
         if (selectedMethodFilter !== "all") {
-            const method = (tx.payment_method || "other").toLowerCase()
+            const method = (tx.payment_method || "pix").toLowerCase()
             if (!method.includes(selectedMethodFilter)) return false
         }
-        if (selectedChannelFilter !== "all") {
-            const type = tx.shipping_address?.order_type || "ecommerce"
-            if (selectedChannelFilter === "local" && type !== "local" && type !== "loja" && type !== "balcao") return false
-            if (selectedChannelFilter === "ecommerce" && (type === "local" || type === "loja" || type === "balcao")) return false
+        if (selectedStatusFilter !== "all") {
+            const isPaid = tx.status === "PAID" || tx.status === "CONFIRMED" || tx.payment_status === "completed"
+            if (selectedStatusFilter === "paid" && !isPaid) return false
+            if (selectedStatusFilter === "pending" && isPaid) return false
         }
         return true
     })
@@ -138,12 +146,12 @@ export function FinancialManager() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-serif font-bold">Gestão Financeira</h2>
+                    <h2 className="text-3xl font-serif font-bold">Gestão Financeira do E-commerce</h2>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                        Faturamento, fluxo de caixa e separação detalhada por métodos de pagamento e canais.
+                        Faturamento, fluxo de pedidos online e métricas de conversão da Ashens Store.
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchFinancial} disabled={loading} className="gap-2">
+                <Button variant="outline" size="sm" onClick={fetchFinancial} disabled={loading} className="gap-2 cursor-pointer">
                     <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Atualizar
                 </Button>
             </div>
@@ -151,7 +159,7 @@ export function FinancialManager() {
             {loading && !data ? (
                 <div className="text-center py-20">
                     <Spinner />
-                    <p className="text-sm text-muted-foreground mt-2">Calculando fluxo financeiro...</p>
+                    <p className="text-sm text-muted-foreground mt-2">Calculando fluxo financeiro do e-commerce...</p>
                 </div>
             ) : data ? (
                 <>
@@ -162,7 +170,7 @@ export function FinancialManager() {
                                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                     Faturamento Total
                                 </CardTitle>
-                                <DollarSign className="h-4 w-4 text-emerald-600" />
+                                <DollarSign className="h-4 w-4 text-[#48B9FA]" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-black text-foreground">
@@ -170,47 +178,47 @@ export function FinancialManager() {
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                                     <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                                    {data.kpis.paid_orders_count} pedidos pagos no total
+                                    {data.kpis.paid_orders_count} pedidos online pagos
                                 </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-blue-200 bg-blue-50/20">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-blue-900">
+                                    Faturamento Hoje
+                                </CardTitle>
+                                <Calendar className="h-4 w-4 text-[#48B9FA]" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-black text-[#48B9FA]">
+                                    {formatCurrency(data.kpis.today_revenue)}
+                                </div>
+                                <p className="text-xs text-blue-700 mt-1">Vendas aprovadas no dia</p>
                             </CardContent>
                         </Card>
 
                         <Card className="border-emerald-200 bg-emerald-50/20">
                             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
-                                    Faturamento Hoje
+                                    Faturamento do Mês
                                 </CardTitle>
-                                <Calendar className="h-4 w-4 text-emerald-600" />
+                                <TrendingUp className="h-4 w-4 text-emerald-600" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-black text-emerald-600">
-                                    {formatCurrency(data.kpis.today_revenue)}
-                                </div>
-                                <p className="text-xs text-emerald-700 mt-1">Entradas do dia atual</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="border-blue-200 bg-blue-50/20">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-blue-800">
-                                    Faturamento do Mês
-                                </CardTitle>
-                                <TrendingUp className="h-4 w-4 text-blue-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-black text-blue-600">
                                     {formatCurrency(data.kpis.month_revenue)}
                                 </div>
-                                <p className="text-xs text-blue-700 mt-1">Acumulado do mês corrente</p>
+                                <p className="text-xs text-emerald-700 mt-1">Acumulado do mês corrente</p>
                             </CardContent>
                         </Card>
 
                         <Card className="border-purple-200 bg-purple-50/20">
                             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                                 <CardTitle className="text-xs font-semibold uppercase tracking-wider text-purple-800">
-                                    Ticket Médio
+                                    Ticket Médio Online
                                 </CardTitle>
-                                <DollarSign className="h-4 w-4 text-purple-600" />
+                                <ShoppingBag className="h-4 w-4 text-purple-600" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-black text-purple-600">
@@ -221,61 +229,61 @@ export function FinancialManager() {
                         </Card>
                     </div>
 
-                    {/* Comparativo de Canais: E-commerce vs Venda Local */}
+                    {/* Performance do E-commerce: Conversão & Pedidos Pendentes */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card className="border-border">
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <ShoppingBag className="h-5 w-5 text-blue-600" />
-                                    🛒 Canal: E-commerce (Loja Online)
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                    Taxa de Conversão do E-commerce
                                 </CardTitle>
-                                <CardDescription>Vendas realizadas através do site</CardDescription>
+                                <CardDescription>Proporção de pedidos que foram concluídos e pagos com sucesso</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 <div className="flex justify-between items-baseline">
-                                    <span className="text-2xl font-black text-blue-700">
-                                        {formatCurrency(data.channels.ecommerce.total)}
+                                    <span className="text-3xl font-black text-emerald-700">
+                                        {data.kpis.conversion_rate}%
                                     </span>
-                                    <Badge variant="secondary" className="font-bold">
-                                        {data.channels.ecommerce.percentage}% do total
+                                    <Badge variant="secondary" className="font-bold text-xs bg-emerald-50 text-emerald-800 border-emerald-200">
+                                        {data.kpis.paid_orders_count} de {data.kpis.all_orders_count} pedidos pagos
                                     </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {data.channels.ecommerce.count} venda(s) registrada(s)
+                                    Taxa calculada com base em todos os pedidos iniciados no site.
                                 </p>
                             </CardContent>
                         </Card>
 
-                        <Card className="border-border">
+                        <Card className="border-amber-200 bg-amber-50/20">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <Store className="h-5 w-5 text-emerald-600" />
-                                    🏪 Canal: Venda Local / Oficina (Balcão)
+                                <CardTitle className="text-base flex items-center gap-2 text-amber-950">
+                                    <Clock className="h-5 w-5 text-amber-600" />
+                                    Faturamento Pendente (Aguardando PIX)
                                 </CardTitle>
-                                <CardDescription>Vendas e ordens de serviço criadas pela loja</CardDescription>
+                                <CardDescription>Pedidos criados no checkout aguardando confirmação do vendedor</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 <div className="flex justify-between items-baseline">
-                                    <span className="text-2xl font-black text-emerald-700">
-                                        {formatCurrency(data.channels.local.total)}
+                                    <span className="text-3xl font-black text-amber-700">
+                                        {formatCurrency(data.kpis.pending_revenue)}
                                     </span>
-                                    <Badge variant="secondary" className="font-bold">
-                                        {data.channels.local.percentage}% do total
+                                    <Badge variant="secondary" className="font-bold text-xs bg-amber-100 text-amber-800 border-amber-300">
+                                        {data.kpis.pending_orders_count} pedido(s) em aberto
                                     </Badge>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {data.channels.local.count} venda(s) registrada(s)
+                                <p className="text-xs text-amber-800/80">
+                                    Assim que o PIX for verificado em conta, aprove o pedido no painel para liberar a entrega.
                                 </p>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* MÉTODOS DE PAGAMENTO SEPARADOS */}
+                    {/* MÉTODOS DE PAGAMENTO DO E-COMMERCE */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold font-serif flex items-center gap-2">
                                 <CreditCard className="h-5 w-5 text-primary" />
-                                Métodos de Pagamento Separados
+                                Métodos de Pagamento do E-commerce
                             </h3>
                             <span className="text-xs text-muted-foreground">
                                 Total de {data.payment_methods.length} método(s) ativo(s)
@@ -331,14 +339,14 @@ export function FinancialManager() {
 
                     {/* Gráficos Financeiros */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Gráfico de Barras: Faturamento Diário */}
+                        {/* Gráfico de Barras: Faturamento Diário do E-commerce */}
                         <Card className="lg:col-span-2">
                             <CardHeader>
                                 <CardTitle className="text-base flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4 text-primary" />
-                                    Faturamento Diário dos Últimos 30 Dias
+                                    Faturamento Diário do E-commerce (Últimos 30 Dias)
                                 </CardTitle>
-                                <CardDescription>Comparação diária entre E-commerce e Venda Local</CardDescription>
+                                <CardDescription>Receita diária gerada nas vendas online da loja</CardDescription>
                             </CardHeader>
                             <CardContent className="h-[280px]">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -351,11 +359,9 @@ export function FinancialManager() {
                                             tickFormatter={(val) => `R$${val}`}
                                         />
                                         <Tooltip
-                                            formatter={(value: any) => [formatCurrency(Number(value)), ""]}
+                                            formatter={(value: any) => [formatCurrency(Number(value)), "Faturamento"]}
                                         />
-                                        <Legend />
-                                        <Bar dataKey="ecommerce" name="E-commerce" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="local" name="Venda Local" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="revenue" name="Vendas Online" fill="#48B9FA" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -368,7 +374,7 @@ export function FinancialManager() {
                                     <PieChartIcon className="h-4 w-4 text-primary" />
                                     Distribuição por Método
                                 </CardTitle>
-                                <CardDescription>Participação no faturamento total</CardDescription>
+                                <CardDescription>Participação no faturamento online</CardDescription>
                             </CardHeader>
                             <CardContent className="h-[280px] flex items-center justify-center">
                                 {data.payment_methods.some((m) => m.total > 0) ? (
@@ -400,35 +406,33 @@ export function FinancialManager() {
                         </Card>
                     </div>
 
-                    {/* Tabela de Transações / Fluxo Financeiro Recente */}
+                    {/* Tabela de Transações / Extrato de Vendas do E-commerce */}
                     <Card>
                         <CardHeader className="pb-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                             <div>
-                                <CardTitle className="text-base">Extrato Financeiro Recente</CardTitle>
-                                <CardDescription>Histórico das últimas movimentações e pagamentos</CardDescription>
+                                <CardTitle className="text-base">Extrato de Vendas do E-commerce</CardTitle>
+                                <CardDescription>Histórico das vendas online e recebimentos de pedidos</CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Select value={selectedChannelFilter} onValueChange={setSelectedChannelFilter}>
-                                    <SelectTrigger className="w-[140px] h-8 text-xs">
-                                        <SelectValue placeholder="Canal" />
+                                <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
+                                    <SelectTrigger className="w-[160px] h-8 text-xs cursor-pointer">
+                                        <SelectValue placeholder="Status do Pedido" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Todos Canais</SelectItem>
-                                        <SelectItem value="ecommerce">E-commerce</SelectItem>
-                                        <SelectItem value="local">Venda Local</SelectItem>
+                                        <SelectItem value="all">Todos os Status</SelectItem>
+                                        <SelectItem value="paid">Pagos / Confirmados</SelectItem>
+                                        <SelectItem value="pending">Aguardando Pagamento</SelectItem>
                                     </SelectContent>
                                 </Select>
 
                                 <Select value={selectedMethodFilter} onValueChange={setSelectedMethodFilter}>
-                                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                                    <SelectTrigger className="w-[140px] h-8 text-xs cursor-pointer">
                                         <SelectValue placeholder="Método" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todos Métodos</SelectItem>
                                         <SelectItem value="pix">PIX</SelectItem>
                                         <SelectItem value="card">Cartão</SelectItem>
-                                        <SelectItem value="cash">Dinheiro</SelectItem>
-                                        <SelectItem value="boleto">Boleto</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -438,9 +442,8 @@ export function FinancialManager() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Pedido</TableHead>
-                                        <TableHead>Cliente</TableHead>
-                                        <TableHead>Canal</TableHead>
-                                        <TableHead>Método de Pagamento</TableHead>
+                                        <TableHead>Comprador & Nick Roblox</TableHead>
+                                        <TableHead>Método</TableHead>
                                         <TableHead>Data</TableHead>
                                         <TableHead>Status Pagamento</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
@@ -449,41 +452,34 @@ export function FinancialManager() {
                                 <TableBody>
                                     {filteredTransactions.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                                Nenhuma transação encontrada para os filtros selecionados.
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                Nenhum pedido encontrado para os filtros selecionados.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredTransactions.map((tx: any) => {
-                                            const isLocal =
-                                                tx.shipping_address?.order_type === "local" ||
-                                                tx.shipping_address?.order_type === "loja" ||
-                                                tx.shipping_address?.order_type === "balcao"
-
-                                            const method = (tx.payment_method || "other").toLowerCase()
+                                        filteredTransactions.map((tx) => {
+                                            const isPaid = tx.status === "PAID" || tx.status === "CONFIRMED" || tx.payment_status === "completed"
 
                                             return (
                                                 <TableRow key={tx.id}>
-                                                    <TableCell className="font-mono text-xs font-bold">
+                                                    <TableCell className="font-mono text-xs font-bold text-neutral-900">
                                                         {tx.external_id}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className="font-medium text-sm">{tx.customer_name || "Cliente Balcão"}</span>
+                                                        <div>
+                                                            <span className="font-medium text-sm block">{tx.customer_name}</span>
+                                                            {tx.roblox_username ? (
+                                                                <span className="inline-flex items-center gap-1 text-[11px] text-[#48B9FA] font-semibold">
+                                                                    <Gamepad2 className="w-3 h-3" /> {tx.roblox_username}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[11px] text-muted-foreground">{tx.customer_email}</span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {isLocal ? (
-                                                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[11px]">
-                                                                <Store className="w-3 h-3" /> Venda Local
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 text-[11px]">
-                                                                <ShoppingBag className="w-3 h-3" /> E-commerce
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="secondary" className="capitalize text-xs">
-                                                            {method === "pix" ? "🟢 PIX Direto" : method.includes("card") ? "🔵 Cartão" : method === "cash" ? "💵 Dinheiro" : method}
+                                                        <Badge variant="outline" className="text-xs bg-blue-50 text-[#48B9FA] border-blue-200 gap-1 font-semibold">
+                                                            <QrCode className="w-3 h-3" /> PIX
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-xs text-muted-foreground">
@@ -491,17 +487,17 @@ export function FinancialManager() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <span
-                                                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                                tx.payment_status === "completed" || tx.status === "PAID"
-                                                                    ? "bg-green-100 text-green-700"
-                                                                    : "bg-yellow-100 text-yellow-700"
+                                                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                                                isPaid
+                                                                    ? "bg-emerald-100 text-emerald-800"
+                                                                    : "bg-amber-100 text-amber-800"
                                                             }`}
                                                         >
-                                                            {tx.payment_status === "completed" || tx.status === "PAID" ? "Pago" : "Pendente"}
+                                                            {isPaid ? "✅ Pago" : "⏳ Aguardando"}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-right font-bold">
-                                                        {formatCurrency(parseFloat(tx.total) || 0)}
+                                                    <TableCell className="text-right font-bold text-sm">
+                                                        {formatCurrency(tx.total)}
                                                     </TableCell>
                                                 </TableRow>
                                             )
