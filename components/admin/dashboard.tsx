@@ -28,6 +28,7 @@ import { ShippingManager } from "@/components/admin/shipping-manager"
 import { InventoryManager } from "@/components/admin/inventory-manager"
 import { FinancialManager } from "@/components/admin/financial-manager"
 import { ImageUpload } from "@/components/admin/image-upload"
+import { DigitalStockDialog } from "@/components/admin/digital-stock-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -86,6 +87,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [newProductOpen, setNewProductOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [defaultVariantId, setDefaultVariantId] = useState<string | null>(null)
+  const [digitalStockTarget, setDigitalStockTarget] = useState<{
+    productId: string
+    productName: string
+    variantId?: string
+  } | null>(null)
 
   const [categories, setCategories] = useState<Category[]>([])
 
@@ -119,27 +126,26 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       const res = await fetchWithAuth('/api/categories')
       if (res.ok) {
         const data = await res.json()
-        console.log("Categories received:", data)
+        console.log("Fetched categories:", data)
         setCategories(Array.isArray(data) ? data : [])
-      } else {
-        console.error("Failed to fetch categories:", res.status)
       }
     } catch (error) {
-      console.error("Erro ao carregar categorias:", error)
+      console.error(error)
+      toast.error("Erro ao carregar categorias")
     }
   }
 
   const fetchProducts = async () => {
-    setLoading(true)
     try {
+      setLoading(true)
       const res = await fetchWithAuth('/api/admin/products')
       if (res.ok) {
         const data = await res.json()
-        setProducts(Array.isArray(data.products) ? data.products : [])
+        setProducts(data.products || [])
       }
     } catch (error) {
-      console.error("Erro ao carregar produtos:", error)
-      toast.error("Erro ao carregar produtos.")
+      console.error(error)
+      toast.error("Erro ao carregar produtos")
     } finally {
       setLoading(false)
     }
@@ -150,6 +156,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     setProductImages([])
     setVariants([])
     setEditingId(null)
+    setDefaultVariantId(null)
   }
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -188,6 +195,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           }
         })
         : [{
+            id: defaultVariantId || undefined,
             name: 'Padrão',
             price: parsedPrice,
             stock: parseInt(formData.stock || '10', 10) || 10,
@@ -236,12 +244,13 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const handleEditProduct = (product: Product) => {
     setEditingId(product.id)
+    const initialStock = (product.variants?.[0]?.stock !== undefined ? product.variants[0].stock : (product.variants?.[0]?.in_stock ? 10 : 0)).toString()
     setFormData({
       name: product.name,
       slug: product.slug,
       description: product.description || '',
       price: (product.price || product.variants?.[0]?.retail_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
-      stock: (product.variants?.[0]?.stock !== undefined ? product.variants[0].stock : (product.variants?.[0]?.in_stock ? 10 : 0)).toString(),
+      stock: initialStock,
       imageUrl: product.thumbnail_url || product.images?.[0] || '',
       category_id: product.category_id || '',
       is_featured: product.is_featured
@@ -252,8 +261,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     const existingImages = mockupImages.length > 0 ? mockupImages : (product.images || [])
     setProductImages(existingImages.filter(img => img !== (product.thumbnail_url || product.images?.[0] || '')))
 
-    // Load existing variants
-    if (product.variants && product.variants.length > 0) {
+    // Check variants: if product has only 1 variant and it's standard "Padrão" without size/color, treat as standard product
+    if (product.variants && product.variants.length === 1 && (!product.variants[0].size && !product.variants[0].color && (!product.variants[0].name || product.variants[0].name === 'Padrão'))) {
+      setDefaultVariantId(product.variants[0].id)
+      setVariants([])
+    } else if (product.variants && product.variants.length > 0) {
+      setDefaultVariantId(null)
       setVariants(product.variants.map(v => ({
         id: v.id,
         name: v.name || '',
@@ -264,6 +277,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         in_stock: v.in_stock
       })))
     } else {
+      setDefaultVariantId(null)
       setVariants([])
     }
 
@@ -546,7 +560,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         </div>
 
                         {variants.length === 0 ? (
-                          <div className="p-4 border border-dashed rounded-lg bg-muted/10 space-y-2">
+                          <div className="p-4 border border-dashed rounded-lg bg-muted/10 space-y-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold">Variação Padrão (Sem variações adicionais)</p>
@@ -563,6 +577,25 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                 />
                               </div>
                             </div>
+                            {editingId && (
+                              <div className="pt-2 border-t border-muted/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span className="text-xs text-muted-foreground">Estoque com mensagens/chaves para entrega automática:</span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setDigitalStockTarget({
+                                    productId: editingId,
+                                    productName: formData.name,
+                                    variantId: defaultVariantId || undefined
+                                  })}
+                                  className="h-8 text-xs border-[#48B9FA]/40 text-[#0284c7] hover:bg-[#48B9FA]/10 font-bold cursor-pointer"
+                                >
+                                  <Package className="h-3.5 w-3.5 mr-1 text-[#48B9FA]" />
+                                  Gerenciar Mensagens de Estoque
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -722,7 +755,28 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           )}
           {activeTab === 'inventory' && (
             <div className="space-y-6">
-              <InventoryManager />
+              <InventoryManager
+                onEditProduct={(item) => {
+                  const existing = products.find((p) => p.id === item.id)
+                  if (existing) {
+                    handleEditProduct(existing)
+                  } else {
+                    handleEditProduct({
+                      id: item.id,
+                      name: item.name,
+                      slug: item.slug,
+                      price: item.variants?.[0]?.price || 0,
+                      thumbnail_url: item.thumbnail_url,
+                      category_id: item.category_id,
+                      is_active: item.is_active,
+                      variants: item.variants as any,
+                    } as any)
+                  }
+                }}
+                onProductDeleted={() => {
+                  fetchProducts()
+                }}
+              />
             </div>
           )}
           {activeTab === 'financial' && (
@@ -750,6 +804,25 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
       </main>
+
+      {digitalStockTarget && (
+        <DigitalStockDialog
+          open={!!digitalStockTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDigitalStockTarget(null)
+              fetchProducts()
+            }
+          }}
+          productId={digitalStockTarget.productId}
+          productName={digitalStockTarget.productName}
+          variantId={digitalStockTarget.variantId}
+          onStockUpdated={(newStock) => {
+            setFormData(prev => ({ ...prev, stock: newStock.toString() }))
+            fetchProducts()
+          }}
+        />
+      )}
     </div>
   )
 }

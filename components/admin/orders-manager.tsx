@@ -173,6 +173,43 @@ export function OrdersManager() {
         }
     }
 
+    const handleConfirmPayment = async (order: Order) => {
+        setUpdatingStatus(true)
+        try {
+            const res = await fetch("/api/admin/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "confirm_payment_and_deliver",
+                    data: { orderId: order.id },
+                }),
+            })
+            const data = await res.json()
+            if (res.ok && data.success) {
+                toast.success(data.message || "Pagamento confirmado e estoque entregue!")
+                await fetchOrders()
+                if (selectedOrder?.id === order.id) {
+                    setSelectedOrder({
+                        ...selectedOrder,
+                        status: 'PAID',
+                        payment_status: 'completed',
+                        shipping_address: {
+                            ...(selectedOrder.shipping_address || {}),
+                            delivered_items: data.deliveredItems || selectedOrder.shipping_address?.delivered_items,
+                        }
+                    })
+                }
+            } else {
+                toast.error(data.error || "Erro ao confirmar pagamento")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Erro ao confirmar pagamento")
+        } finally {
+            setUpdatingStatus(false)
+        }
+    }
+
 
 
     const getStatusColor = (status: string) => {
@@ -294,6 +331,19 @@ export function OrdersManager() {
                                         </TableCell>
                                         <TableCell className="font-bold text-sm">{formatCurrency(order.total)}</TableCell>
                                         <TableCell className="text-right space-x-1">
+                                            {order.status === "PENDING_PAYMENT" && (
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() => handleConfirmPayment(order)}
+                                                    disabled={updatingStatus}
+                                                    className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                                                    title="Confirmar Pagamento e Entregar Estoque Automaticamente"
+                                                >
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    Confirmar Pagamento
+                                                </Button>
+                                            )}
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -468,13 +518,43 @@ export function OrdersManager() {
                                 </div>
                             )}
 
-                            {/* Pending Payment Warning */}
+                            {/* Pending Payment Warning & Quick Confirm */}
                             {selectedOrder.status === "PENDING_PAYMENT" && (
-                                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200 flex items-center gap-3">
-                                    <Clock className="h-5 w-5 text-yellow-600 shrink-0" />
-                                    <div>
-                                        <p className="font-medium text-yellow-800">Aguardando Pagamento</p>
-                                        <p className="text-sm text-yellow-600">O pagamento ainda não foi confirmado para este pedido.</p>
+                                <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <Clock className="h-5 w-5 text-emerald-600 shrink-0" />
+                                        <div>
+                                            <p className="font-bold text-emerald-900 text-sm">Aguardando Confirmação de Pagamento</p>
+                                            <p className="text-xs text-emerald-700">Ao clicar em confirmar, uma mensagem do estoque será sorteada aleatoriamente e enviada no chat do cliente, baixando o estoque automaticamente.</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        onClick={() => handleConfirmPayment(selectedOrder)}
+                                        disabled={updatingStatus}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 h-10 shrink-0 cursor-pointer shadow-sm"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Confirmar Pagamento & Entregar Estoque
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Delivered Digital Items */}
+                            {selectedOrder.shipping_address?.delivered_items && selectedOrder.shipping_address.delivered_items.length > 0 && (
+                                <div className="bg-blue-50/80 border border-blue-200 rounded-lg p-4 space-y-2.5">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                                        <Package className="w-4 h-4 text-blue-600" />
+                                        Itens Digitais Entregues Automaticamente
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {selectedOrder.shipping_address.delivered_items.map((deliv: any, idx: number) => (
+                                            <div key={idx} className="bg-white border border-blue-200 rounded p-3 text-xs">
+                                                <span className="font-semibold text-blue-800 block mb-1">📦 {deliv.itemName}:</span>
+                                                <pre className="font-mono bg-neutral-50 p-2 rounded border border-neutral-200 text-neutral-900 whitespace-pre-wrap select-all">
+                                                    {deliv.message}
+                                                </pre>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

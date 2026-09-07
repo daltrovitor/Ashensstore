@@ -5,8 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Loader2, Trash2, Plus, GripVertical } from "lucide-react"
+import { Loader2, Trash2, Plus, GripVertical, Pencil } from "lucide-react"
 import { fetchWithAuth } from "@/lib/utils/fetch"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 interface Category {
     id: string
@@ -21,10 +30,18 @@ export function CategoriesManager() {
     const [loading, setLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    // Form state
+    // Form state (criação)
     const [name, setName] = useState("")
     const [slug, setSlug] = useState("")
     const [description, setDescription] = useState("")
+
+    // Form state (edição)
+    const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+    const [editName, setEditName] = useState("")
+    const [editSlug, setEditSlug] = useState("")
+    const [editDescription, setEditDescription] = useState("")
+    const [editOrder, setEditOrder] = useState<number>(1)
+    const [isUpdating, setIsUpdating] = useState(false)
 
     useEffect(() => {
         fetchCategories()
@@ -115,6 +132,51 @@ export function CategoriesManager() {
         })
     }
 
+    const openEditCategory = (cat: Category) => {
+        setEditingCategory(cat)
+        setEditName(cat.name)
+        setEditSlug(cat.slug)
+        setEditDescription(cat.description || "")
+        setEditOrder(cat.display_order || 1)
+    }
+
+    const handleUpdateCategory = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingCategory) return
+        if (!editName.trim()) {
+            toast.error("Nome da categoria é obrigatório")
+            return
+        }
+
+        setIsUpdating(true)
+        try {
+            const res = await fetch(`/api/categories/${editingCategory.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editName.trim(),
+                    slug: editSlug.trim() || undefined,
+                    description: editDescription.trim() || null,
+                    display_order: Number(editOrder) || 1
+                })
+            })
+
+            if (res.ok) {
+                toast.success("Categoria atualizada com sucesso!")
+                setEditingCategory(null)
+                fetchCategories()
+            } else {
+                const data = await res.json()
+                toast.error(data.error || "Erro ao atualizar categoria")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Erro ao atualizar categoria")
+        } finally {
+            setIsUpdating(false)
+        }
+    }
+
     return (
         <div className="space-y-8">
             {/* Create Category Form */}
@@ -126,14 +188,7 @@ export function CategoriesManager() {
                             <label className="text-sm font-medium">Nome</label>
                             <Input
                                 value={name}
-                                onChange={(e) => {
-                                    setName(e.target.value)
-                                    // Auto-slug if slug is empty
-                                    if (!slug) {
-                                        // Keeping slug empty so backend generates it is safer, 
-                                        // or we can pre-fill it here visually if we want.
-                                    }
-                                }}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="Ex: Frutas Míticas"
                             />
                         </div>
@@ -180,13 +235,36 @@ export function CategoriesManager() {
                                         <GripVertical className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold">{category.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold">{category.name}</p>
+                                            <span className="text-[10px] bg-neutral-200 text-neutral-700 px-1.5 py-0.5 rounded">
+                                                Ordem: {category.display_order}
+                                            </span>
+                                        </div>
                                         <p className="text-xs text-muted-foreground">/{category.slug}</p>
+                                        {category.description && (
+                                            <p className="text-xs text-neutral-500 mt-0.5 line-clamp-1">{category.description}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id)}>
-                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => openEditCategory(category)}
+                                        title="Editar Categoria"
+                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteCategory(category.id)}
+                                        title="Excluir Categoria"
+                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -194,6 +272,83 @@ export function CategoriesManager() {
                     </div>
                 )}
             </div>
+
+            {/* Modal de Edição de Categoria */}
+            <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Categoria</DialogTitle>
+                        <DialogDescription>
+                            Altere os dados da categoria abaixo. As mudanças serão refletidas imediatamente no menu e filtros da loja.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleUpdateCategory} className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-cat-name" className="text-sm font-medium">Nome da Categoria</Label>
+                            <Input
+                                id="edit-cat-name"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                placeholder="Ex: Frutas Míticas"
+                                required
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-cat-slug" className="text-sm font-medium">Slug (URL)</Label>
+                                <Input
+                                    id="edit-cat-slug"
+                                    value={editSlug}
+                                    onChange={(e) => setEditSlug(e.target.value)}
+                                    placeholder="frutas-miticas"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-cat-order" className="text-sm font-medium">Ordem de Exibição</Label>
+                                <Input
+                                    id="edit-cat-order"
+                                    type="number"
+                                    min="0"
+                                    value={editOrder}
+                                    onChange={(e) => setEditOrder(parseInt(e.target.value, 10) || 0)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-cat-desc" className="text-sm font-medium">Descrição</Label>
+                            <Textarea
+                                id="edit-cat-desc"
+                                value={editDescription}
+                                onChange={(e) => setEditDescription(e.target.value)}
+                                placeholder="Descrição da categoria"
+                                rows={3}
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditingCategory(null)}
+                                disabled={isUpdating}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button type="submit" disabled={isUpdating} className="bg-primary text-white">
+                                {isUpdating ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...
+                                    </>
+                                ) : (
+                                    "Salvar Alterações"
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -33,6 +33,12 @@ export function CheckoutForm() {
         order_id: string
         total: number
     } | null>(null)
+    const [couponInput, setCouponInput] = useState("")
+    const [appliedCoupon, setAppliedCoupon] = useState<{
+        code: string
+        discount_percent: number
+    } | null>(null)
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
 
     const {
         register,
@@ -57,6 +63,31 @@ export function CheckoutForm() {
         }).format(p)
     }
 
+    const discountAmount = appliedCoupon ? Math.round((cart.total * (appliedCoupon.discount_percent / 100)) * 100) / 100 : 0
+    const finalTotal = Math.max(0, cart.total - discountAmount)
+
+    const handleApplyCoupon = async () => {
+        if (!couponInput.trim()) return
+        setIsValidatingCoupon(true)
+        try {
+            const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(couponInput.trim())}`)
+            const data = await res.json()
+            if (res.ok && data.valid) {
+                setAppliedCoupon({
+                    code: data.coupon_code,
+                    discount_percent: data.discount_percent || 10,
+                })
+                toast.success(`Cupom "${data.coupon_code}" aplicado com 10% de desconto!`)
+            } else {
+                toast.error(data.error || "Cupom inválido")
+            }
+        } catch {
+            toast.error("Erro ao validar cupom")
+        } finally {
+            setIsValidatingCoupon(false)
+        }
+    }
+
     const onSubmit = async (data: CheckoutFormData) => {
         if (!cart.items || cart.items.length === 0) {
             toast.error("Seu carrinho está vazio")
@@ -68,6 +99,7 @@ export function CheckoutForm() {
         try {
             const payload = {
                 payment_method: 'pix' as const,
+                coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
                 items: cart.items.map(item => ({
                     variant_id: item.variant_id,
                     name: item.name,
@@ -262,11 +294,64 @@ export function CheckoutForm() {
                     ))}
                 </div>
 
-                <div className="pt-2 flex justify-between items-baseline border-t border-neutral-200">
-                    <span className="text-sm font-medium text-neutral-900">Total a pagar via PIX:</span>
-                    <span className="text-xl font-semibold text-neutral-900">
-                        {formatPrice(cart.total)}
-                    </span>
+                {/* Campo de Cupom de Desconto */}
+                <div className="pt-2 border-t border-neutral-100 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <Input
+                            placeholder="Possui cupom de desconto?"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                            disabled={!!appliedCoupon || isValidatingCoupon}
+                            className="text-xs h-9 bg-neutral-50 border-neutral-300 font-mono uppercase"
+                        />
+                        {appliedCoupon ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAppliedCoupon(null)
+                                    setCouponInput("")
+                                }}
+                                className="text-xs text-red-500 hover:underline px-2 cursor-pointer shrink-0 font-medium"
+                            >
+                                Remover
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleApplyCoupon}
+                                disabled={!couponInput.trim() || isValidatingCoupon}
+                                className="h-9 px-3 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50 text-white text-xs font-semibold rounded-sm cursor-pointer shrink-0"
+                            >
+                                {isValidatingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Aplicar"}
+                            </button>
+                        )}
+                    </div>
+                    {appliedCoupon && (
+                        <p className="text-[11px] text-emerald-600 font-medium">
+                            ✓ Cupom <strong>{appliedCoupon.code}</strong> aplicado (-{appliedCoupon.discount_percent}%)
+                        </p>
+                    )}
+                </div>
+
+                <div className="pt-2 border-t border-neutral-200 space-y-1.5">
+                    {appliedCoupon && (
+                        <>
+                            <div className="flex justify-between items-center text-xs text-neutral-600">
+                                <span>Subtotal:</span>
+                                <span>{formatPrice(cart.total)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-medium text-emerald-600">
+                                <span>Desconto ({appliedCoupon.code} -10%):</span>
+                                <span>-{formatPrice(discountAmount)}</span>
+                            </div>
+                        </>
+                    )}
+                    <div className="flex justify-between items-baseline pt-1">
+                        <span className="text-sm font-medium text-neutral-900">Total a pagar via PIX:</span>
+                        <span className="text-xl font-semibold text-neutral-900">
+                            {formatPrice(finalTotal)}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Botão de Finalizar */}

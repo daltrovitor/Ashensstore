@@ -14,39 +14,40 @@ export async function GET(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id") ?? null
 
     if (id) {
-      const { data, error } = await supabase
+      const { data: catData } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle()
+
+      if (catData) {
+        return NextResponse.json(catData)
+      }
+
+      const { data: storeData } = await supabase
         .from("store_categories")
         .select("*")
         .eq("id", id)
         .maybeSingle()
 
-      if (!data) {
-        // Tenta buscar na tabela categories
-        const { data: catData } = await supabase
-          .from("categories")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle()
-        return NextResponse.json(catData ?? null)
-      }
-      return NextResponse.json(data ?? null)
+      return NextResponse.json(storeData ?? null)
     }
 
-    // Busca todas as categorias da tabela store_categories
+    // Busca todas as categorias da tabela categories (onde ficam os dados oficiais)
     let { data, error } = await supabase
-      .from("store_categories")
+      .from("categories")
       .select("*")
       .order("display_order", { ascending: true })
 
-    // Se estiver vazia ou com erro, tenta na tabela categories
+    // Se estiver vazia ou der erro, tenta em store_categories
     if (!data || data.length === 0) {
-      const { data: catData } = await supabase
-        .from("categories")
+      const { data: storeData } = await supabase
+        .from("store_categories")
         .select("*")
         .order("display_order", { ascending: true })
 
-      if (catData && catData.length > 0) {
-        data = catData
+      if (storeData && storeData.length > 0) {
+        data = storeData
       }
     }
 
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
       slug,
       description: body.description ?? null,
       display_order: parseInt(String(body.display_order || 0)) || 0,
+      is_active: body.is_active !== undefined ? Boolean(body.is_active) : true
     }
 
     const service = getSupabaseService()
@@ -87,14 +89,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
     }
 
+    // Inserir na tabela categories (tabela principal do banco)
     const { data, error } = await service
-      .from("store_categories")
+      .from("categories")
       .insert([insertObj])
       .select()
 
     if (error) {
+      console.error("Error inserting into categories:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Também espelhar em store_categories para compatibilidade
+    try {
+      await service.from("store_categories").insert([insertObj])
+    } catch (_) {}
 
     return NextResponse.json(data[0], { status: 201 })
   } catch (error: any) {

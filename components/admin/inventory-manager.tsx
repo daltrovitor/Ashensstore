@@ -12,7 +12,9 @@ import {
     Package,
     Save,
     AlertCircle,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Pencil,
+    Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,11 +36,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
 import { fetchWithAuth } from "@/lib/utils/fetch"
+import { DigitalStockDialog } from "@/components/admin/digital-stock-dialog"
 
-interface VariantItem {
+export interface VariantItem {
     id: string
     product_id: string
     name: string
@@ -51,7 +64,7 @@ interface VariantItem {
     color: string | null
 }
 
-interface ProductItem {
+export interface ProductItem {
     id: string
     name: string
     slug: string
@@ -72,13 +85,25 @@ interface InventorySummary {
     estimated_cost_value: number
 }
 
-export function InventoryManager() {
+interface InventoryManagerProps {
+    onEditProduct?: (product: ProductItem) => void
+    onProductDeleted?: () => void
+}
+
+export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryManagerProps = {}) {
     const [products, setProducts] = useState<ProductItem[]>([])
     const [summary, setSummary] = useState<InventorySummary | null>(null)
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [statusFilter, setStatusFilter] = useState("all") // all, in_stock, out_of_stock
     const [savingId, setSavingId] = useState<string | null>(null)
+    const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [digitalStockTarget, setDigitalStockTarget] = useState<{
+        productId: string
+        productName: string
+        variantId?: string
+    } | null>(null)
 
     // Local edits for cost / retail price / stock quantity before saving
     const [priceEdits, setPriceEdits] = useState<Record<string, { retail_price?: string; cost_price?: string; stock?: string }>>({})
@@ -190,6 +215,31 @@ export function InventoryManager() {
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setSavingId(null)
+        }
+    }
+
+    const handleDeleteProduct = async () => {
+        if (!productToDelete) return
+        setIsDeleting(true)
+        try {
+            const res = await fetchWithAuth(`/api/admin/products/${productToDelete.id}`, {
+                method: 'DELETE'
+            })
+            if (res.ok) {
+                toast.success(`Produto "${productToDelete.name}" excluído com sucesso!`)
+                setProducts(prev => prev.filter(p => p.id !== productToDelete.id))
+                setProductToDelete(null)
+                onProductDeleted?.()
+                fetchInventory()
+            } else {
+                const data = await res.json()
+                toast.error(data.error || "Erro ao excluir produto")
+            }
+        } catch (e) {
+            console.error("Delete product error:", e)
+            toast.error("Erro ao conectar com o servidor para excluir produto")
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -325,196 +375,284 @@ export function InventoryManager() {
 
             {/* Tabela de Estoque */}
             <Card>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-16">Foto</TableHead>
-                            <TableHead>Produto / Variação</TableHead>
-                            <TableHead>Categoria</TableHead>
-                            <TableHead>Qtd. Estoque</TableHead>
-                            <TableHead>Preço Venda (R$)</TableHead>
-                            <TableHead>Preço Custo (R$)</TableHead>
-                            <TableHead>Margem (%)</TableHead>
-                            <TableHead>Status Estoque</TableHead>
-                            <TableHead className="text-right">Ação</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={9} className="text-center py-12">
-                                    <Spinner />
-                                </TableCell>
-                            </TableRow>
-                        ) : filteredProducts.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
-                                    Nenhum produto encontrado com os filtros aplicados.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredProducts.flatMap((product) =>
-                                (product.variants || []).map((variant, vIdx) => {
-                                    const retailVal =
-                                        priceEdits[variant.id]?.retail_price !== undefined
-                                            ? (priceEdits[variant.id]?.retail_price ?? "")
-                                            : (variant.retail_price || variant.price || 0).toString()
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto w-full">
+                        <Table className="min-w-[980px]">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-16">Foto</TableHead>
+                                    <TableHead className="min-w-[200px]">Produto / Variação</TableHead>
+                                    <TableHead className="min-w-[130px]">Categoria</TableHead>
+                                    <TableHead className="w-28">Qtd. Estoque</TableHead>
+                                    <TableHead className="w-28">Preço Venda (R$)</TableHead>
+                                    <TableHead className="w-24">Preço Custo (R$)</TableHead>
+                                    <TableHead className="w-20">Margem (%)</TableHead>
+                                    <TableHead className="min-w-[170px]">Status Estoque</TableHead>
+                                    <TableHead className="text-right min-w-[130px]">Ações</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-12">
+                                            <Spinner />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredProducts.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                                            Nenhum produto encontrado com os filtros aplicados.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredProducts.flatMap((product) =>
+                                        (product.variants || []).map((variant, vIdx) => {
+                                            const retailVal =
+                                                priceEdits[variant.id]?.retail_price !== undefined
+                                                    ? (priceEdits[variant.id]?.retail_price ?? "")
+                                                    : (variant.retail_price || variant.price || 0).toString()
 
-                                    const costVal =
-                                        priceEdits[variant.id]?.cost_price !== undefined
-                                            ? (priceEdits[variant.id]?.cost_price ?? "")
-                                            : (variant.cost_price || 0).toString()
+                                            const costVal =
+                                                priceEdits[variant.id]?.cost_price !== undefined
+                                                    ? (priceEdits[variant.id]?.cost_price ?? "")
+                                                    : (variant.cost_price || 0).toString()
 
-                                    const stockVal =
-                                        priceEdits[variant.id]?.stock !== undefined
-                                            ? (priceEdits[variant.id]?.stock ?? "")
-                                            : (variant.stock !== undefined ? variant.stock : (variant.in_stock ? 10 : 0)).toString()
+                                            const stockVal =
+                                                priceEdits[variant.id]?.stock !== undefined
+                                                    ? (priceEdits[variant.id]?.stock ?? "")
+                                                    : (variant.stock !== undefined ? variant.stock : (variant.in_stock ? 10 : 0)).toString()
 
-                                    const currentRetail = parseFloat((retailVal || "0").replace(/\./g, "").replace(",", ".")) || 0
-                                    const currentCost = parseFloat((costVal || "0").replace(/\./g, "").replace(",", ".")) || 0
-                                    const numStock = parseInt(stockVal || "0", 10) || 0
-                                    const margin =
-                                        currentRetail > 0
-                                            ? Math.round(((currentRetail - currentCost) / currentRetail) * 100)
-                                            : 0
+                                            const currentRetail = parseFloat((retailVal || "0").replace(/\./g, "").replace(",", ".")) || 0
+                                            const currentCost = parseFloat((costVal || "0").replace(/\./g, "").replace(",", ".")) || 0
+                                            const numStock = parseInt(stockVal || "0", 10) || 0
+                                            const margin =
+                                                currentRetail > 0
+                                                    ? Math.round(((currentRetail - currentCost) / currentRetail) * 100)
+                                                    : 0
 
-                                    const hasPendingEdit = !!priceEdits[variant.id]
+                                            const hasPendingEdit = !!priceEdits[variant.id]
 
-                                    return (
-                                        <TableRow key={variant.id} className={!variant.in_stock || numStock === 0 ? "bg-muted/10" : ""}>
-                                            <TableCell>
-                                                <div className="w-10 h-10 rounded-md overflow-hidden bg-muted border flex items-center justify-center">
-                                                    {product.thumbnail_url ? (
-                                                        <img
-                                                            src={product.thumbnail_url}
-                                                            alt={product.name}
-                                                            className="w-full h-full object-cover"
+                                            return (
+                                                <TableRow key={variant.id} className={!variant.in_stock || numStock === 0 ? "bg-muted/10" : ""}>
+                                                    <TableCell>
+                                                        <div className="w-10 h-10 rounded-md overflow-hidden bg-muted border flex items-center justify-center">
+                                                            {product.thumbnail_url ? (
+                                                                <img
+                                                                    src={product.thumbnail_url}
+                                                                    alt={product.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <span className="font-semibold text-sm">{product.name}</span>
+                                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+                                                                    {variant.name || "Padrão"}
+                                                                </Badge>
+                                                                {variant.size && <span>Tam: {variant.size}</span>}
+                                                                {variant.color && <span>Cor: {variant.color}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {product.category_name}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                className={`w-20 h-8 text-xs font-mono font-bold text-center ${
+                                                                    numStock === 0 ? "border-red-400 bg-red-50 text-red-700" : ""
+                                                                }`}
+                                                                value={stockVal}
+                                                                onChange={(e) => {
+                                                                    setPriceEdits((prev) => ({
+                                                                        ...prev,
+                                                                        [variant.id]: {
+                                                                            ...prev[variant.id],
+                                                                            stock: e.target.value,
+                                                                        },
+                                                                    }))
+                                                                }}
+                                                            />
+                                                            <span className="text-[10px] text-muted-foreground">un</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            className="w-24 h-8 text-xs font-mono"
+                                                            value={retailVal}
+                                                            onChange={(e) => {
+                                                                setPriceEdits((prev) => ({
+                                                                    ...prev,
+                                                                    [variant.id]: {
+                                                                        ...prev[variant.id],
+                                                                        retail_price: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }}
                                                         />
-                                                    ) : (
-                                                        <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div>
-                                                    <span className="font-semibold text-sm">{product.name}</span>
-                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5">
-                                                            {variant.name || "Padrão"}
-                                                        </Badge>
-                                                        {variant.size && <span>Tam: {variant.size}</span>}
-                                                        {variant.color && <span>Cor: {variant.color}</span>}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {product.category_name}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-1.5">
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        className={`w-20 h-8 text-xs font-mono font-bold text-center ${
-                                                            numStock === 0 ? "border-red-400 bg-red-50 text-red-700" : ""
-                                                        }`}
-                                                        value={stockVal}
-                                                        onChange={(e) => {
-                                                            setPriceEdits((prev) => ({
-                                                                ...prev,
-                                                                [variant.id]: {
-                                                                    ...prev[variant.id],
-                                                                    stock: e.target.value,
-                                                                },
-                                                            }))
-                                                        }}
-                                                    />
-                                                    <span className="text-[10px] text-muted-foreground">un</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    className="w-24 h-8 text-xs font-mono"
-                                                    value={retailVal}
-                                                    onChange={(e) => {
-                                                        setPriceEdits((prev) => ({
-                                                            ...prev,
-                                                            [variant.id]: {
-                                                                ...prev[variant.id],
-                                                                retail_price: e.target.value,
-                                                            },
-                                                        }))
-                                                    }}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    className="w-24 h-8 text-xs font-mono"
-                                                    value={costVal}
-                                                    placeholder="0,00"
-                                                    onChange={(e) => {
-                                                        setPriceEdits((prev) => ({
-                                                            ...prev,
-                                                            [variant.id]: {
-                                                                ...prev[variant.id],
-                                                                cost_price: e.target.value,
-                                                            },
-                                                        }))
-                                                    }}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <span
-                                                    className={`text-xs font-bold px-2 py-0.5 rounded ${
-                                                        margin > 40
-                                                            ? "bg-green-100 text-green-800"
-                                                            : margin > 20
-                                                            ? "bg-yellow-100 text-yellow-800"
-                                                            : "bg-gray-100 text-gray-700"
-                                                    }`}
-                                                >
-                                                    {margin}%
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Switch
-                                                        checked={variant.in_stock && numStock > 0}
-                                                        onCheckedChange={() => handleToggleStock(variant)}
-                                                        disabled={savingId === variant.id}
-                                                    />
-                                                    <span
-                                                        className={`text-xs font-semibold ${
-                                                            variant.in_stock && numStock > 0 ? "text-emerald-700" : "text-red-600"
-                                                        }`}
-                                                    >
-                                                        {variant.in_stock && numStock > 0 ? `Em Estoque (${numStock})` : "Esgotado"}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {hasPendingEdit && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="default"
-                                                        className="h-8 gap-1 text-xs font-bold"
-                                                        onClick={() => handleSavePrices(variant)}
-                                                        disabled={savingId === variant.id}
-                                                    >
-                                                        <Save className="h-3 w-3" /> Salvar
-                                                    </Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            className="w-24 h-8 text-xs font-mono"
+                                                            value={costVal}
+                                                            placeholder="0,00"
+                                                            onChange={(e) => {
+                                                                setPriceEdits((prev) => ({
+                                                                    ...prev,
+                                                                    [variant.id]: {
+                                                                        ...prev[variant.id],
+                                                                        cost_price: e.target.value,
+                                                                    },
+                                                                }))
+                                                            }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span
+                                                            className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                                                margin > 40
+                                                                    ? "bg-green-100 text-green-800"
+                                                                    : margin > 20
+                                                                    ? "bg-yellow-100 text-yellow-800"
+                                                                    : "bg-gray-100 text-gray-700"
+                                                                }`}
+                                                        >
+                                                            {margin}%
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Switch
+                                                                checked={variant.in_stock && numStock > 0}
+                                                                onCheckedChange={() => handleToggleStock(variant)}
+                                                                disabled={savingId === variant.id}
+                                                            />
+                                                            <span
+                                                                className={`text-xs font-semibold ${
+                                                                    variant.in_stock && numStock > 0 ? "text-emerald-700" : "text-red-600"
+                                                                }`}
+                                                            >
+                                                                {variant.in_stock && numStock > 0 ? `Em Estoque (${numStock})` : "Esgotado"}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-8 px-2 gap-1 text-xs border-[#48B9FA]/40 text-[#0284c7] hover:bg-[#48B9FA]/10 font-medium cursor-pointer"
+                                                                onClick={() => setDigitalStockTarget({
+                                                                    productId: product.id,
+                                                                    productName: product.name,
+                                                                    variantId: variant.id,
+                                                                })}
+                                                                title="Gerenciar mensagens de estoque para entrega automática"
+                                                            >
+                                                                <Boxes className="h-3.5 w-3.5 text-[#48B9FA]" />
+                                                                <span>Mensagens</span>
+                                                            </Button>
+
+                                                            {hasPendingEdit && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    className="h-8 px-2.5 gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                    onClick={() => handleSavePrices(variant)}
+                                                                    disabled={savingId === variant.id}
+                                                                    title="Salvar alterações de preço/estoque"
+                                                                >
+                                                                    <Save className="h-3.5 w-3.5" /> Salvar
+                                                                </Button>
+                                                            )}
+
+                                                            {onEditProduct && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                    onClick={() => onEditProduct(product)}
+                                                                    title="Editar produto completo (fotos, nome, categoria)"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                onClick={() => setProductToDelete(product)}
+                                                                title="Excluir este produto"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })
                                     )
-                                })
-                            )
-                        )}
-                    </TableBody>
-                </Table>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
             </Card>
+
+            {/* Diálogo de Confirmação de Exclusão de Produto */}
+            <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o produto <strong>"{productToDelete?.name}"</strong>? 
+                            Esta ação removerá permanentemente o produto, suas variações e fotos associadas.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault()
+                                handleDeleteProduct()
+                            }}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {digitalStockTarget && (
+                <DigitalStockDialog
+                    open={!!digitalStockTarget}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDigitalStockTarget(null)
+                            fetchInventory()
+                        }
+                    }}
+                    productId={digitalStockTarget.productId}
+                    productName={digitalStockTarget.productName}
+                    variantId={digitalStockTarget.variantId}
+                    onStockUpdated={() => {
+                        fetchInventory()
+                    }}
+                />
+            )}
         </div>
     )
 }

@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/auth/admin-middleware'
 import { getSupabaseService } from '@/lib/supabase/server'
+import { deliverRandomStockItems } from '@/lib/stock/digital-stock-service'
 import { z } from 'zod'
 
 // Schema para filtros
@@ -127,6 +128,103 @@ export async function GET(request: Request) {
     }
 }
 
+async function processOrderDigitalDelivery(supabase: any, orderId: string) {
+    try {
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select(`
+                id, external_id, customer_name, shipping_address,
+                items:order_items(id, name, quantity, product_variant_id)
+            `)
+            .eq('id', orderId)
+            .maybeSingle()
+
+        if (error || !order) return { deliveredCount: 0, deliveredItems: [] }
+
+        const shippingAddress = (typeof order.shipping_address === 'object' && order.shipping_address) ? { ...order.shipping_address } : {}
+        const alreadyDelivered = shippingAddress.delivered_items && Array.isArray(shippingAddress.delivered_items) && shippingAddress.delivered_items.length > 0
+
+        if (alreadyDelivered) {
+            return { deliveredCount: shippingAddress.delivered_items.length, deliveredItems: shippingAddress.delivered_items, alreadyDelivered: true }
+        }
+
+        const deliveredSummary: Array<{ itemName: string; message: string }> = []
+
+        for (const item of (order.items || [])) {
+            let productId: string | undefined
+            const variantId: string | undefined = item.product_variant_id
+
+            if (variantId) {
+                const { data: variant } = await supabase
+                    .from('product_variants')
+                    .select('product_id')
+                    .eq('id', variantId)
+                    .maybeSingle()
+                if (variant?.product_id) {
+                    productId = variant.product_id
+                }
+            }
+
+            const deliveryResult = await deliverRandomStockItems({
+                productId,
+                variantId,
+                quantity: item.quantity || 1,
+                orderId: order.id,
+                orderExternalId: order.external_id,
+            })
+
+            if (deliveryResult.deliveredMessages && deliveryResult.deliveredMessages.length > 0) {
+                deliveryResult.deliveredMessages.forEach((msg: string) => {
+                    deliveredSummary.push({ itemName: item.name, message: msg })
+                })
+            }
+        }
+
+        const currentChat = shippingAddress.chat_messages || []
+        const nowIso = new Date().toISOString()
+
+        if (deliveredSummary.length > 0) {
+            const lines = deliveredSummary.map((d, i) => `🔹 Item ${i + 1} (${d.itemName}):\n${d.message}`).join('\n\n')
+            const systemMessage = {
+                id: 'msg-deliv-' + Date.now(),
+                sender: 'system',
+                sender_name: 'Ashens Store Suporte',
+                message: `🎉 PAGAMENTO CONFIRMADO! SEU PRODUTO FOI ENTREGUE AUTOMATICAMENTE:\n\n${lines}\n\nObrigado pela compra na Ashens Store! Qualquer dúvida, nossa equipe está à disposição aqui no chat.`,
+                timestamp: nowIso,
+            }
+
+            shippingAddress.chat_messages = [...currentChat, systemMessage]
+            shippingAddress.delivered_items = deliveredSummary
+            shippingAddress.payment_confirmed_at = nowIso
+        } else {
+            const systemMessage = {
+                id: 'msg-deliv-' + Date.now(),
+                sender: 'system',
+                sender_name: 'Ashens Store Suporte',
+                message: `🎉 Pagamento Confirmado! Seu pedido foi aprovado com sucesso. Nossa equipe já foi notificada e fará a entrega dos seus itens aqui no chat em instantes.`,
+                timestamp: nowIso,
+            }
+            shippingAddress.chat_messages = [...currentChat, systemMessage]
+            shippingAddress.payment_confirmed_at = nowIso
+        }
+
+        await supabase
+            .from('orders')
+            .update({
+                shipping_address: shippingAddress,
+                status: 'PAID',
+                payment_status: 'completed',
+                updated_at: nowIso,
+            })
+            .eq('id', order.id)
+
+        return { deliveredCount: deliveredSummary.length, deliveredItems: deliveredSummary }
+    } catch (err) {
+        console.error('[Admin Orders] Erro ao processar entrega digital:', err)
+        return { deliveredCount: 0, deliveredItems: [] }
+    }
+}
+
 /**
  * POST - Atualiza status de pedidos ou outras ações
  */
@@ -145,6 +243,24 @@ export async function POST(request: Request) {
         const { action, data } = body
 
         switch (action) {
+            case 'confirm_payment_and_deliver': {
+                const { orderId } = data
+                if (!orderId) {
+                    return NextResponse.json({ error: 'orderId é obrigatório' }, { status: 400 })
+                }
+
+                const result = await processOrderDigitalDelivery(supabase, orderId)
+
+                return NextResponse.json({
+                    success: true,
+                    message: result.deliveredCount > 0
+                        ? `Pagamento confirmado! ${result.deliveredCount} item(ns) sorteado(s) e entregue(s) automaticamente no chat do cliente.`
+                        : `Pagamento confirmado com sucesso!`,
+                    deliveredCount: result.deliveredCount,
+                    deliveredItems: result.deliveredItems,
+                })
+            }
+
             case 'update_status': {
                 const { orderIds, status } = data
                 if (!Array.isArray(orderIds) || !status) {
@@ -154,20 +270,24 @@ export async function POST(request: Request) {
                     )
                 }
 
-                const updateData: Record<string, any> = {
-                    status,
-                    updated_at: new Date().toISOString(),
-                }
+                // Se o status for PAID ou CONFIRMED, realiza a entrega automática do estoque digital
                 if (status === 'PAID' || status === 'CONFIRMED') {
-                    updateData.payment_status = 'completed'
+                    for (const id of orderIds) {
+                        await processOrderDigitalDelivery(supabase, id)
+                    }
+                } else {
+                    const updateData: Record<string, any> = {
+                        status,
+                        updated_at: new Date().toISOString(),
+                    }
+
+                    const { error } = await supabase
+                        .from('orders')
+                        .update(updateData)
+                        .in('id', orderIds)
+
+                    if (error) throw error
                 }
-
-                const { error } = await supabase
-                    .from('orders')
-                    .update(updateData)
-                    .in('id', orderIds)
-
-                if (error) throw error
 
                 return NextResponse.json({
                     success: true,

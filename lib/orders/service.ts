@@ -18,6 +18,11 @@ export interface OrderRecipient {
     email?: string
     roblox_username?: string
     delivery_notes?: string
+    coupon_code?: string
+    discount_amount?: number
+    affiliate_id?: string
+    affiliate_commission?: number
+    delivered_items?: any[]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chat_messages?: any[]
 }
@@ -38,6 +43,8 @@ export async function createOrder(params: {
     }>
     isTest?: boolean
     shippingCost?: number
+    discountAmount?: number
+    couponCode?: string
     paymentMethod?: string
     orderType?: string
 }): Promise<{ orderId: string; total: number }> {
@@ -92,10 +99,13 @@ export async function createOrder(params: {
     // Calcula frete (usa valor passado ou 0)
     const shippingCost = params.shippingCost !== undefined ? params.shippingCost : 0
 
+    // Calcula desconto (ex: cupom de afiliado)
+    const discountAmount = params.discountAmount !== undefined ? Math.max(0, Number(params.discountAmount)) : 0
+
     // Calcula taxas
     const tax = 0
 
-    const total = subtotal + shippingCost + tax
+    const total = Math.max(0, Math.round((subtotal - discountAmount + shippingCost + tax) * 100) / 100)
 
     // Gera ID externo único
     // Use Date.now() + distinct suffix
@@ -116,6 +126,8 @@ export async function createOrder(params: {
             shipping_address: {
                 ...params.shippingAddress,
                 order_type: params.orderType || 'ecommerce',
+                coupon_code: params.couponCode || undefined,
+                discount_amount: discountAmount > 0 ? discountAmount : undefined,
             },
             subtotal,
             shipping_cost: shippingCost,

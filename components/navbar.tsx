@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package } from "lucide-react"
+import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift } from "lucide-react"
 import { CartIcon, CartDrawer } from "@/components/ecommerce/Cart"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
@@ -51,6 +51,7 @@ function NavbarContent() {
   const navLinks = [
     { name: "Início", href: "/" },
     { name: "Catálogo", href: "/loja" },
+    { name: "Afiliados", href: "/afiliados" },
     ...dbCategories.map((cat) => ({
       name: cat.name,
       href: `/loja?categoryId=${cat.slug || cat.id}`,
@@ -190,6 +191,12 @@ function NavbarContent() {
                           Acompanhar Pedido
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/afiliados" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
+                          <Gift className="w-4 h-4 text-[#48B9FA]" />
+                          Área do Afiliado (10% OFF)
+                        </Link>
+                      </DropdownMenuItem>
                       {(user.role === 'admin' || user.role === 'manager') && (
                         <DropdownMenuItem asChild>
                           <Link href="/admin" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 text-black font-semibold hover:bg-neutral-50">
@@ -214,6 +221,12 @@ function NavbarContent() {
                         <Link href="/pedidos" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
                           <Package className="w-4 h-4 text-neutral-500" />
                           Acompanhar Pedido
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/afiliados" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
+                          <Gift className="w-4 h-4 text-[#48B9FA]" />
+                          Seja um Afiliado (10%)
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-neutral-100" />
@@ -303,6 +316,14 @@ function NavbarContent() {
                     >
                       <Package className="w-4 h-4 text-neutral-500" />
                       Acompanhar Pedido
+                    </Link>
+                    <Link
+                      href="/afiliados"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 text-sm text-neutral-800 p-2 rounded-sm hover:bg-neutral-50"
+                    >
+                      <Gift className="w-4 h-4 text-[#48B9FA]" />
+                      Área do Afiliado
                     </Link>
                     {(user.role === 'admin' || user.role === 'manager') && (
                       <Link

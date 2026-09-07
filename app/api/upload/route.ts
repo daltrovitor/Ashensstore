@@ -1,25 +1,22 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/server'
+import { getSupabaseService } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseServer()
-    
-    // Verifica se o usuário está autenticado
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    const supabase = getSupabaseService()
+    if (!supabase) {
       return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
+        { error: 'Serviço do banco de dados não configurado' },
+        { status: 500 }
       )
     }
 
     // Pega o arquivo do form data
     const formData = await request.formData()
     const file = formData.get('file') as File
-    
+
     if (!file) {
       return NextResponse.json(
         { error: 'Nenhum arquivo enviado' },
@@ -28,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     // Valida o tipo de arquivo
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
         { error: 'Tipo de arquivo não permitido. Use: JPEG, PNG, WebP ou GIF' },
@@ -36,39 +33,43 @@ export async function POST(request: Request) {
       )
     }
 
-    // Valida o tamanho (max 5MB)
-    const maxSize = 5 * 1024 * 1024 // 5MB
+    // Valida o tamanho (max 10MB)
+    const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Arquivo muito grande. Máximo permitido: 5MB' },
+        { error: 'Arquivo muito grande. Máximo permitido: 10MB' },
         { status: 400 }
       )
     }
 
-    // Gera nome único
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-    const filePath = `uploads/${user.id}/${fileName}`
+    // Gera nome único limpo
+    const fileExt = file.name.split('.').pop() || 'png'
+    const cleanOriginal = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const fileName = `${Date.now()}-${cleanOriginal}`
+    const filePath = `uploads/${fileName}`
 
-    // Faz upload para o Supabase Storage
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Faz upload para o Supabase Storage no bucket 'products'
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('uploads')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
+      .from('products')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true
       })
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
       return NextResponse.json(
-        { error: 'Erro ao fazer upload do arquivo' },
+        { error: `Erro ao fazer upload: ${uploadError.message}` },
         { status: 500 }
       )
     }
 
     // Pega a URL pública
     const { data: { publicUrl } } = supabase.storage
-      .from('uploads')
+      .from('products')
       .getPublicUrl(filePath)
 
     return NextResponse.json({
@@ -79,10 +80,10 @@ export async function POST(request: Request) {
       type: file.type
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload API error:', error)
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: error?.message || 'Erro interno do servidor' },
       { status: 500 }
     )
   }
@@ -91,14 +92,11 @@ export async function POST(request: Request) {
 // Para deletar arquivos
 export async function DELETE(request: Request) {
   try {
-    const supabase = await getSupabaseServer()
-    
-    // Verifica autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    const supabase = getSupabaseService()
+    if (!supabase) {
       return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
+        { error: 'Serviço do banco de dados não configurado' },
+        { status: 500 }
       )
     }
 
@@ -112,17 +110,9 @@ export async function DELETE(request: Request) {
       )
     }
 
-    // Verifica se o arquivo pertence ao usuário
-    if (!filePath.includes(`uploads/${user.id}/`)) {
-      return NextResponse.json(
-        { error: 'Permissão negada' },
-        { status: 403 }
-      )
-    }
-
-    // Deleta o arquivo
+    // Deleta o arquivo do bucket products
     const { error } = await supabase.storage
-      .from('uploads')
+      .from('products')
       .remove([filePath])
 
     if (error) {
@@ -138,10 +128,10 @@ export async function DELETE(request: Request) {
       message: 'Arquivo deletado com sucesso'
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete API error:', error)
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: error?.message || 'Erro interno do servidor' },
       { status: 500 }
     )
   }

@@ -5,9 +5,8 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Upload, X, Check } from "lucide-react"
+import { Upload, X, Check, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { getSupabaseClient } from "@/lib/supabase/client"
 
 interface ImageUploadProps {
     value: string
@@ -19,52 +18,30 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isUploading, setIsUploading] = useState(false)
 
-    let supabase: any = null
-    try {
-        supabase = getSupabaseClient()
-    } catch (e) {
-        console.error("Supabase client init error:", e)
-    }
-
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
 
-        console.log("Starting upload for file:", file.name, file.type, file.size)
         setIsUploading(true)
         try {
-            if (!supabase) {
-                toast.error("Supabase não configurado corretamente.")
-                throw new Error("Supabase client is null")
-            }
-            const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`
-            const filePath = `products/${fileName}`
+            const formData = new FormData()
+            formData.append('file', file)
 
-            // Upload to Supabase Storage - 'products' bucket (must be public)
-            const { data, error } = await supabase.storage
-                .from('products')
-                .upload(filePath, file, {
-                    contentType: file.type,
-                    upsert: false
-                })
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
 
-            if (error) {
-                console.error("Upload error detail:", error)
-                throw error
+            const data = await res.json()
+            if (!res.ok || !data.url) {
+                throw new Error(data.error || 'Erro ao enviar imagem')
             }
 
-            // Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('products')
-                .getPublicUrl(filePath)
-
-            console.log("Upload successful, public URL:", publicUrl)
-            onChange(publicUrl)
+            onChange(data.url)
             toast.success("Imagem enviada com sucesso!")
-
         } catch (error: any) {
-            console.error("Caught upload error:", error)
-            toast.error(`Erro: ${error.message || "Erro ao enviar imagem"}. Verifique o bucket 'products'.`)
+            console.error("Upload error:", error)
+            toast.error(`Erro: ${error.message || "Erro ao enviar imagem"}`)
         } finally {
             setIsUploading(false)
             if (fileInputRef.current) fileInputRef.current.value = ""
@@ -117,7 +94,11 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                         />
                         <div className="flex flex-col items-center justify-center p-4 text-center space-y-2 pointer-events-none">
                             <div className="p-2 rounded-full bg-muted">
-                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                {isUploading ? (
+                                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                                ) : (
+                                    <Upload className="w-5 h-5 text-muted-foreground" />
+                                )}
                             </div>
                             <div className="text-xs text-muted-foreground">
                                 {isUploading ? "Enviando..." : "Clique ou arraste"}
