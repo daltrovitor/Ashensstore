@@ -66,10 +66,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
     return (
         <div className="group flex flex-col bg-white border border-neutral-200/90 rounded-md overflow-hidden hover:border-[#48B9FA]/60 hover:shadow-md transition-all duration-200">
-            {/* Imagem do Produto */}
+            {/* Imagem do Produto - Preenche a moldura inteira sem espaçamento */}
             <Link
                 href={`/produto/${product.slug}`}
-                className="block relative aspect-square bg-gradient-to-b from-neutral-50 to-neutral-100/50 p-3 sm:p-5 flex items-center justify-center overflow-hidden"
+                className="block relative aspect-square w-full bg-neutral-100 overflow-hidden"
             >
                 {/* Badges Flutuantes */}
                 {discountPercent > 0 && (
@@ -80,16 +80,14 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                     </div>
                 )}
 
-                <div className="relative w-full h-full flex items-center justify-center">
-                    <Image
-                        src={imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className="object-contain p-2 sm:p-3 transition-transform duration-300 group-hover:scale-105"
-                        priority={priority}
-                    />
-                </div>
+                <Image
+                    src={imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                    priority={priority}
+                />
             </Link>
 
             {/* Informações do Produto */}
