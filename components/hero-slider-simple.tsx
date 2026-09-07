@@ -84,8 +84,10 @@ export function HeroSliderSimple() {
           const content = (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                isActive ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
+              className={`absolute inset-0 transition-[opacity,transform] duration-700 ease-out ${
+                isActive
+                  ? "opacity-100 z-10 scale-100 pointer-events-auto"
+                  : "opacity-0 z-0 scale-[1.035] pointer-events-none"
               }`}
             >
               <Image
@@ -93,7 +95,7 @@ export function HeroSliderSimple() {
                 alt={slide.alt || "Banner promocional"}
                 fill
                 priority={index === 0}
-                className="object-cover w-full h-full"
+                className="object-cover w-full h-full transition-transform duration-[1400ms] ease-out"
                 sizes="100vw"
               />
             </div>

@@ -86,11 +86,11 @@ function HomeContent() {
       <HeroSliderSimple />
 
       {/* Faixa de Pilares / Vantagens Minimalista */}
-      <section className="border-y border-neutral-200 bg-neutral-50/60 py-8">
+      <section className="border-y border-neutral-200/80 bg-neutral-50/70 py-8 sm:py-9 reveal-up">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {trustBadges.map((item, i) => (
-              <div key={i} className="space-y-1">
+              <div key={i} className="group space-y-2 border-l-2 border-transparent pl-4 transition-colors duration-300 hover:border-[#48B9FA]">
                 <h4 className="text-xs font-semibold text-neutral-900 uppercase tracking-wider">
                   {item.title}
                 </h4>
@@ -105,14 +105,14 @@ function HomeContent() {
 
       {/* Categorias Principais (Apenas se existirem no banco de dados) */}
       {dbCategories.length > 0 && (
-        <section className="py-10 border-b border-neutral-100">
+        <section className="py-10 sm:py-12 border-b border-neutral-100 reveal-up reveal-up-delay-1">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {dbCategories.map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/loja?categoryId=${cat.slug || cat.id}`}
-                  className="p-5 rounded-sm bg-white border border-neutral-200 hover:border-[#48B9FA] transition-colors flex flex-col justify-between cursor-pointer group"
+                  className="group relative p-5 rounded-sm bg-white border border-neutral-200 hover:border-[#48B9FA] hover:-translate-y-1 transition-[border-color,transform,box-shadow] duration-300 flex flex-col justify-between cursor-pointer hover:shadow-[0_12px_30px_-20px_rgba(15,23,42,0.35)]"
                 >
                   <div>
                     <h3 className="font-semibold text-sm text-neutral-900 group-hover:text-[#48B9FA] transition-colors">{cat.name}</h3>
@@ -130,7 +130,7 @@ function HomeContent() {
       )}
 
       {/* Destaques da Semana */}
-      <section className="py-12">
+      <section className="py-14 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-neutral-200">
             <div>

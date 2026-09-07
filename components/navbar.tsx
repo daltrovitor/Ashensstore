@@ -87,7 +87,7 @@ function NavbarContent() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 transition-shadow duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
             {/* Logo Oficial Única (Sem texto adicional) */}
@@ -116,8 +116,8 @@ function NavbarContent() {
                   href={link.href}
                   className={`text-sm tracking-normal transition-colors py-1 cursor-pointer ${
                     isActive(link.href)
-                      ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
-                      : "text-neutral-600 hover:text-[#48B9FA] font-normal"
+                      ? "text-[#48B9FA] font-semibold after:w-full"
+                      : "text-neutral-600 hover:text-[#48B9FA] font-normal after:w-0 hover:after:w-full"
                   }`}
                 >
                   {link.name}
