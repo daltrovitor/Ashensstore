@@ -87,8 +87,8 @@ function NavbarContent() {
       <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            {/* Lado Esquerdo: Logo Oficial e Links com espaçamento amplo */}
-            <div className="flex items-center gap-8 lg:gap-12">
+            {/* Lado Esquerdo: Logo Oficial */}
+            <div className="flex-1 flex items-center justify-start">
               <Link
                 href="/"
                 className="flex items-center transition-opacity hover:opacity-80 shrink-0"
@@ -105,27 +105,27 @@ function NavbarContent() {
                   />
                 </div>
               </Link>
-
-              {/* Navegação Desktop Limpa (Apenas Início, Catálogo e Afiliados) */}
-              <nav className="hidden md:flex items-center gap-8">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`text-sm tracking-normal transition-colors py-1 cursor-pointer ${
-                      isActive(link.href)
-                        ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
-                        : "text-neutral-600 hover:text-[#48B9FA] font-medium"
-                    }`}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
-              </nav>
             </div>
 
-            {/* Ações à Direita: Busca, Carrinho e Conta */}
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* Centro: Abas de Navegação Centralizadas */}
+            <nav className="hidden md:flex items-center justify-center gap-8 px-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm tracking-normal transition-colors py-1 cursor-pointer whitespace-nowrap ${
+                    isActive(link.href)
+                      ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
+                      : "text-neutral-600 hover:text-[#48B9FA] font-medium"
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Lado Direito: Ações (Busca, Carrinho e Conta) */}
+            <div className="flex-1 flex items-center justify-end gap-3 sm:gap-4">
               {/* Campo de Busca Discreto */}
               {searchOpen ? (
                 <form

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface Slide {
@@ -18,6 +17,9 @@ export function HeroSliderSimple() {
   const [loaded, setLoaded] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+
+  // Dynamic aspect ratio map so container adapts seamlessly to any uploaded banner image
+  const [aspectRatios, setAspectRatios] = useState<Record<string, string>>({})
 
   // Touch Swipe State
   const [touchStart, setTouchStart] = useState<number | null>(null)
@@ -76,6 +78,17 @@ export function HeroSliderSimple() {
     setActiveIndex((prev) => (prev + 1) % slides.length)
   }
 
+  // Measure natural dimensions of loaded banner image
+  const handleImageLoad = (id: string, e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    if (naturalWidth && naturalHeight) {
+      setAspectRatios((prev) => ({
+        ...prev,
+        [id]: `${naturalWidth} / ${naturalHeight}`,
+      }))
+    }
+  }
+
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsPaused(true)
@@ -104,10 +117,14 @@ export function HeroSliderSimple() {
 
   if (slides.length === 0) return null
 
+  const currentSlide = slides[activeIndex]
+  const currentAspect = (currentSlide && aspectRatios[currentSlide.id]) || "1983 / 793"
+
   return (
     <section className="w-full bg-white border-b border-neutral-200 select-none">
       <div
-        className="relative w-full overflow-hidden bg-neutral-950 aspect-[16/9] group cursor-grab active:cursor-grabbing"
+        className="relative w-full overflow-hidden bg-white transition-[aspect-ratio] duration-300 group cursor-grab active:cursor-grabbing"
+        style={{ aspectRatio: currentAspect }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={handleTouchStart}
@@ -128,34 +145,28 @@ export function HeroSliderSimple() {
               {slide.mobile_image_url ? (
                 <>
                   <div className="relative w-full h-full block sm:hidden">
-                    <Image
+                    <img
                       src={slide.mobile_image_url}
                       alt={slide.alt || "Banner promocional"}
-                      fill
-                      priority={index === 0}
-                      className="object-contain object-center w-full h-full"
-                      sizes="100vw"
+                      onLoad={(e) => handleImageLoad(slide.id, e)}
+                      className="w-full h-full object-cover object-center block"
                     />
                   </div>
                   <div className="relative w-full h-full hidden sm:block">
-                    <Image
+                    <img
                       src={slide.image_url}
                       alt={slide.alt || "Banner promocional"}
-                      fill
-                      priority={index === 0}
-                      className="object-contain object-center w-full h-full"
-                      sizes="100vw"
+                      onLoad={(e) => handleImageLoad(slide.id, e)}
+                      className="w-full h-full object-cover object-center block"
                     />
                   </div>
                 </>
               ) : (
-                <Image
+                <img
                   src={slide.image_url}
                   alt={slide.alt || "Banner promocional"}
-                  fill
-                  priority={index === 0}
-                  className="object-contain object-center w-full h-full"
-                  sizes="100vw"
+                  onLoad={(e) => handleImageLoad(slide.id, e)}
+                  className="w-full h-full object-cover object-center block"
                 />
               )}
             </div>
