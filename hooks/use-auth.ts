@@ -121,6 +121,14 @@ export function useAuth() {
 
     const checkSession = async () => {
       try {
+        const hasSupabaseConfig = Boolean(
+          process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        )
+        if (!hasSupabaseConfig) {
+          if (mounted) setLoading(false)
+          return
+        }
+
         const supabase = getSupabaseClient()
         const { data: { session }, error } = await supabase.auth.getSession()
 
@@ -184,13 +192,21 @@ export function useAuth() {
 
     checkSession()
 
+    const hasSupabaseConfig = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    )
+    if (!hasSupabaseConfig) {
+      return () => {
+        mounted = false
+      }
+    }
+
     const { data: { subscription } } = getSupabaseClient().auth.onAuthStateChange(
       (event: any, session: any) => {
         if (event === 'SIGNED_OUT') {
           setUser(null)
           setLoading(false)
         } else if (event === 'SIGNED_IN' && session?.user) {
-          // Re-run check or simple set
           checkSession()
         }
       }
