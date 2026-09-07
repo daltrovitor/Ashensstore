@@ -53,10 +53,6 @@ function NavbarContent() {
     { name: "Início", href: "/" },
     { name: "Catálogo", href: "/loja" },
     { name: "Afiliados", href: "/afiliados" },
-    ...dbCategories.map((cat) => ({
-      name: cat.name,
-      href: `/loja?categoryId=${cat.slug || cat.id}`,
-    })),
   ]
 
   const isActive = (href: string) => {
@@ -91,40 +87,42 @@ function NavbarContent() {
       <header className="sticky top-0 z-50 bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            {/* Logo Oficial Única (Sem texto adicional) */}
-            <Link
-              href="/"
-              className="flex items-center transition-opacity hover:opacity-80"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <div className="relative w-10 h-10 sm:w-12 sm:h-12 overflow-hidden flex items-center justify-center">
-                <Image
-                  src="/ashens-logo.jpg"
-                  alt="Logo Oficial"
-                  width={48}
-                  height={48}
-                  className="object-contain w-full h-full"
-                  priority
-                />
-              </div>
-            </Link>
+            {/* Lado Esquerdo: Logo Oficial e Links com espaçamento amplo */}
+            <div className="flex items-center gap-8 lg:gap-12">
+              <Link
+                href="/"
+                className="flex items-center transition-opacity hover:opacity-80 shrink-0"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 overflow-hidden flex items-center justify-center shrink-0">
+                  <Image
+                    src="/ashens-logo.jpg"
+                    alt="Logo Oficial"
+                    width={48}
+                    height={48}
+                    className="object-contain w-full h-full"
+                    priority
+                  />
+                </div>
+              </Link>
 
-            {/* Navegação Desktop Minimalista */}
-            <nav className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-sm tracking-normal transition-colors py-1 cursor-pointer ${
-                    isActive(link.href)
-                      ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
-                      : "text-neutral-600 hover:text-[#48B9FA] font-normal"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
-            </nav>
+              {/* Navegação Desktop Limpa (Apenas Início, Catálogo e Afiliados) */}
+              <nav className="hidden md:flex items-center gap-8">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`text-sm tracking-normal transition-colors py-1 cursor-pointer ${
+                      isActive(link.href)
+                        ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
+                        : "text-neutral-600 hover:text-[#48B9FA] font-medium"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                ))}
+              </nav>
+            </div>
 
             {/* Ações à Direita: Busca, Carrinho e Conta */}
             <div className="flex items-center gap-3 sm:gap-4">

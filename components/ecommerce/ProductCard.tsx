@@ -72,17 +72,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 className="block relative aspect-square bg-gradient-to-b from-neutral-50 to-neutral-100/50 p-3 sm:p-5 flex items-center justify-center overflow-hidden"
             >
                 {/* Badges Flutuantes */}
-                <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                    {discountPercent > 0 ? (
+                {discountPercent > 0 && (
+                    <div className="absolute top-2 left-2 z-10">
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-white shadow-xs">
                             -{discountPercent}%
                         </span>
-                    ) : product.is_featured ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-[#48B9FA] text-white shadow-xs flex items-center gap-0.5">
-                            <Zap className="w-2.5 h-2.5 fill-white" /> Destaque
-                        </span>
-                    ) : null}
-                </div>
+                    </div>
+                )}
 
                 <div className="relative w-full h-full flex items-center justify-center">
                     <Image

@@ -107,7 +107,7 @@ export function HeroSliderSimple() {
   return (
     <section className="w-full bg-white border-b border-neutral-200 select-none">
       <div
-        className="relative w-full overflow-hidden bg-neutral-100 aspect-[16/9] sm:aspect-[21/8] md:aspect-[24/8] min-h-[170px] max-h-[560px] group cursor-grab active:cursor-grabbing"
+        className="relative w-full overflow-hidden bg-neutral-950 aspect-[16/9] group cursor-grab active:cursor-grabbing"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={handleTouchStart}
@@ -133,7 +133,7 @@ export function HeroSliderSimple() {
                       alt={slide.alt || "Banner promocional"}
                       fill
                       priority={index === 0}
-                      className="object-cover object-center w-full h-full"
+                      className="object-contain object-center w-full h-full"
                       sizes="100vw"
                     />
                   </div>
@@ -143,7 +143,7 @@ export function HeroSliderSimple() {
                       alt={slide.alt || "Banner promocional"}
                       fill
                       priority={index === 0}
-                      className="object-cover object-center w-full h-full"
+                      className="object-contain object-center w-full h-full"
                       sizes="100vw"
                     />
                   </div>
@@ -154,7 +154,7 @@ export function HeroSliderSimple() {
                   alt={slide.alt || "Banner promocional"}
                   fill
                   priority={index === 0}
-                  className="object-cover object-center w-full h-full"
+                  className="object-contain object-center w-full h-full"
                   sizes="100vw"
                 />
               )}
