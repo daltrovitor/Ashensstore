@@ -1,9 +1,32 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ShieldCheck, Zap, MessageSquare } from "lucide-react"
 import { FaDiscord, FaWhatsapp, FaInstagram } from "react-icons/fa"
 
 export function Footer() {
+  const [categories, setCategories] = useState<{ id: string; name: string; slug?: string }[]>([])
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadFooterCategories() {
+      try {
+        const res = await fetch('/api/categories')
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data) && data.length > 0) {
+            setCategories(data)
+          }
+        }
+      } catch {
+        // Fallback links will remain visible
+      }
+    }
+    loadFooterCategories()
+    return () => { isMounted = false }
+  }, [])
   return (
     <footer className="bg-white text-neutral-600 border-t border-neutral-200 pt-16 pb-12 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -61,31 +84,46 @@ export function Footer() {
               Catálogo Blox Fruits
             </h4>
             <ul className="space-y-2.5 text-xs text-neutral-600">
-              <li>
-                <Link href="/loja?categoryId=frutas" className="hover:text-blue-600 transition-colors">
-                  🍏 Frutas Físicas & Míticas
-                </Link>
-              </li>
-              <li>
-                <Link href="/loja?categoryId=gamepasses" className="hover:text-blue-600 transition-colors">
-                  ⚡ Gamepasses (2x Mastery, Money, etc.)
-                </Link>
-              </li>
-              <li>
-                <Link href="/loja?categoryId=contas" className="hover:text-blue-600 transition-colors">
-                  ⚔️ Contas Level Máximo & PVP
-                </Link>
-              </li>
-              <li>
-                <Link href="/loja?categoryId=racas" className="hover:text-blue-600 transition-colors">
-                  🌟 Raças V4 Full Gear
-                </Link>
-              </li>
-              <li>
-                <Link href="/loja?featured=true" className="hover:text-blue-600 transition-colors">
-                  🔥 Mais Populares & Destaques
-                </Link>
-              </li>
+              {categories.length > 0 ? (
+                categories.slice(0, 6).map((cat) => (
+                  <li key={cat.id}>
+                    <Link
+                      href={`/loja?categoryId=${encodeURIComponent(cat.slug || cat.id)}`}
+                      className="hover:text-blue-600 transition-colors block truncate max-w-[220px]"
+                    >
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li>
+                    <Link href="/loja?categoryId=frutas" className="hover:text-blue-600 transition-colors">
+                      🍏 Frutas Físicas & Míticas
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/loja?categoryId=gamepasses" className="hover:text-blue-600 transition-colors">
+                      ⚡ Gamepasses Roblox
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/loja?categoryId=contas" className="hover:text-blue-600 transition-colors">
+                      ⚔️ Contas Level Máximo & PVP
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/loja?categoryId=racas" className="hover:text-blue-600 transition-colors">
+                      🌟 Raças V4 Full Gear
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/loja?featured=true" className="hover:text-blue-600 transition-colors">
+                      🔥 Mais Populares & Destaques
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
 

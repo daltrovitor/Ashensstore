@@ -1,6 +1,7 @@
 import { getSupabaseServer, getSupabaseService } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/auth/admin-middleware"
+import { normalizeCategorySlug } from "@/lib/utils/category-matcher"
 
 export const dynamic = 'force-dynamic'
 
@@ -58,7 +59,7 @@ export async function PUT(
     const allowed: any = {}
 
     if (body.name !== undefined) allowed.name = String(body.name)
-    if (body.slug !== undefined) allowed.slug = String(body.slug)
+    if (body.slug !== undefined) allowed.slug = normalizeCategorySlug(String(body.slug))
     if (body.description !== undefined) allowed.description = body.description ?? null
     if (body.display_order !== undefined) {
       allowed.display_order = parseInt(String(body.display_order || 0)) || 0

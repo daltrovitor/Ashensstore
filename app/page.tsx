@@ -169,7 +169,7 @@ function HomeContent() {
               {dbCategories.map((cat) => (
                 <Link
                   key={cat.id}
-                  href={`/loja?categoryId=${cat.slug || cat.id}`}
+                  href={`/loja?categoryId=${encodeURIComponent(cat.slug || cat.id)}`}
                   className="p-4 sm:p-5 rounded-sm bg-white border border-neutral-200 hover:border-[#48B9FA] transition-colors flex flex-col justify-between cursor-pointer group"
                 >
                   <div className="space-y-1">

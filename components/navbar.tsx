@@ -23,31 +23,11 @@ function NavbarContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([])
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, signOut } = useAuth()
-
-  useEffect(() => {
-    let isMounted = true
-    async function loadNavbarCategories() {
-      try {
-        const res = await fetch('/api/categories')
-        if (res.ok) {
-          const data = await res.json()
-          if (isMounted && Array.isArray(data)) {
-            setDbCategories(data)
-          }
-        }
-      } catch (err) {
-        console.error('Navbar: erro ao carregar categorias:', err)
-      }
-    }
-    loadNavbarCategories()
-    return () => { isMounted = false }
-  }, [])
 
   const navLinks = [
     { name: "Início", href: "/" },

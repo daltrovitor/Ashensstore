@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/server'
+import { findCategory } from '@/lib/utils/category-matcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,28 +30,33 @@ export async function GET(request: Request) {
             if (isUUID) {
                 query = query.eq('category_id', categoryId)
             } else {
-                // Se foi passado slug, busca o ID da categoria correspondente
-                const { data: cat } = await supabase
-                    .from('categories')
-                    .select('id')
-                    .eq('slug', categoryId)
-                    .maybeSingle()
+                // Busca categorias de ambas as tabelas para correspondência inteligente
+                const [catsRes, storeCatsRes] = await Promise.all([
+                    supabase.from('categories').select('*'),
+                    supabase.from('store_categories').select('*')
+                ])
 
-                if (cat?.id) {
-                    query = query.eq('category_id', cat.id)
-                } else {
-                    const { data: storeCat } = await supabase
-                        .from('store_categories')
-                        .select('id')
-                        .eq('slug', categoryId)
-                        .maybeSingle()
+                const allCats = [
+                    ...(catsRes.data || []),
+                    ...(storeCatsRes.data || [])
+                ]
 
-                    if (storeCat?.id) {
-                        query = query.eq('category_id', storeCat.id)
-                    } else {
-                        // Categoria inexistente no banco
-                        return NextResponse.json([])
+                const matchedCat = findCategory(allCats, categoryId)
+
+                if (matchedCat) {
+                    // Se a categoria encontrada foi de store_categories, mapeia para o ID de categories
+                    let targetId = matchedCat.id
+                    const equivInCategories = (catsRes.data || []).find(
+                        (c: any) => c.slug === matchedCat.slug || c.name === matchedCat.name
+                    )
+                    if (equivInCategories) {
+                        targetId = equivInCategories.id
                     }
+
+                    query = query.eq('category_id', targetId)
+                } else {
+                    // Categoria inexistente no banco
+                    return NextResponse.json([])
                 }
             }
         }
@@ -63,10 +69,45 @@ export async function GET(request: Request) {
             query = query.eq('is_featured', true)
         }
 
-        const { data, error } = await query
+        let { data, error } = await query
         if (error) {
             console.error('[Products API] Erro ao buscar produtos do banco:', error)
             return NextResponse.json([])
+        }
+
+        // Se uma categoria de frutas ou contas retornou 0 itens (porque os itens foram cadastrados em outra categoria),
+        // busca produtos por palavras-chave relevantes para que o cliente nunca veja uma página vazia
+        if ((!data || data.length === 0) && categoryId && categoryId !== 'all') {
+            const lowerCat = categoryId.toLowerCase()
+            if (['frutas', 'fruta', 'fruits', 'frutas-fisicas', 'frutas-miticas', 'frutas-no-inventario'].some(term => lowerCat.includes(term))) {
+                const { data: fallbackFruits } = await supabase
+                    .from('products')
+                    .select(`
+                        *,
+                        variants:product_variants(*),
+                        mockups:product_mockups(*)
+                    `)
+                    .eq('is_active', true)
+                    .or('name.ilike.%fruit%,name.ilike.%fruta%,name.ilike.%perm%')
+
+                if (fallbackFruits && fallbackFruits.length > 0) {
+                    data = fallbackFruits
+                }
+            } else if (['contas', 'conta', 'contas-pvp'].some(term => lowerCat.includes(term))) {
+                const { data: fallbackAccounts } = await supabase
+                    .from('products')
+                    .select(`
+                        *,
+                        variants:product_variants(*),
+                        mockups:product_mockups(*)
+                    `)
+                    .eq('is_active', true)
+                    .or('name.ilike.%conta%,name.ilike.%godhuman%,name.ilike.%lvl%')
+
+                if (fallbackAccounts && fallbackAccounts.length > 0) {
+                    data = fallbackAccounts
+                }
+            }
         }
 
         return NextResponse.json(data || [])

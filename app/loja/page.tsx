@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Search, X } from "lucide-react"
 import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
+import { matchesCategory } from "@/lib/utils/category-matcher"
 
 function LojaContent() {
   const [products, setProducts] = useState<Product[]>([])
@@ -102,9 +103,16 @@ function LojaContent() {
   }
 
   const displayCategories = [
-    { id: "all", name: "Todos os Itens" },
-    ...categories.map((c) => ({ id: c.slug || c.id, name: c.name })),
+    { id: "all", slug: "all", name: "Todos os Itens" },
+    ...categories.map((c) => ({ id: c.id, slug: c.slug || c.id, name: c.name })),
   ]
+
+  const isTabActive = (cat: { id: string; slug?: string; name: string }) => {
+    if (cat.id === "all") {
+      return !selectedCategory || selectedCategory === "all"
+    }
+    return matchesCategory(cat, selectedCategory)
+  }
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col">
@@ -128,13 +136,15 @@ function LojaContent() {
         {/* Abas Horizontais de Categorias Dinâmicas do Banco */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
           {displayCategories.map((cat) => {
-            const isSelected = selectedCategory === cat.id
+            const isSelected = isTabActive(cat)
+            const targetFilterValue = cat.id === "all" ? "all" : (cat.slug || cat.id)
+
             return (
               <button
                 key={cat.id}
                 onClick={() => {
-                  setSelectedCategory(cat.id)
-                  updateFilters(cat.id, sortBy)
+                  setSelectedCategory(targetFilterValue)
+                  updateFilters(targetFilterValue, sortBy)
                 }}
                 className={`px-3.5 py-1.5 rounded-sm text-xs font-medium whitespace-nowrap transition-colors border cursor-pointer ${
                   isSelected

@@ -1,6 +1,7 @@
 import { getSupabaseServer, getSupabaseService } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/auth/admin-middleware"
+import { normalizeCategorySlug } from "@/lib/utils/category-matcher"
 
 export const dynamic = 'force-dynamic'
 
@@ -72,9 +73,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing category name" }, { status: 400 })
     }
 
-    const slug =
-      body.slug?.trim() ||
-      name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "")
+    const slug = normalizeCategorySlug(body.slug?.trim() || name)
 
     const insertObj: any = {
       name,
