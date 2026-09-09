@@ -24,6 +24,7 @@ const ProductSchema = z.object({
     thumbnail_url: z.string().optional().nullable(),
     images: z.array(z.string()).optional(),
     category_id: z.string().uuid().optional().nullable(),
+    display_order: z.number().int().min(0).optional().default(0),
     is_active: z.boolean().default(true),
     is_featured: z.boolean().default(false),
     variants: z.array(VariantSchema).optional(),
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url)
         const page = parseInt(searchParams.get('page') || '1')
-        const limit = parseInt(searchParams.get('limit') || '50')
+        const limit = parseInt(searchParams.get('limit') || '100')
 
         const from = (page - 1) * limit
         const to = from + limit - 1
@@ -52,17 +53,35 @@ export async function GET(request: Request) {
             .from('products')
             .select('*, variants:product_variants(*)', { count: 'exact' })
             .range(from, to)
-            .order('created_at', { ascending: false })
 
         if (error) throw error
 
-        const formattedProducts = (data || []).map((prod: any) => ({
-            ...prod,
-            variants: (prod.variants || []).map((v: any) => ({
-                ...v,
-                stock: v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
-            }))
-        }))
+        const formattedProducts = (data || []).map((prod: any) => {
+            let order = 0
+            if (typeof prod.display_order === 'number') {
+                order = prod.display_order
+            } else if (typeof prod.printful_id === 'string' && prod.printful_id.startsWith('order:')) {
+                const parsed = parseInt(prod.printful_id.split(':')[1], 10)
+                order = isNaN(parsed) ? 0 : parsed
+            }
+
+            return {
+                ...prod,
+                display_order: order,
+                variants: (prod.variants || []).map((v: any) => ({
+                    ...v,
+                    stock: v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
+                }))
+            }
+        })
+
+        // Ordena por display_order ASC, desempate por created_at DESC
+        formattedProducts.sort((a: any, b: any) => {
+            const orderA = a.display_order !== undefined && a.display_order > 0 ? a.display_order : 9999
+            const orderB = b.display_order !== undefined && b.display_order > 0 ? b.display_order : 9999
+            if (orderA !== orderB) return orderA - orderB
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
 
         return NextResponse.json({
             products: formattedProducts,
@@ -107,31 +126,71 @@ export async function POST(request: Request) {
             throw error
         }
 
+        // Resolução segura de categoria para evitar FK 23503 caso o ID venha de store_categories
+        let targetCategoryId = validatedData.category_id
+        if (targetCategoryId) {
+            const { data: catExists } = await supabase.from('categories').select('id').eq('id', targetCategoryId).maybeSingle()
+            if (!catExists) {
+                const { data: storeCat } = await supabase.from('store_categories').select('name, slug').eq('id', targetCategoryId).maybeSingle()
+                if (storeCat) {
+                    const { data: matchedCat } = await supabase.from('categories').select('id').or(`slug.eq.${storeCat.slug},name.eq.${storeCat.name}`).maybeSingle()
+                    if (matchedCat) {
+                        targetCategoryId = matchedCat.id
+                    }
+                }
+            }
+        }
+
+        const displayOrder = validatedData.display_order || 0
+        const printfulId = `order:${displayOrder}:local-${Date.now()}`
+
         // 1. Create Product
-        const { data: product, error: productError } = await supabase
+        let product: any = null
+        let productError: any = null
+
+        // Tenta inserir com display_order nativo
+        const insertPayload: any = {
+            name: validatedData.name,
+            slug: validatedData.slug,
+            description: validatedData.description,
+            thumbnail_url: validatedData.thumbnail_url,
+            category_id: targetCategoryId,
+            display_order: displayOrder,
+            is_active: validatedData.is_active,
+            is_featured: validatedData.is_featured,
+            printful_id: printfulId,
+        }
+
+        const resFirst = await supabase
             .from('products')
-            .insert({
-                name: validatedData.name,
-                slug: validatedData.slug,
-                description: validatedData.description,
-                thumbnail_url: validatedData.thumbnail_url,
-                category_id: validatedData.category_id,
-                is_active: validatedData.is_active,
-                is_featured: validatedData.is_featured,
-                printful_id: 'local-' + Date.now(),
-            })
+            .insert(insertPayload)
             .select()
             .single()
+
+        if (resFirst.error && resFirst.error.message.includes('display_order')) {
+            // Fallback caso a coluna display_order ainda não tenha sido criada no banco
+            delete insertPayload.display_order
+            const resFallback = await supabase
+                .from('products')
+                .insert(insertPayload)
+                .select()
+                .single()
+            product = resFallback.data
+            productError = resFallback.error
+        } else {
+            product = resFirst.data
+            productError = resFirst.error
+        }
 
         if (productError) {
             if (productError.code === '23505') {
                 return NextResponse.json({ error: 'Já existe um produto com este slug.' }, { status: 409 })
             }
             if (productError.code === '23503') {
-                console.error('[Admin Products] Category ID violation:', validatedData.category_id)
+                console.error('[Admin Products] Category ID violation:', targetCategoryId)
                 return NextResponse.json({
                     error: 'Categoria inválida.',
-                    message: `A categoria selecionada (ID: ${validatedData.category_id}) não é válida para esta tabela de produtos. Por favor, recrie a categoria e tente selecionar novamente.`
+                    message: `A categoria selecionada não é válida para esta tabela de produtos.`
                 }, { status: 400 })
             }
             throw productError

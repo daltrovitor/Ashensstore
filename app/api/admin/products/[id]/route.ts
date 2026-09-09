@@ -22,6 +22,7 @@ const ProductSchema = z.object({
     thumbnail_url: z.string().optional().nullable(),
     images: z.array(z.string()).optional(),
     category_id: z.string().uuid().optional().nullable(),
+    display_order: z.number().int().min(0).optional(),
     is_active: z.boolean().default(true),
     is_featured: z.boolean().default(false),
     variants: z.array(VariantSchema).optional(),
@@ -141,32 +142,73 @@ export async function PUT(
             return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
         }
 
+        // Resolução segura de categoria para evitar FK 23503 caso o ID venha de store_categories
+        let targetCategoryId = validatedData.category_id
+        if (targetCategoryId) {
+            const { data: catExists } = await supabase.from('categories').select('id').eq('id', targetCategoryId).maybeSingle()
+            if (!catExists) {
+                const { data: storeCat } = await supabase.from('store_categories').select('name, slug').eq('id', targetCategoryId).maybeSingle()
+                if (storeCat) {
+                    const { data: matchedCat } = await supabase.from('categories').select('id').or(`slug.eq.${storeCat.slug},name.eq.${storeCat.name}`).maybeSingle()
+                    if (matchedCat) {
+                        targetCategoryId = matchedCat.id
+                    }
+                }
+            }
+        }
+
         // 1. Update Product
-        const { error: productError } = await supabase
+        const updatePayload: any = {
+            name: validatedData.name,
+            slug: validatedData.slug,
+            description: validatedData.description,
+            price: validatedData.price,
+            thumbnail_url: validatedData.thumbnail_url,
+            images: validatedData.images || [],
+            category_id: targetCategoryId,
+            is_active: validatedData.is_active,
+            is_featured: validatedData.is_featured,
+            updated_at: new Date().toISOString()
+        }
+
+        if (validatedData.display_order !== undefined) {
+            updatePayload.display_order = validatedData.display_order
+        }
+
+        let { error: productError } = await supabase
             .from('products')
-            .update({
-                name: validatedData.name,
-                slug: validatedData.slug,
-                description: validatedData.description,
-                price: validatedData.price,
-                thumbnail_url: validatedData.thumbnail_url,
-                images: validatedData.images || [],
-                category_id: validatedData.category_id,
-                is_active: validatedData.is_active,
-                is_featured: validatedData.is_featured,
-                updated_at: new Date().toISOString()
-            })
+            .update(updatePayload)
             .eq('id', id)
+
+        if (productError && productError.message.includes('display_order')) {
+            // Se a coluna display_order não existe ainda, faz fallback com printful_id
+            delete updatePayload.display_order
+            if (validatedData.display_order !== undefined) {
+                const { data: currentP } = await supabase.from('products').select('printful_id').eq('id', id).single()
+                let baseId = currentP?.printful_id || 'local'
+                if (baseId.startsWith('order:')) {
+                    const parts = baseId.split(':')
+                    baseId = parts.slice(2).join(':') || 'local'
+                }
+                updatePayload.printful_id = `order:${validatedData.display_order}:${baseId}`
+            }
+
+            const fallbackRes = await supabase
+                .from('products')
+                .update(updatePayload)
+                .eq('id', id)
+            productError = fallbackRes.error
+        }
 
         if (productError) {
             if (productError.code === '23505') {
                 return NextResponse.json({ error: 'Já existe um produto com este slug.' }, { status: 409 })
             }
             if (productError.code === '23503') {
-                console.error('[Admin Products PUT] Category ID violation:', validatedData.category_id)
+                console.error('[Admin Products PUT] Category ID violation:', targetCategoryId)
                 return NextResponse.json({
                     error: 'Categoria inválida.',
-                    message: `A categoria selecionada (ID: ${validatedData.category_id}) não é válida para esta tabela de produtos. Por favor, recrie a categoria e tente selecionar novamente.`
+                    message: `A categoria selecionada não é válida para esta tabela de produtos.`
                 }, { status: 400 })
             }
             throw productError

@@ -21,7 +21,10 @@ import {
   Boxes,
   DollarSign,
   Users,
-  Menu
+  Menu,
+  ArrowUp,
+  ArrowDown,
+  Filter
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
@@ -99,6 +102,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   } | null>(null)
 
   const [categories, setCategories] = useState<Category[]>([])
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   // New Product Form State
   const [formData, setFormData] = useState({
@@ -109,6 +113,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     stock: '10',
     imageUrl: '',
     category_id: '',
+    display_order: '0',
     is_featured: false
   })
 
@@ -156,7 +161,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   const resetForm = () => {
-    setFormData({ name: '', slug: '', description: '', price: '', stock: '10', imageUrl: '', category_id: '', is_featured: false })
+    setFormData({ name: '', slug: '', description: '', price: '', stock: '10', imageUrl: '', category_id: '', display_order: '0', is_featured: false })
     setProductImages([])
     setVariants([])
     setEditingId(null)
@@ -217,6 +222,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           thumbnail_url: formData.imageUrl || allImages[0] || null,
           images: allImages,
           category_id: (formData.category_id && formData.category_id !== "none") ? formData.category_id : null,
+          display_order: parseInt(formData.display_order || '0', 10) || 0,
           is_active: true,
           is_featured: formData.is_featured,
           variants: variantsPayload
@@ -257,6 +263,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       stock: initialStock,
       imageUrl: product.thumbnail_url || product.images?.[0] || '',
       category_id: product.category_id || '',
+      display_order: (product.display_order || 0).toString(),
       is_featured: product.is_featured
     })
 
@@ -354,6 +361,105 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const removeProductImage = (index: number) => {
     setProductImages(productImages.filter((_, i) => i !== index))
+  }
+
+  // --- Reordering & Category Filtering helpers ---
+  const filteredProducts = products.filter(p => {
+    if (categoryFilter === "all") return true
+    if (categoryFilter === "none") return !p.category_id
+    return p.category_id === categoryFilter
+  })
+
+  const handleMoveOrder = async (productId: string, direction: 'up' | 'down') => {
+    const currentList = [...filteredProducts]
+    const index = currentList.findIndex(p => p.id === productId)
+    if (index === -1) return
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === currentList.length - 1) return
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    const [moved] = currentList.splice(index, 1)
+    currentList.splice(targetIndex, 0, moved)
+
+    const reorderedItems = currentList.map((p, idx) => ({
+      id: p.id,
+      display_order: idx + 1
+    }))
+
+    // Optimistic update
+    setProducts(prev => {
+      const copy = [...prev]
+      reorderedItems.forEach(item => {
+        const found = copy.find(p => p.id === item.id)
+        if (found) found.display_order = item.display_order
+      })
+      return copy.sort((a, b) => {
+        const ordA = a.display_order && a.display_order > 0 ? a.display_order : 9999
+        const ordB = b.display_order && b.display_order > 0 ? b.display_order : 9999
+        if (ordA !== ordB) return ordA - ordB
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+    })
+
+    try {
+      const res = await fetchWithAuth('/api/admin/products/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: reorderedItems })
+      })
+      if (!res.ok) {
+        toast.error("Erro ao salvar ordem dos produtos")
+        fetchProducts()
+      } else {
+        toast.success("Ordem atualizada com sucesso!")
+      }
+    } catch {
+      toast.error("Erro de conexão ao salvar ordem")
+      fetchProducts()
+    }
+  }
+
+  const handleQuickCategoryChange = async (productId: string, newCategoryId: string) => {
+    const target = products.find(p => p.id === productId)
+    if (!target) return
+    const catId = newCategoryId === 'none' ? null : newCategoryId
+
+    // Optimistic update
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, category_id: catId } : p))
+
+    try {
+      const res = await fetchWithAuth(`/api/admin/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: target.name,
+          slug: target.slug,
+          description: target.description,
+          price: target.price,
+          category_id: catId,
+          display_order: target.display_order || 0,
+          is_active: target.is_active,
+          is_featured: target.is_featured,
+          variants: target.variants?.map(v => ({
+            id: v.id,
+            name: v.name,
+            price: v.retail_price || v.price,
+            stock: v.stock,
+            in_stock: v.in_stock
+          }))
+        })
+      })
+
+      if (res.ok) {
+        toast.success("Categoria do produto atualizada!")
+      } else {
+        toast.error("Erro ao mudar categoria do produto")
+        fetchProducts()
+      }
+    } catch {
+      toast.error("Erro ao mudar categoria do produto")
+      fetchProducts()
+    }
   }
 
   return (
@@ -542,13 +648,27 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="featured"
-                            checked={formData.is_featured}
-                            onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
-                          />
-                          <Label htmlFor="featured">Produto em Destaque?</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="display_order">Ordem / Posição (Catálogo)</Label>
+                            <Input
+                              id="display_order"
+                              type="number"
+                              min="0"
+                              value={formData.display_order}
+                              onChange={(e) => setFormData({ ...formData, display_order: e.target.value })}
+                              placeholder="Ex: 1 para o topo"
+                            />
+                            <p className="text-[11px] text-muted-foreground">Posição no catálogo (1 = primeiro).</p>
+                          </div>
+                          <div className="flex items-center space-x-2 pt-6">
+                            <Switch
+                              id="featured"
+                              checked={formData.is_featured}
+                              onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
+                            />
+                            <Label htmlFor="featured">Produto em Destaque?</Label>
+                          </div>
                         </div>
                       </div>
 
@@ -750,15 +870,54 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 </Dialog>
               </div>
 
+              {/* Barra de Filtro de Categoria e Resumo */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-lg border border-neutral-200 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Filter className="w-4 h-4 text-[#48B9FA]" />
+                  <span className="text-xs font-bold text-neutral-700">Filtrar Categoria:</span>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-[200px] sm:w-[260px] h-8 text-xs font-medium">
+                      <SelectValue placeholder="Todas as categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs font-semibold">Todas as Categorias ({products.length})</SelectItem>
+                      <SelectItem value="none" className="text-xs text-neutral-400">Sem Categoria</SelectItem>
+                      {categories.map((c) => {
+                        const count = products.filter(p => p.category_id === c.id).length
+                        return (
+                          <SelectItem key={c.id} value={c.id} className="text-xs">
+                            {c.name} ({count})
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span>Mostrando <strong>{filteredProducts.length}</strong> de <strong>{products.length}</strong> itens</span>
+                  {categoryFilter !== "all" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[11px] px-2 text-[#48B9FA] hover:text-[#0284c7] cursor-pointer"
+                      onClick={() => setCategoryFilter("all")}
+                    >
+                      Limpar filtro
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               <Card>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Imagem</TableHead>
+                        <TableHead className="w-[105px]">Posição</TableHead>
+                        <TableHead className="w-[64px]">Imagem</TableHead>
                         <TableHead>Nome</TableHead>
+                        <TableHead className="w-[210px]">Categoria</TableHead>
                         <TableHead>Preço</TableHead>
-                        <TableHead>Variações</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -766,15 +925,44 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell>
+                          <TableCell colSpan={7} className="text-center py-8">Carregando...</TableCell>
                         </TableRow>
-                      ) : products.length === 0 ? (
+                      ) : filteredProducts.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado nesta categoria.</TableCell>
                         </TableRow>
                       ) : (
-                        products.map((product) => (
+                        filteredProducts.map((product, productIndex) => (
                           <TableRow key={product.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex flex-col">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 hover:bg-neutral-200 text-neutral-600 disabled:opacity-25 cursor-pointer"
+                                    title="Subir posição na loja"
+                                    onClick={() => handleMoveOrder(product.id, 'up')}
+                                    disabled={productIndex === 0}
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 hover:bg-neutral-200 text-neutral-600 disabled:opacity-25 cursor-pointer"
+                                    title="Descer posição na loja"
+                                    onClick={() => handleMoveOrder(product.id, 'down')}
+                                    disabled={productIndex === filteredProducts.length - 1}
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-neutral-100 text-neutral-800 border border-neutral-200">
+                                  #{product.display_order && product.display_order > 0 ? product.display_order : productIndex + 1}
+                                </span>
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div className="relative w-12 h-12 bg-muted rounded overflow-hidden">
                                 {(product.thumbnail_url || product.images?.[0]) ? (
@@ -784,14 +972,36 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell>
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price || product.variants?.[0]?.retail_price || 0)}
+                            <TableCell className="font-medium">
+                              <div>
+                                <span className="font-semibold text-neutral-900">{product.name}</span>
+                                <div className="text-[11px] text-muted-foreground">
+                                  {product.variants?.length || 0} variação(ões)
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell>
-                              <span className="text-xs text-muted-foreground">
-                                {product.variants?.length || 0} variação(ões)
-                              </span>
+                              <div className="w-[200px]">
+                                <Select
+                                  value={product.category_id || "none"}
+                                  onValueChange={(val) => handleQuickCategoryChange(product.id, val)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs font-medium border-neutral-200 bg-neutral-50/70 hover:bg-white truncate">
+                                    <SelectValue placeholder="Sem categoria" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none" className="text-xs text-neutral-400">Sem categoria</SelectItem>
+                                    {categories.map((c) => (
+                                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                                        {c.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-semibold text-neutral-900">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price || product.variants?.[0]?.retail_price || 0)}
                             </TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs font-bold ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -799,10 +1009,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                               </span>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)}>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)} title="Editar detalhes">
                                 <Pencil className="w-4 h-4 text-blue-500" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteProduct(product.id)}>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteProduct(product.id)} title="Excluir produto">
                                 <Trash2 className="w-4 h-4 text-red-500" />
                               </Button>
                             </TableCell>

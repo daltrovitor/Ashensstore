@@ -88,9 +88,18 @@ function LojaContent() {
           const getPrice = (p: any) => Number(p.price || p.variants?.[0]?.retail_price || 0)
 
           if (sortBy === 'name') data.sort((a, b) => a.name.localeCompare(b.name))
-          if (sortBy === 'price_asc') data.sort((a, b) => getPrice(a) - getPrice(b))
-          if (sortBy === 'price_desc') data.sort((a, b) => getPrice(b) - getPrice(a))
-          if (sortBy === 'newest') data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          else if (sortBy === 'price_asc') data.sort((a, b) => getPrice(a) - getPrice(b))
+          else if (sortBy === 'price_desc') data.sort((a, b) => getPrice(b) - getPrice(a))
+          else if (sortBy === 'newest') data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          else {
+            // Padrão / popular: respeita a ordem definida pelo admin
+            data.sort((a, b) => {
+              const ordA = a.display_order && a.display_order > 0 ? a.display_order : 9999
+              const ordB = b.display_order && b.display_order > 0 ? b.display_order : 9999
+              if (ordA !== ordB) return ordA - ordB
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            })
+          }
 
           setProducts(data)
         }

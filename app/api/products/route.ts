@@ -75,7 +75,29 @@ export async function GET(request: Request) {
             return NextResponse.json([])
         }
 
-        return NextResponse.json(data || [])
+        const formatted = (data || []).map((prod: any) => {
+            let order = 0
+            if (typeof prod.display_order === 'number') {
+                order = prod.display_order
+            } else if (typeof prod.printful_id === 'string' && prod.printful_id.startsWith('order:')) {
+                const parsed = parseInt(prod.printful_id.split(':')[1], 10)
+                order = isNaN(parsed) ? 0 : parsed
+            }
+            return {
+                ...prod,
+                display_order: order,
+            }
+        })
+
+        // Ordena por display_order ASC (produtos com ordem explícita vêm na frente), desempate por data
+        formatted.sort((a: any, b: any) => {
+            const orderA = a.display_order !== undefined && a.display_order > 0 ? a.display_order : 9999
+            const orderB = b.display_order !== undefined && b.display_order > 0 ? b.display_order : 9999
+            if (orderA !== orderB) return orderA - orderB
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
+
+        return NextResponse.json(formatted)
 
     } catch (error) {
         console.error('[Products API] Erro fatal ao buscar produtos:', error)

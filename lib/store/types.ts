@@ -10,6 +10,7 @@ export interface Product {
     thumbnail_url: string | null
     category_id?: string | null
     category?: Category | null
+    display_order?: number
     is_active: boolean
     is_featured: boolean
     created_at: string
