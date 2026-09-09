@@ -5,18 +5,16 @@ import Link from "next/link"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/ecommerce/ProductCard"
-import { ProductGrid } from "@/components/ecommerce/ProductGrid"
 import { HeroSliderSimple } from "@/components/hero-slider-simple"
-import { ArrowRight, ShieldCheck, Zap, MessageSquare, Headphones, Flame, Layers } from "lucide-react"
-import type { Product } from "@/lib/store/types"
+import { ArrowRight, ShieldCheck, Zap, MessageSquare, Headphones, ShoppingBag, Layers } from "lucide-react"
+import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
 import { DiscordCta } from "@/components/discord-cta"
 
 function HomeContent() {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
-  const [fruitProducts, setFruitProducts] = useState<Product[]>([])
-  const [gamepassProducts, setGamepassProducts] = useState<Product[]>([])
-  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string; description?: string }[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,31 +24,19 @@ function HomeContent() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [resFeatured, resFruits, resPasses, resCategories] = await Promise.all([
-        fetch('/api/products?featured=true'),
-        fetch('/api/products?categoryId=frutas'),
-        fetch('/api/products?categoryId=gamepasses'),
+      const [resProducts, resCategories] = await Promise.all([
+        fetch('/api/products'),
         fetch('/api/categories'),
       ])
 
-      if (resFeatured.ok) {
-        const data = await resFeatured.json()
-        setFeaturedProducts(Array.isArray(data) ? data : [])
-      }
-
-      if (resFruits.ok) {
-        const data = await resFruits.json()
-        setFruitProducts(Array.isArray(data) ? data.slice(0, 4) : [])
-      }
-
-      if (resPasses.ok) {
-        const data = await resPasses.json()
-        setGamepassProducts(Array.isArray(data) ? data.slice(0, 4) : [])
+      if (resProducts.ok) {
+        const prodData = await resProducts.json()
+        setProducts(Array.isArray(prodData) ? prodData : [])
       }
 
       if (resCategories.ok) {
         const catData = await resCategories.json()
-        setDbCategories(Array.isArray(catData) ? catData : [])
+        setCategories(Array.isArray(catData) ? catData : [])
       }
     } catch (error) {
       console.error('Erro ao buscar dados da home:', error)
@@ -58,6 +44,10 @@ function HomeContent() {
       setLoading(false)
     }
   }
+
+  const displayedProducts = selectedCategory === "all"
+    ? products
+    : products.filter((p) => p.category_id === selectedCategory)
 
   const trustBadges = [
     {
@@ -84,27 +74,27 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col selection:bg-[#48B9FA]/20 selection:text-neutral-900">
-      <StoreLoader isLoading={loading} minDurationMs={1600} />
+      <StoreLoader isLoading={loading} minDurationMs={1200} />
       <Navbar />
 
-      {/* 1. Banners Principais (Aspecto 16:9 completo sem nenhum corte) */}
+      {/* 1. Banners Principais */}
       <HeroSliderSimple />
 
-      {/* 2. PRODUTOS LOGO APÓS O BANNER (Destaques da Semana) */}
+      {/* 2. PRODUTOS E CATEGORIAS LÁ EM CIMA (Logo após o banner) */}
       <section className="py-8 sm:py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header da Seção: Ícone direto sem balão */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 sm:mb-8 pb-4 border-b border-neutral-200">
+          {/* Header da Seção de Produtos */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 pb-4 border-b border-neutral-200">
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#48B9FA] uppercase tracking-wider">
-                <Flame className="w-4 h-4 text-[#48B9FA]" />
-                <span>Destaques da Semana</span>
+                <ShoppingBag className="w-4 h-4 text-[#48B9FA]" />
+                <span>Catálogo da Loja</span>
               </div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-neutral-900 tracking-tight">
-                Frutas, Gamepasses e Contas
+                Produtos Disponíveis
               </h2>
               <p className="text-xs sm:text-sm text-neutral-500">
-                Itens mais procurados para Blox Fruits com entrega imediata via Pix.
+                Frutas permanentes, físicas, gamepasses e contas com entrega rápida via Pix.
               </p>
             </div>
 
@@ -117,10 +107,41 @@ function HomeContent() {
             </Link>
           </div>
 
-          {/* Grid Responsivo de Produtos */}
+          {/* Abas Horizontais de Categorias lá em cima */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-3.5 py-1.5 rounded-sm text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedCategory === "all"
+                  ? "bg-neutral-900 text-white shadow-sm"
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
+              }`}
+            >
+              Todos os Produtos ({products.length})
+            </button>
+            {categories.map((cat) => {
+              const count = products.filter((p) => p.category_id === cat.id).length
+              const isActive = selectedCategory === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-sm text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? "bg-[#48B9FA] text-white shadow-sm"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900"
+                  }`}
+                >
+                  {cat.name} {count > 0 ? `(${count})` : ''}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Grid de Produtos */}
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <div key={i} className="animate-pulse bg-neutral-100 rounded-sm h-72 sm:h-80 border border-neutral-200 p-3 sm:p-4 space-y-3">
                   <div className="bg-neutral-200 rounded-sm h-40 sm:h-48 w-full"></div>
                   <div className="h-4 bg-neutral-200 rounded w-3/4"></div>
@@ -128,14 +149,14 @@ function HomeContent() {
                 </div>
               ))}
             </div>
-          ) : featuredProducts.length === 0 ? (
+          ) : displayedProducts.length === 0 ? (
             <div className="text-center py-12 bg-neutral-50 border border-neutral-200 rounded-sm p-8 space-y-2">
-              <p className="text-sm font-semibold text-neutral-700">Nenhum produto cadastrado no momento.</p>
-              <p className="text-xs text-neutral-500">Cadastre produtos e itens no painel administrativo para exibi-los aqui.</p>
+              <p className="text-sm font-semibold text-neutral-700">Nenhum produto cadastrado nesta categoria.</p>
+              <p className="text-xs text-neutral-500">Selecione outra categoria ou veja todos os itens acima.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {featuredProducts.slice(0, 8).map((product) => (
+              {displayedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
@@ -143,9 +164,33 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* 3. Categorias Principais (Sem balões com ícones dentro, apenas links limpos) */}
-      {dbCategories.length > 0 && (
-        <section className="py-8 sm:py-10 bg-neutral-50/60 border-y border-neutral-200">
+      {/* 3. Faixa de Vantagens e Segurança */}
+      <section className="py-8 sm:py-10 bg-white border-t border-neutral-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {trustBadges.map((item, i) => {
+              const Icon = item.icon
+              return (
+                <div key={i} className="flex items-start gap-3">
+                  <Icon className="w-5 h-5 text-[#48B9FA] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-neutral-900 leading-snug">
+                      {item.title}
+                    </h4>
+                    <p className="text-xs text-neutral-500 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CATEGORIAS E LINKS DE CATEGORIAS LÁ EMBAIXO */}
+      {categories.length > 0 && (
+        <section className="py-8 sm:py-12 bg-neutral-50/70 border-t border-neutral-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-5 sm:mb-6">
               <div className="space-y-0.5">
@@ -161,12 +206,12 @@ function HomeContent() {
                 href="/loja"
                 className="text-xs font-semibold text-[#48B9FA] hover:text-[#20a6f5] flex items-center gap-1 cursor-pointer"
               >
-                Todas as categorias <ArrowRight className="w-3 h-3" />
+                Ver todas no catálogo <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {dbCategories.map((cat) => (
+              {categories.map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/loja?categoryId=${encodeURIComponent(cat.slug || cat.id)}`}
@@ -191,66 +236,10 @@ function HomeContent() {
         </section>
       )}
 
-      {/* 4. Faixa de Vantagens e Segurança (Apenas ícones limpos sem balões) */}
-      <section className="py-8 sm:py-10 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {trustBadges.map((item, i) => {
-              const Icon = item.icon
-              return (
-                <div key={i} className="flex items-start gap-3">
-                  <Icon className="w-5 h-5 text-[#48B9FA] shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="text-xs sm:text-sm font-bold text-neutral-900 leading-snug">
-                      {item.title}
-                    </h4>
-                    <p className="text-xs text-neutral-500 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Frutas Míticas & Físicas */}
-      {fruitProducts.length > 0 && (
-        <section className="py-6 sm:py-10 border-t border-neutral-100 bg-neutral-50/40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <ProductGrid
-              products={fruitProducts}
-              title="Frutas Míticas & Físicas"
-              description="Kitsune, Dragon, Leopard e as principais frutas para trade no Segundo ou Terceiro Mar."
-              showViewAll={true}
-              viewAllLink="/loja?categoryId=frutas"
-              columns={4}
-            />
-          </div>
-        </section>
-      )}
-
-      {/* 6. Gamepasses em Destaque */}
-      {gamepassProducts.length > 0 && (
-        <section className="py-6 sm:py-10 pb-12 sm:pb-16 border-t border-neutral-100 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <ProductGrid
-              products={gamepassProducts}
-              title="Gamepasses"
-              description="2x Maestria, 2x Beli, Dark Blade e Barcos Rápidos com entrega direta."
-              showViewAll={true}
-              viewAllLink="/loja?categoryId=gamepasses"
-              columns={4}
-            />
-          </div>
-        </section>
-      )}
-
-      {/* 7. CTA Servidor do Discord Oficial */}
+      {/* 5. CTA Servidor do Discord Oficial */}
       <DiscordCta />
 
-      {/* 8. Rodapé */}
+      {/* 6. Rodapé */}
       <Footer />
     </div>
   )
@@ -258,7 +247,7 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<StoreLoader isLoading={true} minDurationMs={1600} />}>
+    <Suspense fallback={<StoreLoader isLoading={true} minDurationMs={1200} />}>
       <HomeContent />
     </Suspense>
   )
