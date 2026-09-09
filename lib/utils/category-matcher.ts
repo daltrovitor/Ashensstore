@@ -101,16 +101,6 @@ export function matchesCategory(cat: CategoryLike, queryParam: string | null | u
     }
   }
 
-  // 6. Substring match no nome ou slug normalizado (se o termo tiver pelo menos 3 caracteres)
-  if (cleanQuery.length >= 3) {
-    if (cleanCatSlug && (cleanCatSlug.includes(cleanQuery) || cleanQuery.includes(cleanCatSlug))) {
-      return true
-    }
-    if (cleanCatName && (cleanCatName.includes(cleanQuery) || cleanQuery.includes(cleanCatName))) {
-      return true
-    }
-  }
-
   return false
 }
 

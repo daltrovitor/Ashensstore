@@ -69,45 +69,10 @@ export async function GET(request: Request) {
             query = query.eq('is_featured', true)
         }
 
-        let { data, error } = await query
+        const { data, error } = await query
         if (error) {
             console.error('[Products API] Erro ao buscar produtos do banco:', error)
             return NextResponse.json([])
-        }
-
-        // Se uma categoria de frutas ou contas retornou 0 itens (porque os itens foram cadastrados em outra categoria),
-        // busca produtos por palavras-chave relevantes para que o cliente nunca veja uma página vazia
-        if ((!data || data.length === 0) && categoryId && categoryId !== 'all') {
-            const lowerCat = categoryId.toLowerCase()
-            if (['frutas', 'fruta', 'fruits', 'frutas-fisicas', 'frutas-miticas', 'frutas-no-inventario'].some(term => lowerCat.includes(term))) {
-                const { data: fallbackFruits } = await supabase
-                    .from('products')
-                    .select(`
-                        *,
-                        variants:product_variants(*),
-                        mockups:product_mockups(*)
-                    `)
-                    .eq('is_active', true)
-                    .or('name.ilike.%fruit%,name.ilike.%fruta%,name.ilike.%perm%')
-
-                if (fallbackFruits && fallbackFruits.length > 0) {
-                    data = fallbackFruits
-                }
-            } else if (['contas', 'conta', 'contas-pvp'].some(term => lowerCat.includes(term))) {
-                const { data: fallbackAccounts } = await supabase
-                    .from('products')
-                    .select(`
-                        *,
-                        variants:product_variants(*),
-                        mockups:product_mockups(*)
-                    `)
-                    .eq('is_active', true)
-                    .or('name.ilike.%conta%,name.ilike.%godhuman%,name.ilike.%lvl%')
-
-                if (fallbackAccounts && fallbackAccounts.length > 0) {
-                    data = fallbackAccounts
-                }
-            }
         }
 
         return NextResponse.json(data || [])

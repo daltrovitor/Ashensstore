@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Search, X } from "lucide-react"
 import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
-import { matchesCategory } from "@/lib/utils/category-matcher"
+import { findCategory } from "@/lib/utils/category-matcher"
 
 function LojaContent() {
   const [products, setProducts] = useState<Product[]>([])
@@ -107,11 +107,13 @@ function LojaContent() {
     ...categories.map((c) => ({ id: c.id, slug: c.slug || c.id, name: c.name })),
   ]
 
+  const activeCategory = findCategory(categories, selectedCategory)
+
   const isTabActive = (cat: { id: string; slug?: string; name: string }) => {
     if (cat.id === "all") {
-      return !selectedCategory || selectedCategory === "all"
+      return !selectedCategory || selectedCategory === "all" || !activeCategory
     }
-    return matchesCategory(cat, selectedCategory)
+    return activeCategory?.id === cat.id
   }
 
   return (
