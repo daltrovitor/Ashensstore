@@ -107,6 +107,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
 
     // Local edits for cost / retail price / stock quantity before saving
     const [priceEdits, setPriceEdits] = useState<Record<string, { retail_price?: string; cost_price?: string; stock?: string }>>({})
+    const [isSavingAll, setIsSavingAll] = useState(false)
 
     useEffect(() => {
         fetchInventory()
@@ -215,6 +216,51 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setSavingId(null)
+        }
+    }
+
+    const handleSaveAllPending = async () => {
+        const variantIds = Object.keys(priceEdits)
+        if (variantIds.length === 0) return
+
+        setIsSavingAll(true)
+        try {
+            let successCount = 0
+            for (const vId of variantIds) {
+                const edit = priceEdits[vId]
+                const payload: any = { variant_id: vId }
+                if (edit.retail_price !== undefined) {
+                    const num = parseFloat(edit.retail_price.replace(/\./g, "").replace(",", "."))
+                    if (!isNaN(num)) payload.retail_price = num
+                }
+                if (edit.cost_price !== undefined) {
+                    const num = parseFloat(edit.cost_price.replace(/\./g, "").replace(",", "."))
+                    if (!isNaN(num)) payload.cost_price = num
+                }
+                if (edit.stock !== undefined) {
+                    const s = parseInt(edit.stock, 10)
+                    if (!isNaN(s)) {
+                        payload.stock = Math.max(0, s)
+                        payload.in_stock = s > 0
+                    }
+                }
+
+                const res = await fetchWithAuth("/api/admin/inventory", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                })
+                if (res.ok) successCount++
+            }
+
+            toast.success(`${successCount} item(ns) de estoque atualizado(s) com sucesso!`)
+            setPriceEdits({})
+            fetchInventory()
+        } catch (error) {
+            console.error(error)
+            toast.error("Erro ao salvar alterações no estoque")
+        } finally {
+            setIsSavingAll(false)
         }
     }
 
@@ -373,6 +419,38 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
                 </Select>
             </div>
 
+            {/* Barra de Alterações Pendentes com Salvamento em Lote */}
+            {Object.keys(priceEdits).length > 0 && (
+                <div className="sticky top-2 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-neutral-900 text-white rounded-lg shadow-xl border border-neutral-700 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-xs sm:text-sm font-semibold">
+                            {Object.keys(priceEdits).length} item(ns) com alterações não salvas no estoque / preços
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs text-neutral-300 border-neutral-600 hover:bg-neutral-800 hover:text-white cursor-pointer"
+                            onClick={() => setPriceEdits({})}
+                            disabled={isSavingAll}
+                        >
+                            Descartar
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm cursor-pointer"
+                            onClick={handleSaveAllPending}
+                            disabled={isSavingAll}
+                        >
+                            <Save className="w-3.5 h-3.5" />
+                            {isSavingAll ? "Salvando Todas..." : "Salvar Todas as Alterações"}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Tabela de Estoque */}
             <Card>
                 <CardContent className="p-0">
@@ -465,31 +543,80 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
                                                         </span>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                className={`w-20 h-8 text-xs font-mono font-bold text-center ${
-                                                                    numStock === 0 ? "border-red-400 bg-red-50 text-red-700" : ""
-                                                                }`}
-                                                                value={stockVal}
-                                                                onChange={(e) => {
-                                                                    setPriceEdits((prev) => ({
-                                                                        ...prev,
-                                                                        [variant.id]: {
-                                                                            ...prev[variant.id],
-                                                                            stock: e.target.value,
-                                                                        },
-                                                                    }))
-                                                                }}
-                                                            />
-                                                            <span className="text-[10px] text-muted-foreground">un</span>
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    className={`w-20 h-8 text-xs font-mono font-bold text-center ${
+                                                                        numStock === 0 ? "border-red-400 bg-red-50 text-red-700" : ""
+                                                                    }`}
+                                                                    value={stockVal}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleSavePrices(variant)
+                                                                    }}
+                                                                    onChange={(e) => {
+                                                                        setPriceEdits((prev) => ({
+                                                                            ...prev,
+                                                                            [variant.id]: {
+                                                                                ...prev[variant.id],
+                                                                                stock: e.target.value,
+                                                                            },
+                                                                        }))
+                                                                    }}
+                                                                />
+                                                                <span className="text-[10px] text-muted-foreground">un</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-mono font-bold cursor-pointer transition-colors"
+                                                                    title="Zerar estoque (0)"
+                                                                    onClick={() => {
+                                                                        setPriceEdits(prev => ({
+                                                                            ...prev,
+                                                                            [variant.id]: { ...prev[variant.id], stock: "0" }
+                                                                        }))
+                                                                    }}
+                                                                >
+                                                                    0
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-mono font-bold cursor-pointer transition-colors"
+                                                                    title="Adicionar +5 ao estoque"
+                                                                    onClick={() => {
+                                                                        setPriceEdits(prev => ({
+                                                                            ...prev,
+                                                                            [variant.id]: { ...prev[variant.id], stock: (numStock + 5).toString() }
+                                                                        }))
+                                                                    }}
+                                                                >
+                                                                    +5
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-mono font-bold cursor-pointer transition-colors"
+                                                                    title="Adicionar +10 ao estoque"
+                                                                    onClick={() => {
+                                                                        setPriceEdits(prev => ({
+                                                                            ...prev,
+                                                                            [variant.id]: { ...prev[variant.id], stock: (numStock + 10).toString() }
+                                                                        }))
+                                                                    }}
+                                                                >
+                                                                    +10
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Input
                                                             className="w-24 h-8 text-xs font-mono"
                                                             value={retailVal}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSavePrices(variant)
+                                                            }}
                                                             onChange={(e) => {
                                                                 setPriceEdits((prev) => ({
                                                                     ...prev,
@@ -506,6 +633,9 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
                                                             className="w-24 h-8 text-xs font-mono"
                                                             value={costVal}
                                                             placeholder="0,00"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSavePrices(variant)
+                                                            }}
                                                             onChange={(e) => {
                                                                 setPriceEdits((prev) => ({
                                                                     ...prev,

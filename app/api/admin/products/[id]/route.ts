@@ -221,8 +221,17 @@ export async function PUT(
                 .select('id')
                 .eq('product_id', id)
 
-            const existingIds = new Set((existingVariantsShort || []).map(v => v.id))
-            const incomingIds = new Set(validatedData.variants.filter(v => v.id).map(v => v.id))
+            const existingVariantList = existingVariantsShort || []
+            const existingIds = new Set(existingVariantList.map((v: any) => v.id))
+
+            // Se o produto já possui exatamente 1 variante e está recebendo 1 variante, garante que atualiza a mesma em vez de deletar/recriar
+            if (existingVariantList.length === 1 && validatedData.variants.length === 1) {
+                if (!validatedData.variants[0].id || !existingIds.has(validatedData.variants[0].id)) {
+                    validatedData.variants[0].id = existingVariantList[0].id
+                }
+            }
+
+            const incomingIds = new Set(validatedData.variants.filter((v: any) => v.id).map((v: any) => v.id))
 
             const toDelete = [...existingIds].filter(eid => !incomingIds.has(eid))
             if (toDelete.length > 0) {

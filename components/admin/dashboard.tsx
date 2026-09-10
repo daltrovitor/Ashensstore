@@ -24,7 +24,8 @@ import {
   Menu,
   ArrowUp,
   ArrowDown,
-  Filter
+  Filter,
+  Save
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
@@ -95,6 +96,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [defaultVariantId, setDefaultVariantId] = useState<string | null>(null)
+  const [defaultVariantName, setDefaultVariantName] = useState<string>('Padrão')
   const [digitalStockTarget, setDigitalStockTarget] = useState<{
     productId: string
     productName: string
@@ -166,10 +168,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     setVariants([])
     setEditingId(null)
     setDefaultVariantId(null)
+    setDefaultVariantName('Padrão')
   }
 
-  const handleSaveProduct = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSaveProduct = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault?.()
     setIsCreating(true)
 
     try {
@@ -207,7 +210,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             const singleStock = formData.stock !== '' && !isNaN(parseInt(formData.stock, 10)) ? parseInt(formData.stock, 10) : 10
             return [{
               id: defaultVariantId || undefined,
-              name: 'Padrão',
+              name: defaultVariantName || 'Padrão',
               price: parsedPrice,
               stock: singleStock,
               in_stock: singleStock > 0
@@ -257,12 +260,13 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const handleEditProduct = (product: Product) => {
     setEditingId(product.id)
-    const initialStock = (product.variants?.[0]?.stock !== undefined ? product.variants[0].stock : (product.variants?.[0]?.in_stock ? 10 : 0)).toString()
+    const primaryVar = product.variants?.[0]
+    const initialStock = (primaryVar?.stock !== undefined ? primaryVar.stock : (primaryVar?.in_stock ? 10 : 0)).toString()
     setFormData({
       name: product.name,
       slug: product.slug,
       description: product.description || '',
-      price: (product.price || product.variants?.[0]?.retail_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      price: (product.price || primaryVar?.retail_price || primaryVar?.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
       stock: initialStock,
       imageUrl: product.thumbnail_url || product.images?.[0] || '',
       category_id: product.category_id || '',
@@ -275,12 +279,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     const existingImages = mockupImages.length > 0 ? mockupImages : (product.images || [])
     setProductImages(existingImages.filter(img => img !== (product.thumbnail_url || product.images?.[0] || '')))
 
-    // Check variants: if product has only 1 variant and it's standard "Padrão" without size/color, treat as standard product
-    if (product.variants && product.variants.length === 1 && (!product.variants[0].size && !product.variants[0].color && (!product.variants[0].name || product.variants[0].name === 'Padrão'))) {
-      setDefaultVariantId(product.variants[0].id)
-      setVariants([])
-    } else if (product.variants && product.variants.length > 0) {
+    // Multi-variants vs single variant
+    if (product.variants && product.variants.length > 1) {
       setDefaultVariantId(null)
+      setDefaultVariantName('Padrão')
       setVariants(product.variants.map(v => ({
         id: v.id,
         name: v.name || '',
@@ -291,7 +293,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         in_stock: v.in_stock
       })))
     } else {
-      setDefaultVariantId(null)
+      // 0 or 1 variant: standard unified product
+      setDefaultVariantId(primaryVar?.id || null)
+      setDefaultVariantName(primaryVar?.name || 'Padrão')
       setVariants([])
     }
 
@@ -585,18 +589,39 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       <Plus className="mr-2 h-4 w-4" /> Novo Produto
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingId ? "Editar Produto" : "Adicionar Novo Produto"}</DialogTitle>
-                      <DialogDescription>
-                        {editingId ? "Edite os detalhes do produto abaixo." : "Adicione um novo produto ao catálogo."}
-                      </DialogDescription>
+                  <DialogContent
+                    className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto"
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault()
+                        handleSaveProduct()
+                      }
+                    }}
+                  >
+                    <DialogHeader className="flex flex-row items-center justify-between gap-4 pb-3 border-b border-neutral-100 pr-6 sticky top-0 bg-white z-20">
+                      <div className="space-y-0.5">
+                        <DialogTitle className="text-base sm:text-lg font-bold">
+                          {editingId ? "Editar Produto" : "Adicionar Novo Produto"}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                          {editingId ? "Edite o estoque, preço e detalhes do produto." : "Adicione um novo produto ao catálogo."}
+                        </DialogDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleSaveProduct}
+                        disabled={isCreating}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 px-4 text-xs shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <Save className="w-4 h-4" />
+                        {isCreating ? 'Salvando...' : 'Salvar Produto'}
+                      </Button>
                     </DialogHeader>
                     <form onSubmit={handleSaveProduct} className="space-y-6 py-4">
 
                       {/* --- Informações Básicas --- */}
                       <div className="space-y-4">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Informações Básicas</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-2">Informações Básicas & Estoque</h3>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="grid gap-2">
@@ -619,9 +644,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Preço, Qtd. Estoque e Categoria no Topo */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3.5 bg-neutral-50 rounded-lg border border-neutral-200/80">
                           <div className="grid gap-2">
-                            <Label htmlFor="price">Preço Base (R$)</Label>
+                            <Label htmlFor="price" className="font-semibold text-neutral-800">Preço Base (R$)</Label>
                             <Input
                               id="price"
                               type="text"
@@ -629,16 +655,45 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                               value={formData.price}
                               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                               placeholder="0,00"
+                              className="bg-white"
                               required
                             />
                           </div>
                           <div className="grid gap-2">
-                            <Label htmlFor="category">Categoria</Label>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="stock" className="font-bold text-[#0284c7]">Qtd. Estoque</Label>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                                parseInt(formData.stock || '0', 10) > 0
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-rose-50 text-rose-700 border-rose-200"
+                              }`}>
+                                {parseInt(formData.stock || '0', 10) > 0 ? "Em Estoque" : "Esgotado"}
+                              </span>
+                            </div>
+                            <Input
+                              id="stock"
+                              type="number"
+                              min="0"
+                              value={formData.stock}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setFormData(prev => ({ ...prev, stock: val }))
+                                if (variants.length === 1) {
+                                  updateVariant(0, 'stock', val)
+                                  updateVariant(0, 'in_stock', parseInt(val || '0', 10) > 0)
+                                }
+                              }}
+                              placeholder="10"
+                              className="font-mono font-bold text-center bg-white text-sm"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="category" className="font-semibold text-neutral-800">Categoria</Label>
                             <Select
                               value={formData.category_id || "none"}
                               onValueChange={(val) => setFormData({ ...formData, category_id: val === "none" ? "" : val })}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="bg-white">
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -650,6 +705,32 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             </Select>
                           </div>
                         </div>
+
+                        {/* Atalho de Mensagens de Entrega Digital */}
+                        {editingId && (
+                          <div className="p-3 bg-blue-50/70 rounded-lg border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Boxes className="w-4 h-4 text-[#48B9FA]" />
+                              <span className="text-xs font-semibold text-neutral-800">
+                                Entrega Automática: mensagens ou chaves em estoque digital
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDigitalStockTarget({
+                                productId: editingId,
+                                productName: formData.name,
+                                variantId: defaultVariantId || undefined
+                              })}
+                              className="h-8 text-xs border-[#48B9FA]/50 text-[#0284c7] hover:bg-[#48B9FA]/10 font-bold cursor-pointer shrink-0"
+                            >
+                              <Package className="h-3.5 w-3.5 mr-1 text-[#48B9FA]" />
+                              Gerenciar Mensagens de Estoque
+                            </Button>
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="grid gap-2">
@@ -745,42 +826,14 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         </div>
 
                         {variants.length === 0 ? (
-                          <div className="p-4 border border-dashed rounded-lg bg-muted/10 space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <div>
-                                <p className="text-sm font-semibold">Variação Padrão (Sem variações adicionais)</p>
-                                <p className="text-xs text-muted-foreground">O produto terá estoque e preço base unificados.</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Label className="text-xs font-bold text-primary">Qtd. Estoque:</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={formData.stock}
-                                  onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                                  className="w-24 h-8 text-xs font-bold font-mono text-center"
-                                />
-                              </div>
+                          <div className="p-3.5 border border-dashed rounded-lg bg-neutral-50 flex items-center justify-between text-xs text-muted-foreground">
+                            <div>
+                              <p className="font-semibold text-neutral-800">Estoque Unificado Ativo</p>
+                              <p className="text-[11px] text-neutral-500">Este item utiliza o estoque definido no topo ({formData.stock || 0} un). Use o botão ao lado apenas se quiser desmembrar em tamanhos/cores.</p>
                             </div>
-                            {editingId && (
-                              <div className="pt-2 border-t border-muted/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <span className="text-xs text-muted-foreground">Estoque com mensagens/chaves para entrega automática:</span>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setDigitalStockTarget({
-                                    productId: editingId,
-                                    productName: formData.name,
-                                    variantId: defaultVariantId || undefined
-                                  })}
-                                  className="h-8 text-xs border-[#48B9FA]/40 text-[#0284c7] hover:bg-[#48B9FA]/10 font-bold cursor-pointer"
-                                >
-                                  <Package className="h-3.5 w-3.5 mr-1 text-[#48B9FA]" />
-                                  Gerenciar Mensagens de Estoque
-                                </Button>
-                              </div>
-                            )}
+                            <span className="font-mono text-xs font-bold text-[#0284c7] px-2 py-0.5 rounded bg-blue-50 border border-blue-200 shrink-0 ml-2">
+                              {formData.stock || 0} un
+                            </span>
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -921,6 +974,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         <TableHead>Nome</TableHead>
                         <TableHead className="w-[210px]">Categoria</TableHead>
                         <TableHead>Preço</TableHead>
+                        <TableHead className="w-[175px]">Estoque</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -928,11 +982,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8">Carregando...</TableCell>
+                          <TableCell colSpan={8} className="text-center py-8">Carregando...</TableCell>
                         </TableRow>
                       ) : filteredProducts.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado nesta categoria.</TableCell>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado nesta categoria.</TableCell>
                         </TableRow>
                       ) : (
                         filteredProducts.map((product, productIndex) => (
@@ -1005,6 +1059,48 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             </TableCell>
                             <TableCell className="font-semibold text-neutral-900">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price || product.variants?.[0]?.retail_price || 0)}
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
+                                const primaryVar = product.variants?.[0]
+                                const stockCount = typeof primaryVar?.stock === 'number'
+                                  ? primaryVar.stock
+                                  : (primaryVar?.inventory_quantity !== undefined ? primaryVar.inventory_quantity : (primaryVar?.in_stock ? 10 : 0))
+                                const isAvail = Boolean(primaryVar?.in_stock !== false && stockCount > 0)
+                                return (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${
+                                      isAvail && stockCount > 0
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        : "bg-rose-50 text-rose-700 border-rose-200"
+                                    }`}>
+                                      {isAvail && stockCount > 0 ? `${stockCount} un` : "Esgotado (0)"}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-1.5 text-xs text-neutral-600 hover:text-neutral-900 cursor-pointer"
+                                      onClick={() => handleEditProduct(product)}
+                                      title="Editar estoque do produto"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-1.5 text-xs text-[#0284c7] hover:bg-blue-50 cursor-pointer"
+                                      onClick={() => setDigitalStockTarget({
+                                        productId: product.id,
+                                        productName: product.name,
+                                        variantId: primaryVar?.id
+                                      })}
+                                      title="Mensagens / Chaves de Estoque Digital"
+                                    >
+                                      <Package className="w-3.5 h-3.5 text-[#48B9FA]" />
+                                    </Button>
+                                  </div>
+                                )
+                              })()}
                             </TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs font-bold ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

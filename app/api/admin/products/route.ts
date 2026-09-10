@@ -68,10 +68,19 @@ export async function GET(request: Request) {
             return {
                 ...prod,
                 display_order: order,
-                variants: (prod.variants || []).map((v: any) => ({
-                    ...v,
-                    stock: v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
-                }))
+                variants: (prod.variants || []).map((v: any) => {
+                    const stockNum = typeof v.stock === 'number'
+                        ? v.stock
+                        : (v.printful_catalog_variant_id && !isNaN(parseInt(v.printful_catalog_variant_id, 10))
+                            ? parseInt(v.printful_catalog_variant_id, 10)
+                            : (v.in_stock ? 10 : 0))
+                    const finalStock = isNaN(stockNum) ? 0 : stockNum
+                    return {
+                        ...v,
+                        stock: finalStock,
+                        in_stock: Boolean(v.in_stock !== false && finalStock > 0)
+                    }
+                })
             }
         })
 
