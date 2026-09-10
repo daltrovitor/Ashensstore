@@ -16,7 +16,8 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  XCircle
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Product, Variant } from "@/lib/store/types"
@@ -48,6 +49,16 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
     const price = selectedVariant?.retail_price || selectedVariant?.price || product.price || 0
     const originalPrice = product.compare_at_price || (price > 0 ? price * 1.3 : 0)
 
+    // Stock verification
+    const hasVariants = Boolean(product.variants && product.variants.length > 0)
+    const isAllOutOfStock = hasVariants
+        ? product.variants!.every(v => v.in_stock === false || (typeof v.stock === 'number' && v.stock <= 0))
+        : Boolean((product as any).in_stock === false || (typeof (product as any).stock === 'number' && (product as any).stock <= 0))
+
+    const isCurrentVariantOutOfStock = selectedVariant
+        ? (selectedVariant.in_stock === false || (typeof selectedVariant.stock === 'number' && selectedVariant.stock <= 0))
+        : isAllOutOfStock
+
     const mainImage = product.mockups?.find(m => m.is_main)?.image_url ||
         product.mockups?.[0]?.image_url ||
         product.thumbnail_url ||
@@ -55,6 +66,11 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
         '/ashens-logo.jpg'
 
     const handleAddToCart = () => {
+        if (isCurrentVariantOutOfStock) {
+            toast.error("Este item está com o estoque esgotado no momento.")
+            return
+        }
+
         addItem({
             id: selectedVariant?.id || product.id,
             product_id: product.id,
@@ -68,6 +84,10 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
     }
 
     const handleBuyNow = () => {
+        if (isCurrentVariantOutOfStock) {
+            toast.error("Este item está com o estoque esgotado no momento.")
+            return
+        }
         handleAddToCart()
         router.push('/checkout')
     }
@@ -85,10 +105,22 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                                 src={mainImage}
                                 alt={product.name}
                                 fill
-                                className="object-contain p-6"
+                                className={`object-contain p-6 transition-all duration-300 ${
+                                    isCurrentVariantOutOfStock ? "blur-[3px] brightness-75 scale-105" : ""
+                                }`}
                                 priority
                             />
-                            <div className="absolute top-4 left-4 text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-[#48B9FA] border border-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+
+                            {/* Overlay de Estoque Esgotado conforme referência visual */}
+                            {isCurrentVariantOutOfStock && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-4 pointer-events-none">
+                                    <span className="text-white font-extrabold text-base sm:text-2xl tracking-wider uppercase text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">
+                                        ESTOQUE ESGOTADO
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="absolute top-4 left-4 z-20 text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-[#48B9FA] border border-blue-200 uppercase tracking-wider flex items-center gap-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-[#48B9FA]" />
                                 <span>Blox Fruits Oficial</span>
                             </div>
@@ -107,9 +139,15 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                                 {product.name}
                             </h1>
                             <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500">
-                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                                    <CheckCircle2 className="w-4 h-4" /> Em Estoque
-                                </span>
+                                {isCurrentVariantOutOfStock ? (
+                                    <span className="flex items-center gap-1 text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                                        <XCircle className="w-4 h-4 text-rose-600" /> Estoque Esgotado
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                        <CheckCircle2 className="w-4 h-4" /> Em Estoque
+                                    </span>
+                                )}
                                 <span>•</span>
                                 <span>Entrega via Servidor VIP Roblox</span>
                             </div>
@@ -147,22 +185,38 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                         <div className="space-y-3 pt-2">
                             <Button
                                 size="lg"
+                                disabled={isCurrentVariantOutOfStock}
                                 onClick={handleBuyNow}
-                                className="w-full bg-[#48B9FA] hover:bg-[#20a6f5] text-white font-semibold text-sm h-12 rounded-md shadow-xs cursor-pointer transition-all"
+                                className={`w-full font-semibold text-sm h-12 rounded-md shadow-xs transition-all ${
+                                    isCurrentVariantOutOfStock
+                                        ? "bg-neutral-200 text-neutral-400 border border-neutral-300 cursor-not-allowed hover:bg-neutral-200"
+                                        : "bg-[#48B9FA] hover:bg-[#20a6f5] text-white cursor-pointer"
+                                }`}
                             >
-                                <Zap className="mr-2 h-4 w-4" />
-                                Comprar Agora via PIX
-                                <ArrowRight className="ml-2 h-4 w-4" />
+                                {isCurrentVariantOutOfStock ? (
+                                    "Produto Esgotado"
+                                ) : (
+                                    <>
+                                        <Zap className="mr-2 h-4 w-4" />
+                                        Comprar Agora via PIX
+                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                    </>
+                                )}
                             </Button>
 
                             <Button
                                 size="lg"
                                 variant="outline"
+                                disabled={isCurrentVariantOutOfStock}
                                 onClick={handleAddToCart}
-                                className="w-full border-neutral-300 text-neutral-800 hover:bg-neutral-50 font-semibold text-sm h-12 rounded-md cursor-pointer"
+                                className={`w-full font-semibold text-sm h-12 rounded-md transition-all ${
+                                    isCurrentVariantOutOfStock
+                                        ? "border-neutral-200 text-neutral-400 bg-neutral-50 cursor-not-allowed hover:bg-neutral-50"
+                                        : "border-neutral-300 text-neutral-800 hover:bg-neutral-50 cursor-pointer"
+                                }`}
                             >
                                 <ShoppingCart className="mr-2 h-4 w-4" />
-                                Adicionar ao Carrinho
+                                {isCurrentVariantOutOfStock ? "Sem Estoque" : "Adicionar ao Carrinho"}
                             </Button>
                         </div>
 

@@ -203,13 +203,16 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             in_stock: stockCount > 0 && v.in_stock !== false
           }
         })
-        : [{
-            id: defaultVariantId || undefined,
-            name: 'Padrão',
-            price: parsedPrice,
-            stock: parseInt(formData.stock || '10', 10) || 10,
-            in_stock: (parseInt(formData.stock || '10', 10) || 10) > 0
-          }]
+        : (() => {
+            const singleStock = formData.stock !== '' && !isNaN(parseInt(formData.stock, 10)) ? parseInt(formData.stock, 10) : 10
+            return [{
+              id: defaultVariantId || undefined,
+              name: 'Padrão',
+              price: parsedPrice,
+              stock: singleStock,
+              in_stock: singleStock > 0
+            }]
+          })()
 
       const res = await fetchWithAuth(url, {
         method,

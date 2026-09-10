@@ -141,6 +141,7 @@ export async function PATCH(request: Request) {
 
         if (validated.stock !== undefined) {
             updates.stock = validated.stock
+            updates.printful_catalog_variant_id = validated.stock.toString()
             if (validated.stock === 0) {
                 updates.in_stock = false
             } else if (validated.in_stock === undefined) {

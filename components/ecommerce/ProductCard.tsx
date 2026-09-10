@@ -38,9 +38,20 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         (product.images && product.images[0]) ||
         "/ashens-logo.jpg"
 
+    // Determine stock status
+    const hasVariants = Boolean(product.variants && product.variants.length > 0)
+    const isOutOfStock = hasVariants
+        ? product.variants!.every(v => v.in_stock === false || (typeof v.stock === 'number' && v.stock <= 0))
+        : Boolean((product as any).in_stock === false || (typeof (product as any).stock === 'number' && (product as any).stock <= 0))
+
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
+
+        if (isOutOfStock) {
+            toast.error("Este produto está com o estoque esgotado.")
+            return
+        }
 
         const variant = product.variants && product.variants.length > 0 ? product.variants[0] : null
 
@@ -60,6 +71,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     const handleDirectBuy = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
+        if (isOutOfStock) {
+            toast.error("Este produto está com o estoque esgotado.")
+            return
+        }
         handleAddToCart(e)
         router.push('/checkout')
     }
@@ -72,7 +87,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 className="block relative aspect-square w-full bg-neutral-100 overflow-hidden"
             >
                 {/* Badges Flutuantes */}
-                {discountPercent > 0 && (
+                {discountPercent > 0 && !isOutOfStock && (
                     <div className="absolute top-2 left-2 z-10">
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-white shadow-xs">
                             -{discountPercent}%
@@ -85,9 +100,22 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                     alt={product.name}
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                    className={`object-cover w-full h-full transition-all duration-300 ${
+                        isOutOfStock
+                            ? "blur-[3px] brightness-75 scale-105"
+                            : "group-hover:scale-105"
+                    }`}
                     priority={priority}
                 />
+
+                {/* Overlay de Estoque Esgotado conforme referência visual */}
+                {isOutOfStock && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 backdrop-blur-[1px] p-2 pointer-events-none">
+                        <span className="text-white font-extrabold text-xs sm:text-sm md:text-base tracking-wider uppercase text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">
+                            ESTOQUE ESGOTADO
+                        </span>
+                    </div>
+                )}
             </Link>
 
             {/* Informações do Produto */}
@@ -130,18 +158,28 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                     <div className="flex items-center gap-1.5">
                         <button
                             type="button"
-                            onClick={handleDirectBuy}
-                            className="flex-1 h-8 sm:h-9 text-[11px] sm:text-xs font-semibold text-white bg-[#48B9FA] hover:bg-[#20a6f5] active:scale-[0.98] rounded transition-all shadow-xs cursor-pointer flex items-center justify-center"
+                            disabled={isOutOfStock}
+                            onClick={isOutOfStock ? (e) => { e.preventDefault(); e.stopPropagation(); toast.error("Este produto está esgotado no momento."); } : handleDirectBuy}
+                            className={`flex-1 h-8 sm:h-9 text-[11px] sm:text-xs font-semibold rounded transition-all shadow-xs flex items-center justify-center select-none ${
+                                isOutOfStock
+                                    ? "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                                    : "text-white bg-[#48B9FA] hover:bg-[#20a6f5] active:scale-[0.98] cursor-pointer"
+                            }`}
                         >
-                            Comprar
+                            {isOutOfStock ? "Esgotado" : "Comprar"}
                         </button>
 
                         <button
                             type="button"
-                            onClick={handleAddToCart}
-                            className="h-8 sm:h-9 w-8 sm:w-9 shrink-0 text-neutral-700 bg-neutral-100 hover:bg-neutral-200 hover:text-neutral-900 active:scale-[0.98] border border-neutral-200 rounded transition-all flex items-center justify-center cursor-pointer"
-                            title="Adicionar ao carrinho"
-                            aria-label="Adicionar ao carrinho"
+                            disabled={isOutOfStock}
+                            onClick={isOutOfStock ? (e) => { e.preventDefault(); e.stopPropagation(); toast.error("Este produto está esgotado no momento."); } : handleAddToCart}
+                            className={`h-8 sm:h-9 w-8 sm:w-9 shrink-0 border rounded transition-all flex items-center justify-center select-none ${
+                                isOutOfStock
+                                    ? "text-neutral-300 bg-neutral-50 border-neutral-200 cursor-not-allowed"
+                                    : "text-neutral-700 bg-neutral-100 hover:bg-neutral-200 hover:text-neutral-900 active:scale-[0.98] border-neutral-200 cursor-pointer"
+                            }`}
+                            title={isOutOfStock ? "Produto esgotado" : "Adicionar ao carrinho"}
+                            aria-label={isOutOfStock ? "Produto esgotado" : "Adicionar ao carrinho"}
                         >
                             <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>

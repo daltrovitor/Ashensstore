@@ -38,11 +38,16 @@ export async function GET(
         const formattedProduct = {
             ...product,
             variants: (product.variants || []).map((v: any) => {
-                const stockNum = v.printful_catalog_variant_id ? parseInt(v.printful_catalog_variant_id, 10) : (v.in_stock ? 10 : 0)
+                const stockNum = typeof v.stock === 'number'
+                    ? v.stock
+                    : (v.printful_catalog_variant_id && !isNaN(parseInt(v.printful_catalog_variant_id, 10))
+                        ? parseInt(v.printful_catalog_variant_id, 10)
+                        : (v.in_stock ? 10 : 0))
+                const finalStock = isNaN(stockNum) ? 0 : stockNum
                 return {
                     ...v,
-                    stock: isNaN(stockNum) ? 0 : stockNum,
-                    in_stock: v.in_stock && stockNum > 0
+                    stock: finalStock,
+                    in_stock: Boolean(v.in_stock !== false && finalStock > 0)
                 }
             })
         }
