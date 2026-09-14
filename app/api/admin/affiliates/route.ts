@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
     }
 
-    const affiliates = readAffiliates()
+    const affiliates = await readAffiliates()
     const supabase = getSupabaseService()
 
     // Buscar perfis adicionais se disponíveis para cruzar dados

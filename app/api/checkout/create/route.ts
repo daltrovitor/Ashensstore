@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         let affiliateCommission = 0
 
         if (validatedData.coupon_code) {
-            const couponResult = validateCoupon(validatedData.coupon_code)
+            const couponResult = await validateCoupon(validatedData.coupon_code)
             if (couponResult.valid && couponResult.coupon_code) {
                 appliedCoupon = couponResult.coupon_code
                 const pct = (couponResult.discount_percent || 10) / 100

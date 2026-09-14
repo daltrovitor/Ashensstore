@@ -14,39 +14,117 @@ export interface DigitalStockItem {
     deliveredToOrderExternalId?: string
 }
 
+const BUCKET_NAME = 'app_data'
+const STOCK_FILE_NAME = 'digital-stock.json'
 const DATA_DIR = path.join(process.cwd(), 'data')
-const STOCK_FILE = path.join(DATA_DIR, 'digital-stock.json')
+const LOCAL_STOCK_FILE = path.join(DATA_DIR, 'digital-stock.json')
 
-function ensureFileExists() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    if (!fs.existsSync(STOCK_FILE)) {
-        fs.writeFileSync(STOCK_FILE, JSON.stringify([], null, 2), 'utf-8')
-    }
-}
+let bucketEnsured = false
 
-export function readAllStock(): DigitalStockItem[] {
-    ensureFileExists()
+async function ensureBucket(supabase: any) {
+    if (bucketEnsured) return
     try {
-        const raw = fs.readFileSync(STOCK_FILE, 'utf-8')
-        return JSON.parse(raw) as DigitalStockItem[]
-    } catch (err) {
-        console.error('[DigitalStock] Erro ao ler arquivo de estoque:', err)
-        return []
+        await supabase.storage.createBucket(BUCKET_NAME, { public: false })
+        bucketEnsured = true
+    } catch {
+        bucketEnsured = true
     }
 }
 
-export function saveAllStock(items: DigitalStockItem[]) {
-    ensureFileExists()
-    fs.writeFileSync(STOCK_FILE, JSON.stringify(items, null, 2), 'utf-8')
+/**
+ * Lê todas as mensagens de estoque (Supabase Storage com fallback resiliente)
+ */
+export async function readAllStock(): Promise<DigitalStockItem[]> {
+    const supabase = getSupabaseService()
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .download(STOCK_FILE_NAME)
+
+            if (!error && data) {
+                const text = await data.text()
+                if (text && text.trim()) {
+                    return JSON.parse(text) as DigitalStockItem[]
+                }
+                return []
+            }
+
+            // Se o arquivo ainda não existir no bucket, cria com array vazio
+            if (error) {
+                await ensureBucket(supabase)
+                await supabase.storage
+                    .from(BUCKET_NAME)
+                    .upload(STOCK_FILE_NAME, '[]', { upsert: true, contentType: 'application/json' })
+            }
+        } catch (err) {
+            console.warn('[DigitalStock] Aviso ao ler do Supabase Storage:', err)
+        }
+    }
+
+    // Fallback local com try-catch (nunca dispara EROFS)
+    try {
+        if (fs.existsSync(LOCAL_STOCK_FILE)) {
+            const raw = fs.readFileSync(LOCAL_STOCK_FILE, 'utf-8')
+            return JSON.parse(raw) as DigitalStockItem[]
+        }
+    } catch (err) {
+        console.warn('[DigitalStock] Fallback local ignorado:', err)
+    }
+
+    return []
+}
+
+/**
+ * Salva todas as mensagens de estoque (Supabase Storage com salvamento local opcional)
+ */
+export async function saveAllStock(items: DigitalStockItem[]): Promise<void> {
+    const jsonStr = JSON.stringify(items, null, 2)
+    const supabase = getSupabaseService()
+
+    if (supabase) {
+        try {
+            let { error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .upload(STOCK_FILE_NAME, jsonStr, {
+                    upsert: true,
+                    contentType: 'application/json',
+                })
+
+            if (error) {
+                await ensureBucket(supabase)
+                const retry = await supabase.storage
+                    .from(BUCKET_NAME)
+                    .upload(STOCK_FILE_NAME, jsonStr, {
+                        upsert: true,
+                        contentType: 'application/json',
+                    })
+                if (retry.error) {
+                    console.error('[DigitalStock] Erro ao gravar no Supabase Storage:', retry.error)
+                }
+            }
+        } catch (err) {
+            console.error('[DigitalStock] Exceção ao gravar no Supabase Storage:', err)
+        }
+    }
+
+    // Tentativa não-bloqueante no disco local (ignora silenciosamente EROFS na Vercel/serverless)
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true })
+        }
+        fs.writeFileSync(LOCAL_STOCK_FILE, jsonStr, 'utf-8')
+    } catch {
+        // Silenciosamente ignorado em ambientes somente-leitura (Vercel Lambda)
+    }
 }
 
 /**
  * Retorna itens disponíveis para um produto (e opcionalmente variante)
  */
-export function getAvailableStockItems(productId: string, variantId?: string): DigitalStockItem[] {
-    const all = readAllStock()
+export async function getAvailableStockItems(productId: string, variantId?: string): Promise<DigitalStockItem[]> {
+    const all = await readAllStock()
     return all.filter(item => {
         if (item.status !== 'available') return false
         if (item.productId !== productId) return false
@@ -58,8 +136,8 @@ export function getAvailableStockItems(productId: string, variantId?: string): D
 /**
  * Retorna todos os itens (disponíveis e entregues) de um produto
  */
-export function getAllStockItemsForProduct(productId: string): DigitalStockItem[] {
-    const all = readAllStock()
+export async function getAllStockItemsForProduct(productId: string): Promise<DigitalStockItem[]> {
+    const all = await readAllStock()
     return all.filter(item => item.productId === productId)
 }
 
@@ -67,7 +145,7 @@ export function getAllStockItemsForProduct(productId: string): DigitalStockItem[
  * Sincroniza a quantidade de estoque com a tabela product_variants no Supabase
  */
 export async function syncProductVariantStock(productId: string, variantId?: string): Promise<number> {
-    const available = getAvailableStockItems(productId, variantId)
+    const available = await getAvailableStockItems(productId, variantId)
     const newStockCount = available.length
 
     const supabase = getSupabaseService()
@@ -112,11 +190,11 @@ export async function addStockMessages(
         .filter(m => m.length > 0)
 
     if (cleanMessages.length === 0) {
-        const available = getAvailableStockItems(productId, variantId)
+        const available = await getAvailableStockItems(productId, variantId)
         return { countAdded: 0, totalAvailable: available.length }
     }
 
-    const all = readAllStock()
+    const all = await readAllStock()
     const now = new Date().toISOString()
 
     const newItems: DigitalStockItem[] = cleanMessages.map(msg => ({
@@ -129,7 +207,7 @@ export async function addStockMessages(
     }))
 
     all.push(...newItems)
-    saveAllStock(all)
+    await saveAllStock(all)
 
     const totalAvailable = await syncProductVariantStock(productId, variantId)
 
@@ -143,7 +221,7 @@ export async function addStockMessages(
  * Remove um item específico do estoque
  */
 export async function removeStockItem(itemId: string): Promise<{ success: boolean; productId?: string; remainingAvailable: number }> {
-    const all = readAllStock()
+    const all = await readAllStock()
     const index = all.findIndex(item => item.id === itemId)
 
     if (index === -1) {
@@ -152,7 +230,7 @@ export async function removeStockItem(itemId: string): Promise<{ success: boolea
 
     const target = all[index]
     all.splice(index, 1)
-    saveAllStock(all)
+    await saveAllStock(all)
 
     const remainingAvailable = await syncProductVariantStock(target.productId, target.variantId)
 
@@ -179,7 +257,7 @@ export async function deliverRandomStockItems(params: {
     remainingAvailable: number
 }> {
     const { productId, variantId, quantity, orderId, orderExternalId } = params
-    const all = readAllStock()
+    const all = await readAllStock()
 
     // Filtra itens disponíveis para este produto/variante
     const candidateIndices: number[] = []
@@ -212,7 +290,7 @@ export async function deliverRandomStockItems(params: {
     }
 
     if (delivered.length > 0) {
-        saveAllStock(all)
+        await saveAllStock(all)
         // Sincroniza estoque no Supabase
         const targetProductId = productId || delivered[0].productId
         const targetVariantId = variantId || delivered[0].variantId

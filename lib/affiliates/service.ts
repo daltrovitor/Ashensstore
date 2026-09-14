@@ -13,43 +13,114 @@ export interface Affiliate {
     created_at: string
 }
 
+const BUCKET_NAME = 'app_data'
+const AFFILIATES_FILE_NAME = 'affiliates.json'
 const DATA_DIR = path.join(process.cwd(), 'data')
-const AFFILIATES_FILE = path.join(DATA_DIR, 'affiliates.json')
+const LOCAL_AFFILIATES_FILE = path.join(DATA_DIR, 'affiliates.json')
 
-function ensureFileExists() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    if (!fs.existsSync(AFFILIATES_FILE)) {
-        fs.writeFileSync(AFFILIATES_FILE, JSON.stringify([], null, 2), 'utf-8')
-    }
-}
+let bucketEnsured = false
 
-export function readAffiliates(): Affiliate[] {
-    ensureFileExists()
+async function ensureBucket(supabase: any) {
+    if (bucketEnsured) return
     try {
-        const raw = fs.readFileSync(AFFILIATES_FILE, 'utf-8')
-        return JSON.parse(raw) as Affiliate[]
-    } catch (err) {
-        console.error('[Affiliates] Erro ao ler afiliados:', err)
-        return []
+        await supabase.storage.createBucket(BUCKET_NAME, { public: false })
+        bucketEnsured = true
+    } catch {
+        bucketEnsured = true
     }
 }
 
-export function saveAffiliates(affiliates: Affiliate[]) {
-    ensureFileExists()
-    fs.writeFileSync(AFFILIATES_FILE, JSON.stringify(affiliates, null, 2), 'utf-8')
+export async function readAffiliates(): Promise<Affiliate[]> {
+    const supabase = getSupabaseService()
+
+    if (supabase) {
+        try {
+            const { data, error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .download(AFFILIATES_FILE_NAME)
+
+            if (!error && data) {
+                const text = await data.text()
+                if (text && text.trim()) {
+                    return JSON.parse(text) as Affiliate[]
+                }
+                return []
+            }
+
+            if (error) {
+                await ensureBucket(supabase)
+                await supabase.storage
+                    .from(BUCKET_NAME)
+                    .upload(AFFILIATES_FILE_NAME, '[]', { upsert: true, contentType: 'application/json' })
+            }
+        } catch (err) {
+            console.warn('[Affiliates] Aviso ao ler do Supabase Storage:', err)
+        }
+    }
+
+    // Fallback local com try-catch (nunca dispara EROFS)
+    try {
+        if (fs.existsSync(LOCAL_AFFILIATES_FILE)) {
+            const raw = fs.readFileSync(LOCAL_AFFILIATES_FILE, 'utf-8')
+            return JSON.parse(raw) as Affiliate[]
+        }
+    } catch (err) {
+        console.warn('[Affiliates] Fallback local ignorado:', err)
+    }
+
+    return []
 }
 
-export function getAffiliateByUserId(userId: string): Affiliate | null {
-    const all = readAffiliates()
+export async function saveAffiliates(affiliates: Affiliate[]): Promise<void> {
+    const jsonStr = JSON.stringify(affiliates, null, 2)
+    const supabase = getSupabaseService()
+
+    if (supabase) {
+        try {
+            let { error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .upload(AFFILIATES_FILE_NAME, jsonStr, {
+                    upsert: true,
+                    contentType: 'application/json',
+                })
+
+            if (error) {
+                await ensureBucket(supabase)
+                const retry = await supabase.storage
+                    .from(BUCKET_NAME)
+                    .upload(AFFILIATES_FILE_NAME, jsonStr, {
+                        upsert: true,
+                        contentType: 'application/json',
+                    })
+                if (retry.error) {
+                    console.error('[Affiliates] Erro ao salvar no Supabase Storage:', retry.error)
+                }
+            }
+        } catch (err) {
+            console.error('[Affiliates] Exceção ao salvar no Supabase Storage:', err)
+        }
+    }
+
+    // Tentativa não-bloqueante no disco local (ignora silenciosamente EROFS na Vercel)
+    try {
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true })
+        }
+        fs.writeFileSync(LOCAL_AFFILIATES_FILE, jsonStr, 'utf-8')
+    } catch {
+        // Silenciosamente ignorado em ambientes somente-leitura
+    }
+}
+
+export async function getAffiliateByUserId(userId: string): Promise<Affiliate | null> {
+    const all = await readAffiliates()
     return all.find(a => a.user_id === userId) || null
 }
 
-export function getAffiliateByCoupon(code: string): Affiliate | null {
+export async function getAffiliateByCoupon(code: string): Promise<Affiliate | null> {
     if (!code) return null
     const clean = code.trim().toUpperCase()
-    const all = readAffiliates()
+    const all = await readAffiliates()
     return all.find(a => a.coupon_code.toUpperCase() === clean) || null
 }
 
@@ -66,7 +137,7 @@ export async function registerAffiliate(params: {
         return { success: false, error: 'O código do cupom deve ter no mínimo 3 caracteres alfanuméricos.' }
     }
 
-    const all = readAffiliates()
+    const all = await readAffiliates()
 
     // Verifica se usuário já é afiliado
     const existingUser = all.find(a => a.user_id === userId)
@@ -92,23 +163,23 @@ export async function registerAffiliate(params: {
     }
 
     all.push(newAffiliate)
-    saveAffiliates(all)
+    await saveAffiliates(all)
 
     return { success: true, affiliate: newAffiliate }
 }
 
-export function validateCoupon(code: string): {
+export async function validateCoupon(code: string): Promise<{
     valid: boolean
     coupon_code?: string
     discount_percent?: number
     affiliate_id?: string
     error?: string
-} {
+}> {
     if (!code || typeof code !== 'string') {
         return { valid: false, error: 'Código de cupom inválido' }
     }
 
-    const affiliate = getAffiliateByCoupon(code)
+    const affiliate = await getAffiliateByCoupon(code)
     if (!affiliate) {
         return { valid: false, error: 'Cupom de desconto não encontrado ou inválido' }
     }
@@ -138,7 +209,7 @@ export interface AffiliateStats {
 }
 
 export async function getAffiliateStats(userId: string): Promise<AffiliateStats | null> {
-    const affiliate = getAffiliateByUserId(userId)
+    const affiliate = await getAffiliateByUserId(userId)
     if (!affiliate) return null
 
     const supabase = getSupabaseService()

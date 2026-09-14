@@ -29,8 +29,8 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'productId é obrigatório' }, { status: 400 })
         }
 
-        const allItems = getAllStockItemsForProduct(productId)
-        const availableItems = getAvailableStockItems(productId, variantId)
+        const allItems = await getAllStockItemsForProduct(productId)
+        const availableItems = await getAvailableStockItems(productId, variantId)
         const deliveredItems = allItems.filter(i => i.status === 'delivered')
 
         return NextResponse.json({

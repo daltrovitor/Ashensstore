@@ -16,7 +16,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ valid: false, error: 'Código do cupom não informado' }, { status: 400 })
         }
 
-        const result = validateCoupon(code)
+        const result = await validateCoupon(code)
 
         if (!result.valid) {
             return NextResponse.json({ valid: false, error: result.error || 'Cupom inválido ou não encontrado' }, { status: 400 })
