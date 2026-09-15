@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server'
 import { createOrder } from '@/lib/orders/service'
 import { generatePixPayload, COMPANY_PIX_DATA } from '@/lib/pix/brcode'
-import { validateCoupon } from '@/lib/affiliates/service'
+import { validateCouponForCheckout, recordCouponUsage } from '@/lib/coupons/service'
 import { z } from 'zod'
 
 // Schema de validação adaptado para entrega digital
@@ -14,10 +14,12 @@ const CheckoutSchema = z.object({
     payment_method: z.literal('pix').default('pix'),
     coupon_code: z.string().optional(),
     items: z.array(z.object({
-        variant_id: z.string().uuid().optional(),
+        product_id: z.string().optional(),
+        variant_id: z.string().optional(),
         quantity: z.number().min(1),
         price: z.number().min(0),
         name: z.string(),
+        category_id: z.string().optional(),
     })),
     customer: z.object({
         name: z.string().min(2, "Nome é obrigatório"),
@@ -35,20 +37,38 @@ export async function POST(request: Request) {
         // Valida dados de entrada
         const validatedData = CheckoutSchema.parse(body)
 
-        // Calcula subtotal para desconto de cupom
+        // Calcula subtotal dos itens
         const itemsSubtotal = validatedData.items.reduce((acc, item) => acc + (Number(item.price) * item.quantity), 0)
         let discountAmount = 0
         let appliedCoupon: string | undefined = undefined
         let affiliateId: string | undefined = undefined
         let affiliateCommission = 0
+        let couponValidationResult: any = null
 
-        if (validatedData.coupon_code) {
-            const couponResult = await validateCoupon(validatedData.coupon_code)
-            if (couponResult.valid && couponResult.coupon_code) {
-                appliedCoupon = couponResult.coupon_code
-                const pct = (couponResult.discount_percent || 10) / 100
-                discountAmount = Math.round((itemsSubtotal * pct) * 100) / 100
-                affiliateId = couponResult.affiliate_id
+        // Validação estrita do cupom no servidor
+        if (validatedData.coupon_code && validatedData.coupon_code.trim()) {
+            couponValidationResult = await validateCouponForCheckout({
+                code: validatedData.coupon_code,
+                items: validatedData.items,
+                subtotal: itemsSubtotal,
+                customer_email: validatedData.customer.email,
+                customer_roblox: validatedData.customer.roblox_username,
+            })
+
+            if (!couponValidationResult.valid) {
+                return NextResponse.json(
+                    {
+                        error: couponValidationResult.error || 'Cupom inválido ou não aplicável a este pedido.'
+                    },
+                    { status: 400 }
+                )
+            }
+
+            appliedCoupon = couponValidationResult.coupon_code
+            discountAmount = couponValidationResult.discount_amount || 0
+
+            if (couponValidationResult.is_affiliate) {
+                affiliateId = couponValidationResult.affiliate_id
                 affiliateCommission = discountAmount
             }
         }
@@ -94,6 +114,20 @@ export async function POST(request: Request) {
             items: validatedData.items,
             isTest: isTestMode,
         })
+
+        // Registra utilização do cupom após sucesso na criação do pedido
+        if (appliedCoupon && couponValidationResult) {
+            await recordCouponUsage({
+                coupon_id: couponValidationResult.coupon_id,
+                coupon_code: appliedCoupon,
+                order_id: orderResult.orderId,
+                customer_email: validatedData.customer.email,
+                customer_name: validatedData.customer.name,
+                customer_roblox: validatedData.customer.roblox_username,
+                discount_amount: discountAmount,
+                order_total: orderResult.total,
+            })
+        }
 
         // Gera o código QR PIX oficial padrão Banco Central (EMVCo)
         const cleanTxid = orderResult.orderId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25)

@@ -36,7 +36,10 @@ export function CheckoutForm() {
     const [couponInput, setCouponInput] = useState("")
     const [appliedCoupon, setAppliedCoupon] = useState<{
         code: string
-        discount_percent: number
+        discount_type: 'percentage' | 'fixed'
+        discount_value: number
+        discount_amount: number
+        message?: string
     } | null>(null)
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
 
@@ -44,6 +47,7 @@ export function CheckoutForm() {
         register,
         handleSubmit,
         setValue,
+        getValues,
         formState: { errors },
     } = useForm<CheckoutFormData>({
         resolver: zodResolver(checkoutSchema),
@@ -63,21 +67,41 @@ export function CheckoutForm() {
         }).format(p)
     }
 
-    const discountAmount = appliedCoupon ? Math.round((cart.total * (appliedCoupon.discount_percent / 100)) * 100) / 100 : 0
-    const finalTotal = Math.max(0, cart.total - discountAmount)
+    const discountAmount = appliedCoupon ? appliedCoupon.discount_amount : 0
+    const finalTotal = Math.max(0, Math.round((cart.total - discountAmount) * 100) / 100)
 
     const handleApplyCoupon = async () => {
         if (!couponInput.trim()) return
         setIsValidatingCoupon(true)
         try {
-            const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(couponInput.trim())}`)
+            const currentValues = getValues()
+            const res = await fetch('/api/coupons/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: couponInput.trim(),
+                    items: cart.items.map(item => ({
+                        product_id: item.product_id,
+                        variant_id: item.variant_id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity,
+                    })),
+                    subtotal: cart.total,
+                    customer_email: currentValues.email || undefined,
+                    customer_roblox: currentValues.robloxUsername || undefined,
+                })
+            })
             const data = await res.json()
             if (res.ok && data.valid) {
                 setAppliedCoupon({
                     code: data.coupon_code,
-                    discount_percent: data.discount_percent || 10,
+                    discount_type: data.discount_type || 'percentage',
+                    discount_value: data.discount_value,
+                    discount_amount: data.discount_amount,
+                    message: data.message,
                 })
-                toast.success(`Cupom "${data.coupon_code}" aplicado com 10% de desconto!`)
+                toast.success(data.message || `Cupom "${data.coupon_code}" aplicado com sucesso!`)
             } else {
                 toast.error(data.error || "Cupom inválido")
             }
@@ -101,6 +125,7 @@ export function CheckoutForm() {
                 payment_method: 'pix' as const,
                 coupon_code: appliedCoupon ? appliedCoupon.code : undefined,
                 items: cart.items.map(item => ({
+                    product_id: item.product_id,
                     variant_id: item.variant_id,
                     name: item.name,
                     quantity: item.quantity,
@@ -328,7 +353,11 @@ export function CheckoutForm() {
                     </div>
                     {appliedCoupon && (
                         <p className="text-[11px] text-emerald-600 font-medium">
-                            ✓ Cupom <strong>{appliedCoupon.code}</strong> aplicado (-{appliedCoupon.discount_percent}%)
+                            ✓ Cupom <strong>{appliedCoupon.code}</strong> aplicado (
+                            {appliedCoupon.discount_type === 'percentage'
+                                ? `-${appliedCoupon.discount_value}%`
+                                : `-${formatPrice(appliedCoupon.discount_amount)}`
+                            })
                         </p>
                     )}
                 </div>
@@ -341,7 +370,7 @@ export function CheckoutForm() {
                                 <span>{formatPrice(cart.total)}</span>
                             </div>
                             <div className="flex justify-between items-center text-xs font-medium text-emerald-600">
-                                <span>Desconto ({appliedCoupon.code} -10%):</span>
+                                <span>Desconto ({appliedCoupon.code} {appliedCoupon.discount_type === 'percentage' ? `-${appliedCoupon.discount_value}%` : ''}):</span>
                                 <span>-{formatPrice(discountAmount)}</span>
                             </div>
                         </>
