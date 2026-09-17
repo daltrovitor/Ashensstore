@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Sparkles, Volume2, VolumeX, Play, AlertCircle } from "lucide-react"
+import { Volume2, VolumeX, Play, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import type { RoulettePrize } from "@/lib/roulette/types"
@@ -245,18 +245,13 @@ export function RouletteWheel({
 
       {/* Top Bar da Roleta: Saldo e Som */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-neutral-200">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/10 border border-[#48B9FA]/30 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-[#0284c7]" />
-          </div>
-          <div>
-            <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold block leading-tight">
-              Roleta da Sorte
-            </span>
-            <span className="text-sm font-bold text-neutral-900">
-              Ashens Store Blox Fruits
-            </span>
-          </div>
+        <div>
+          <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold block leading-tight">
+            Roleta da Sorte
+          </span>
+          <span className="text-sm font-bold text-neutral-900">
+            Ashens Store Blox Fruits
+          </span>
         </div>
 
         <div className="flex items-center gap-3">

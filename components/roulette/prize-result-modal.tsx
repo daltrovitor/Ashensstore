@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Check, Copy, Sparkles, ExternalLink, ShieldCheck, HelpCircle } from "lucide-react"
+import { Check, Copy, ExternalLink, ShieldCheck, HelpCircle } from "lucide-react"
 import { FaDiscord } from "react-icons/fa"
 import { toast } from "sonner"
 import type { RoulettePrize, ClaimStatus } from "@/lib/roulette/types"
@@ -93,12 +93,8 @@ export function PrizeResultModal({
             </div>
           </motion.div>
 
-          <span className="inline-flex items-center gap-1 bg-[#48B9FA] text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase shadow-xs mb-2">
-            <Sparkles className="w-3.5 h-3.5" /> Parabéns!
-          </span>
-
           <DialogTitle className="text-2xl font-bold text-neutral-900 tracking-tight">
-            Você ganhou:
+            Parabéns! Você ganhou:
           </DialogTitle>
           <p className="text-xl font-extrabold text-[#0284c7] mt-0.5">
             {prize.name}

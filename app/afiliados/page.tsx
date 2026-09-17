@@ -19,7 +19,6 @@ import {
     Share2,
     MessageCircle,
     ArrowRight,
-    Sparkles,
     ShieldCheck,
     Users,
     Package
@@ -158,10 +157,6 @@ export default function AfiliadosPage() {
             <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
                 {/* Hero / Cabeçalho */}
                 <div className="text-center space-y-3 max-w-3xl mx-auto">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-neutral-100 rounded-full text-xs font-semibold text-neutral-700 tracking-wide">
-                        <Sparkles className="w-3.5 h-3.5 text-[#48B9FA]" />
-                        Programa Oficial de Afiliados
-                    </div>
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight">
                         Ganhe <span className="text-[#48B9FA]">10% de Comissão</span> em Cada Venda
                     </h1>

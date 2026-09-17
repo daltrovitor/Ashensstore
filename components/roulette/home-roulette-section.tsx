@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Sparkles, ArrowRight, Dices, Gift, History, ShieldCheck } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
-import { RouletteWheel } from "./roulette-wheel"
 import { RedeemCodeCard } from "./redeem-code-card"
 import { BuySpinsSection } from "./buy-spins-section"
 import { PrizesGrid } from "./prizes-grid"
@@ -67,17 +65,6 @@ export function HomeRouletteSection() {
         {/* Cabeçalho da Seção */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-neutral-200">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-[#48B9FA]/10 text-[#0284c7] px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border border-[#48B9FA]/20">
-                <Dices className="w-3.5 h-3.5 text-[#48B9FA]" />
-                <span>Roleta Oficial</span>
-              </span>
-              <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase border border-amber-500/20">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                <span>Prêmios Blox Fruits</span>
-              </span>
-            </div>
-
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-neutral-900 tracking-tight">
               Roleta da Sorte Ashens
             </h2>
@@ -153,12 +140,9 @@ export function HomeRouletteSection() {
         {/* 3. O QUE POSSO GANHAR? (Collapsible / Preview) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Gift className="w-4 h-4 text-[#48B9FA]" />
-              <h3 className="text-sm sm:text-base font-bold text-neutral-900">
-                Prêmios Disponíveis na Roleta
-              </h3>
-            </div>
+            <h3 className="text-sm sm:text-base font-bold text-neutral-900">
+              Prêmios Disponíveis na Roleta
+            </h3>
             <Button
               variant="outline"
               size="sm"

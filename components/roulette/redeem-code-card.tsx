@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { KeyRound, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -69,24 +69,18 @@ export function RedeemCodeCard({
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl p-5 sm:p-7 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-neutral-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#48B9FA]/10 border border-[#48B9FA]/20 flex items-center justify-center text-[#48B9FA]">
-            <KeyRound className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
-              Resgatar Giro
-            </h3>
-            <p className="text-xs text-neutral-500">
-              Digite o código que você recebeu na compra ou em eventos promocionais.
-            </p>
-          </div>
+        <div>
+          <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+            Resgatar Giro
+          </h3>
+          <p className="text-xs text-neutral-500">
+            Digite o código que você recebeu na compra ou em eventos promocionais.
+          </p>
         </div>
 
         {lastRedeemed && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-start sm:self-auto">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>+{lastRedeemed} giros resgatados recentemente!</span>
+          <div className="text-xs font-semibold text-emerald-600 self-start sm:self-auto">
+            +{lastRedeemed} giros resgatados recentemente!
           </div>
         )}
       </div>

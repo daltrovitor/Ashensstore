@@ -1,7 +1,6 @@
 "use client"
 
 import type { RoulettePrize } from "@/lib/roulette/types"
-import { Gift, ShieldCheck, Sparkles, HelpCircle } from "lucide-react"
 
 interface PrizesGridProps {
   prizes: RoulettePrize[]
@@ -13,18 +12,13 @@ export function PrizesGrid({ prizes }: PrizesGridProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/10 border border-[#48B9FA]/20 flex items-center justify-center text-[#48B9FA]">
-            <Gift className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
-              O que posso ganhar?
-            </h2>
-            <p className="text-xs text-neutral-500">
-              Confira a lista completa de recompensas e suas probabilidades oficiais de sorteio.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+            O que posso ganhar?
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Confira a lista completa de recompensas e suas probabilidades oficiais de sorteio.
+          </p>
         </div>
 
         <div className="flex items-center gap-3 text-xs font-medium text-neutral-500">

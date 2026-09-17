@@ -12,8 +12,6 @@ import { PrizesGrid } from "@/components/roulette/prizes-grid"
 import { UserSpinsHistory } from "@/components/roulette/user-spins-history"
 import { BuySpinsSection } from "@/components/roulette/buy-spins-section"
 import type { RoulettePrize, RouletteSpinRecord, RouletteSettings } from "@/lib/roulette/types"
-import { Sparkles, KeyRound, ShoppingBag, ShieldCheck } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 export default function RoulettePage() {
   const router = useRouter()
@@ -70,11 +68,6 @@ export default function RoulettePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 w-full space-y-12">
         {/* Cabeçalho da Página */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-1.5 bg-[#48B9FA]/10 text-[#0284c7] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#48B9FA]" />
-            <span>Sistema Oficial Ashens Store</span>
-          </div>
-
           <h1 className="text-3xl sm:text-5xl font-black text-neutral-900 tracking-tight">
             Roleta da Sorte Ashens
           </h1>

@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
-import { Sparkles, Trophy } from "lucide-react"
 import type { PublicWinnerFeedItem } from "@/lib/roulette/types"
 
 export function RecentWinsTicker() {
@@ -35,10 +33,9 @@ export function RecentWinsTicker() {
   return (
     <div className="w-full bg-blue-50/70 text-neutral-800 py-2.5 px-4 overflow-hidden border-y border-blue-100 select-none">
       <div className="max-w-7xl mx-auto flex items-center gap-3">
-        <div className="flex items-center gap-1.5 shrink-0 bg-white text-[#0284c7] px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider border border-blue-200 shadow-2xs">
-          <Trophy className="w-3.5 h-3.5 text-[#48B9FA]" />
-          <span>Ganhadores Recentes</span>
-        </div>
+        <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-[#0284c7]">
+          Ganhadores Recentes:
+        </span>
 
         {/* Marquee horizontal suave */}
         <div className="relative flex-1 overflow-hidden">

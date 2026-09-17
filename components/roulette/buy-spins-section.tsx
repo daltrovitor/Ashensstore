@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Zap, Check, QrCode, ShieldCheck } from "lucide-react"
+import { Check, QrCode, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -162,18 +162,13 @@ export function BuySpinsSection({
     <div id="comprar-giros" className="space-y-6 scroll-mt-24">
       {/* Cabeçalho da Seção */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/10 border border-[#48B9FA]/20 flex items-center justify-center text-[#48B9FA]">
-            <Zap className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
-              Comprar Giros da Roleta
-            </h2>
-            <p className="text-xs text-neutral-500">
-              Preço oficial de R$ {unitPrice.toFixed(2).replace('.', ',')} por giro com descontos progressivos em pacotes!
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+            Comprar Giros da Roleta
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Preço oficial de R$ {unitPrice.toFixed(2).replace('.', ',')} por giro com descontos progressivos em pacotes!
+          </p>
         </div>
 
         <Button
@@ -278,9 +273,8 @@ export function BuySpinsSection({
       <Dialog open={pixModalOpen} onOpenChange={setPixModalOpen}>
         <DialogContent className="sm:max-w-[480px] bg-white border border-neutral-200">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#48B9FA]" />
-              <span>Comprar Giros da Roleta via PIX</span>
+            <DialogTitle className="text-lg font-bold text-neutral-900">
+              Comprar Giros da Roleta via PIX
             </DialogTitle>
             <DialogDescription className="text-xs text-neutral-500">
               Pagamento instantâneo. Assim que o pagamento for identificado, o administrador validará e seus giros serão creditados!

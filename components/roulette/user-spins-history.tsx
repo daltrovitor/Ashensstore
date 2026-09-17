@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { History, Sparkles, Check, Copy, ExternalLink, ShieldCheck, Clock, CheckCircle2 } from "lucide-react"
+import { Check, Copy, ExternalLink, ShieldCheck, Clock, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -58,7 +58,6 @@ export function UserSpinsHistory({
   if (!isLoggedIn) {
     return (
       <div className="bg-neutral-50 border border-dashed border-neutral-300 rounded-2xl p-8 text-center space-y-3">
-        <History className="w-8 h-8 text-neutral-400 mx-auto" />
         <h3 className="text-base font-bold text-neutral-900">
           Acesse sua conta para ver seus giros
         </h3>
@@ -78,23 +77,18 @@ export function UserSpinsHistory({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/10 border border-[#48B9FA]/20 flex items-center justify-center text-[#48B9FA]">
-            <History className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
-              Meus Últimos Giros
-            </h2>
-            <p className="text-xs text-neutral-500">
-              Histórico pessoal de prêmios conquistados na roleta.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+            Meus Últimos Giros
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Histórico pessoal de prêmios conquistados na roleta.
+          </p>
         </div>
 
-        <div className="bg-[#48B9FA]/10 border border-[#48B9FA]/30 text-[#0284c7] font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-2 self-start sm:self-auto">
+        <div className="bg-neutral-100 border border-neutral-200 text-neutral-700 font-semibold text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 self-start sm:self-auto">
           <span>Giros Disponíveis:</span>
-          <span className="text-sm font-black text-[#0284c7]">{userSpins}</span>
+          <span className="text-sm font-bold text-neutral-900">{userSpins}</span>
         </div>
       </div>
 
