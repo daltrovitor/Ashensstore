@@ -1,4 +1,13 @@
+import { NextResponse } from 'next/server'
 import { getSupabaseServer, getSupabaseService } from '@/lib/supabase/server'
+
+/**
+ * Resposta padrão para rotas administrativas quando não autenticado.
+ * Retorna 404 Not Found para mascarar completamente a existência da rota para invasores e scanners.
+ */
+export function adminNotFoundResponse() {
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
 
 export async function checkAdminAuth(request: Request) {
   try {

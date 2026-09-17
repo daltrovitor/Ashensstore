@@ -27,7 +27,7 @@ export async function GET() {
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const data = await getCouponsWithSummary()
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const body = await request.json()

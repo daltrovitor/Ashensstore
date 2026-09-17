@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift } from "lucide-react"
+import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift, Sparkles } from "lucide-react"
 import { FaDiscord } from "react-icons/fa"
 import { CartIcon, CartDrawer } from "@/components/ecommerce/Cart"
 import { useAuth } from "@/hooks/use-auth"
@@ -32,6 +32,7 @@ function NavbarContent() {
   const navLinks = [
     { name: "Início", href: "/" },
     { name: "Catálogo", href: "/loja" },
+    { name: "Roleta", href: "/roleta", isHot: true },
     { name: "Afiliados", href: "/afiliados" },
   ]
 
@@ -88,20 +89,47 @@ function NavbarContent() {
             </div>
 
             {/* Centro: Abas de Navegação Centralizadas */}
-            <nav className="hidden md:flex items-center justify-center gap-8 px-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-sm tracking-normal transition-colors py-1 cursor-pointer whitespace-nowrap ${
-                    isActive(link.href)
-                      ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
-                      : "text-neutral-600 hover:text-[#48B9FA] font-medium"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
+            <nav className="hidden md:flex items-center justify-center gap-7 px-4">
+              {navLinks.map((link) => {
+                if (link.href === "/roleta") {
+                  return (
+                    <Link
+                      key={link.href}
+                      href="/roleta"
+                      className={`relative group px-3.5 py-1.5 rounded-full font-bold text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                        isActive(link.href)
+                          ? "bg-gradient-to-r from-[#48B9FA] to-blue-600 text-white shadow-md shadow-[#48B9FA]/30 ring-2 ring-[#48B9FA]/50"
+                          : "bg-gradient-to-r from-[#48B9FA]/15 via-sky-500/10 to-blue-600/15 text-[#0284c7] hover:bg-[#48B9FA] hover:text-white border border-[#48B9FA]/30 shadow-xs hover:shadow-md hover:shadow-[#48B9FA]/30 hover:scale-105"
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>Roleta da Sorte</span>
+                      <span className="text-[9px] bg-amber-400 text-neutral-900 font-black px-1.5 py-0.5 rounded-full uppercase tracking-tight shadow-xs">
+                        GIRE
+                      </span>
+                    </Link>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`text-sm tracking-normal transition-colors py-1 cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                      isActive(link.href)
+                        ? "text-[#48B9FA] font-semibold border-b-2 border-[#48B9FA] -mb-[2px]"
+                        : "text-neutral-600 hover:text-[#48B9FA] font-medium"
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                    {link.isHot && (
+                      <span className="text-[9px] bg-[#48B9FA] text-white font-bold px-1.5 py-0.2 rounded-full shadow-2xs">
+                        NOVO
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
             </nav>
 
             {/* Lado Direito: Ações (Busca, Carrinho e Conta) */}
@@ -183,6 +211,12 @@ function NavbarContent() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
+                        <Link href="/roleta" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
+                          <Sparkles className="w-4 h-4 text-[#48B9FA]" />
+                          Roleta da Sorte
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
                         <Link href="/afiliados" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
                           <Gift className="w-4 h-4 text-[#48B9FA]" />
                           Área do Afiliado (10% OFF)
@@ -190,7 +224,7 @@ function NavbarContent() {
                       </DropdownMenuItem>
                       {(user.role === 'admin' || user.role === 'manager') && (
                         <DropdownMenuItem asChild>
-                          <Link href="/admin" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 text-black font-semibold hover:bg-neutral-50">
+                          <Link href={process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin'} className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 text-black font-semibold hover:bg-neutral-50">
                             <Settings className="w-4 h-4" />
                             Painel do Vendedor
                           </Link>
@@ -212,6 +246,12 @@ function NavbarContent() {
                         <Link href="/pedidos" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
                           <Package className="w-4 h-4 text-neutral-500" />
                           Acompanhar Pedido
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/roleta" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
+                          <Sparkles className="w-4 h-4 text-[#48B9FA]" />
+                          Roleta da Sorte
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -274,20 +314,46 @@ function NavbarContent() {
               exit={{ height: 0, opacity: 0 }}
               className="md:hidden bg-white border-b border-neutral-200 px-4 py-4 space-y-2"
             >
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block text-sm py-2 px-3 rounded-sm transition-colors ${
-                    isActive(link.href)
-                      ? "bg-neutral-100 text-black font-semibold"
-                      : "text-neutral-600 hover:text-black hover:bg-neutral-50"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                if (link.href === "/roleta") {
+                  return (
+                    <Link
+                      key={link.href}
+                      href="/roleta"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between py-2.5 px-3.5 rounded-lg bg-gradient-to-r from-[#48B9FA] via-sky-500 to-blue-600 text-white font-bold text-sm shadow-md shadow-[#48B9FA]/30 my-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                        <span>Roleta da Sorte</span>
+                      </div>
+                      <span className="text-[10px] bg-amber-400 text-neutral-950 font-black px-2 py-0.5 rounded-full uppercase tracking-tight shadow-xs">
+                        GIRE AGORA
+                      </span>
+                    </Link>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between text-sm py-2 px-3 rounded-sm transition-colors ${
+                      isActive(link.href)
+                        ? "bg-neutral-100 text-black font-semibold"
+                        : "text-neutral-600 hover:text-black hover:bg-neutral-50"
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                    {link.isHot && (
+                      <span className="text-[10px] bg-[#48B9FA] text-white font-extrabold px-2 py-0.5 rounded-full shadow-2xs">
+                        NOVO
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
 
               <div className="pt-3 border-t border-neutral-100 space-y-2">
                 {user ? (
@@ -318,7 +384,7 @@ function NavbarContent() {
                     </Link>
                     {(user.role === 'admin' || user.role === 'manager') && (
                       <Link
-                        href="/admin"
+                        href={process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin'}
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-2 text-sm text-neutral-900 font-semibold p-2 rounded-sm hover:bg-neutral-50"
                       >

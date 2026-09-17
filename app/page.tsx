@@ -6,10 +6,14 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/ecommerce/ProductCard"
 import { HeroSliderSimple } from "@/components/hero-slider-simple"
+import { RecentWinsTicker } from "@/components/roulette/recent-wins-ticker"
+import { HomeRouletteSection } from "@/components/roulette/home-roulette-section"
 import { ArrowRight, ShieldCheck, Zap, MessageSquare, Headphones, ShoppingBag, Layers } from "lucide-react"
 import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
 import { DiscordCta } from "@/components/discord-cta"
+import { GameCategoriesSection } from "@/components/home/game-categories-section"
+import { PopularProductsCarousel } from "@/components/home/popular-products-carousel"
 
 function HomeContent() {
   const [products, setProducts] = useState<Product[]>([])
@@ -80,7 +84,19 @@ function HomeContent() {
       {/* 1. Banners Principais */}
       <HeroSliderSimple />
 
-      {/* 2. PRODUTOS E CATEGORIAS LÁ EM CIMA (Logo após o banner) */}
+      {/* 2. Ticker de Ganhadores Recentes da Roleta */}
+      <RecentWinsTicker />
+
+      {/* 3. Categorias de Jogos no Início do Site ("ESCOLHA UM JOGO!") */}
+      <GameCategoriesSection />
+
+      {/* 4. Carrossel de Produtos Populares (Estilo ineight) */}
+      <PopularProductsCarousel />
+
+      {/* 5. Roleta da Sorte Ashens na Rota Principal */}
+      <HomeRouletteSection />
+
+      {/* 4. PRODUTOS E CATEGORIAS (Logo após a roleta) */}
       <section className="py-8 sm:py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header da Seção de Produtos */}

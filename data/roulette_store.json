@@ -1,0 +1,260 @@
+{
+  "prizes": [
+    {
+      "id": "prz-dragon",
+      "name": "Dragon Fruit (Rework)",
+      "description": "A fruta mítica mais cobiçada e poderosa do Blox Fruits! Dano massivo e transformação dracônica.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/a/a2/DragonFruit.png/revision/latest?cb=20230221081530",
+      "probability": 1,
+      "redemption_type": "discord",
+      "delivery_info": "Entrega manual via trade em servidor VIP com suporte prioritário.",
+      "is_active": true,
+      "display_order": 1,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-kitsune",
+      "name": "Kitsune Fruit (Física)",
+      "description": "Fruta mítica de 9 caudas com chamas azuis, hipervelocidade e combos devastadores.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/7/7b/KitsuneFruit.png/revision/latest?cb=20231225091720",
+      "probability": 2,
+      "redemption_type": "discord",
+      "delivery_info": "Entrega manual em servidor VIP ou trade com a equipe Ashens.",
+      "is_active": true,
+      "display_order": 2,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-conta-godhuman",
+      "name": "Conta Max 2550 + Godhuman",
+      "description": "Conta no nível máximo com estilo Godhuman desbloqueado e itens avançados.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/0/05/Godhuman.png/revision/latest?cb=20220912195033",
+      "probability": 2,
+      "redemption_type": "discord",
+      "delivery_info": "Envio de login e dados da conta via ticket seguro no Discord.",
+      "is_active": true,
+      "display_order": 3,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-dark-blade",
+      "name": "Dark Blade / Yoru (Gamepass)",
+      "description": "A espada lendária de Dracule Mihawk! Lâmina negra com cortes de energia verde.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/a/a7/DarkBlade.png/revision/latest?cb=20200806085532",
+      "probability": 3,
+      "redemption_type": "discord",
+      "delivery_info": "Envio via presente de Gamepass no Roblox ou servidor VIP.",
+      "is_active": true,
+      "display_order": 4,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-leopard",
+      "name": "Leopard Fruit (Física Mítica)",
+      "description": "Fruta Besta lendária com velocidade absurda e ataques furiosos ininterruptos.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/9/91/LeopardFruit.png/revision/latest?cb=20220910214619",
+      "probability": 4,
+      "redemption_type": "discord",
+      "delivery_info": "Entrega via trade em servidor VIP oficial.",
+      "is_active": true,
+      "display_order": 5,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-trex",
+      "name": "T-Rex Fruit (Mítica)",
+      "description": "Fruta pré-histórica mítica com rugido atordoante e alto dano corpo a corpo.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/8/87/TRexFruit.png/revision/latest?cb=20231225091745",
+      "probability": 5,
+      "redemption_type": "automatic",
+      "delivery_info": "Entrega automática no inventário ou código de resgate.",
+      "is_active": true,
+      "display_order": 6,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-dough",
+      "name": "Dough / Massa Fruit",
+      "description": "A rainha incontestável do PVP! Stun infinito e dano explosivo em área.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/4/41/DoughFruit.png/revision/latest?cb=20220910214845",
+      "probability": 7,
+      "redemption_type": "automatic",
+      "delivery_info": "Entrega automática instantânea.",
+      "is_active": true,
+      "display_order": 7,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-2x-mastery",
+      "name": "Gamepass 2x Maestria",
+      "description": "Duplica toda a maestria obtida em espadas, frutas e estilos de luta.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/0/05/2xMastery.png/revision/latest?cb=20210214214643",
+      "probability": 8,
+      "redemption_type": "automatic",
+      "delivery_info": "Gift direto para o nick informado no Roblox.",
+      "is_active": true,
+      "display_order": 8,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-2x-money",
+      "name": "Gamepass 2x Dinheiro",
+      "description": "Dobre todos os Belis obtidos derrotando NPCs e chefes no jogo.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/4/48/2xMoney.png/revision/latest?cb=20210214214620",
+      "probability": 8,
+      "redemption_type": "automatic",
+      "delivery_info": "Gift direto para o nick informado no Roblox.",
+      "is_active": true,
+      "display_order": 9,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-buddha",
+      "name": "Buddha Fruit (Física)",
+      "description": "A fruta perfeita para upar nível e maestria em velocidade recorde.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/8/80/BuddhaFruit.png/revision/latest?cb=20211107221350",
+      "probability": 15,
+      "redemption_type": "automatic",
+      "delivery_info": "Entrega automática.",
+      "is_active": true,
+      "display_order": 10,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-lendaria-aleatoria",
+      "name": "Fruta Lendária Aleatória",
+      "description": "Sorteio de uma fruta lendária como Portal, Blizzard, Som ou Rumble.",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/8/89/PortalFruit.png/revision/latest?cb=20221217032729",
+      "probability": 20,
+      "redemption_type": "automatic",
+      "delivery_info": "Sorteada e entregue no chat do resgate.",
+      "is_active": true,
+      "display_order": 11,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "prz-bonus-beli",
+      "name": "Bônus 500.000 Beli + Fruta Rara",
+      "description": "Pacote de recursos com 500k de moedas Beli e uma fruta rara de suporte (Magma / Light).",
+      "image_url": "https://static.wikia.nocookie.net/roblox-blox-piece/images/a/ab/LightFruit.png/revision/latest?cb=20211107221415",
+      "probability": 25,
+      "redemption_type": "automatic",
+      "delivery_info": "Instruções de resgate entregues no ato.",
+      "is_active": true,
+      "display_order": 12,
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "codes": [
+    {
+      "id": "cod-test-123",
+      "code": "ASHEN-TEST-WIN5-CODE",
+      "spins_count": 5,
+      "status": "active",
+      "created_by": "automated_test",
+      "created_at": "2026-09-15T18:55:58.789Z"
+    },
+    {
+      "id": "cod-test-555",
+      "code": "ASHEN-5GIROS-TESTE-1",
+      "spins_count": 5,
+      "status": "active",
+      "created_by": "automated_test",
+      "created_at": "2026-09-15T19:02:37.466Z"
+    },
+    {
+      "id": "code-test-1789500131282",
+      "code": "TEST-YFE8-NKKZ-H61A",
+      "spins_count": 5,
+      "status": "used",
+      "created_by": "e2e-test",
+      "order_id": null,
+      "redeemed_by_user_id": "ff4536e3-c572-4669-b77a-a09b5ea7a12f",
+      "redeemed_by_email": "test_roulette_1789500128894@example.com",
+      "redeemed_at": "2026-09-15T19:22:11.926Z",
+      "created_at": "2026-09-15T19:22:11.282Z"
+    },
+    {
+      "id": "code-test-1789500267488",
+      "code": "TEST-TIVH-PBTW-HJEA",
+      "spins_count": 5,
+      "status": "used",
+      "created_by": "e2e-test",
+      "order_id": null,
+      "redeemed_by_user_id": "c1e4324a-8c91-4d00-9a15-c05dd8203985",
+      "redeemed_by_email": "test_roulette_1789500265007@example.com",
+      "redeemed_at": "2026-09-15T19:24:28.149Z",
+      "created_at": "2026-09-15T19:24:27.488Z"
+    }
+  ],
+  "userSpins": {
+    "76c42247-4e0b-4609-9e84-a7e3b00697f2": {
+      "user_id": "76c42247-4e0b-4609-9e84-a7e3b00697f2",
+      "email": "tester_roulette@ashens.store",
+      "spins_balance": 0,
+      "total_spins_performed": 0,
+      "updated_at": "2026-09-15T19:02:43.628Z"
+    },
+    "19401a72-eac3-4499-b9ea-593d30ce0d03": {
+      "user_id": "19401a72-eac3-4499-b9ea-593d30ce0d03",
+      "email": "tester_1789499889154@example.com",
+      "spins_balance": 0,
+      "total_spins_performed": 0,
+      "updated_at": "2026-09-15T19:18:10.947Z"
+    },
+    "21c9ef26-5efc-4db2-9d56-c83d4fe88da9": {
+      "user_id": "21c9ef26-5efc-4db2-9d56-c83d4fe88da9",
+      "email": "test_roulette_1789500008306@example.com",
+      "spins_balance": 0,
+      "total_spins_performed": 0,
+      "updated_at": "2026-09-15T19:20:10.285Z"
+    },
+    "ff4536e3-c572-4669-b77a-a09b5ea7a12f": {
+      "user_id": "ff4536e3-c572-4669-b77a-a09b5ea7a12f",
+      "email": "test_roulette_1789500128894@example.com",
+      "spins_balance": 4,
+      "total_spins_performed": 1,
+      "updated_at": "2026-09-15T19:22:12.849Z"
+    },
+    "c1e4324a-8c91-4d00-9a15-c05dd8203985": {
+      "user_id": "c1e4324a-8c91-4d00-9a15-c05dd8203985",
+      "email": "test_roulette_1789500265007@example.com",
+      "spins_balance": 4,
+      "total_spins_performed": 1,
+      "updated_at": "2026-09-15T19:24:29.054Z"
+    }
+  },
+  "spinsHistory": [
+    {
+      "id": "spn-c314f64b",
+      "spin_id": "GIR-WJ1H-9VAS",
+      "user_id": "c1e4324a-8c91-4d00-9a15-c05dd8203985",
+      "user_email": "test_roulette_1789500265007@example.com",
+      "user_name": "test_roulette_1789500265007",
+      "prize_id": "prz-bonus-beli",
+      "prize_name": "Bônus 500.000 Beli + Fruta Rara",
+      "prize_image": "https://static.wikia.nocookie.net/roblox-blox-piece/images/a/ab/LightFruit.png/revision/latest?cb=20211107221415",
+      "redemption_type": "automatic",
+      "delivery_info": "Instruções de resgate entregues no ato.",
+      "claim_status": "claimed",
+      "created_at": "2026-09-15T19:24:29.054Z",
+      "claimed_at": "2026-09-15T19:24:30.036Z",
+      "delivered_at": "2026-09-15T19:24:30.036Z",
+      "delivery_notes": "Nick Roblox: BloxPlayer99 | Discord: player#1234"
+    },
+    {
+      "id": "spn-65720dc2",
+      "spin_id": "GIR-1XWY-6MR2",
+      "user_id": "ff4536e3-c572-4669-b77a-a09b5ea7a12f",
+      "user_email": "test_roulette_1789500128894@example.com",
+      "user_name": "test_roulette_1789500128894",
+      "prize_id": "prz-lendaria-aleatoria",
+      "prize_name": "Fruta Lendária Aleatória",
+      "prize_image": "https://static.wikia.nocookie.net/roblox-blox-piece/images/8/89/PortalFruit.png/revision/latest?cb=20221217032729",
+      "redemption_type": "automatic",
+      "delivery_info": "Sorteada e entregue no chat do resgate.",
+      "claim_status": "pending",
+      "created_at": "2026-09-15T19:22:12.850Z"
+    }
+  ]
+}

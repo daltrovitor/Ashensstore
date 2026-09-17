@@ -565,15 +565,15 @@ export async function requireAdmin(request?: Request) {
   const profile = await getCurrentProfile()
 
   if (!profile) {
-    return { error: 'Not authenticated', status: 401 }
+    return { error: 'Not found', status: 404 }
   }
 
   if (!['admin', 'manager'].includes(profile.role)) {
-    return { error: 'Access denied', status: 403 }
+    return { error: 'Not found', status: 404 }
   }
 
   if (!profile.is_active) {
-    return { error: 'Account deactivated', status: 403 }
+    return { error: 'Not found', status: 404 }
   }
 
   return { profile }

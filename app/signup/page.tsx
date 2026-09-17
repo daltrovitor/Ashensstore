@@ -19,8 +19,8 @@ function SignupContent() {
         const { data: { session } } = await supabase.auth.getSession()
 
         if (session) {
-          // Usuário já está logado, redireciona para admin
-          router.push('/admin')
+          // Usuário já está logado, redireciona para início
+          router.push('/')
         }
       } catch (error) {
         console.error('Auth check error:', error)

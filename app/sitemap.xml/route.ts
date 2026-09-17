@@ -8,7 +8,8 @@ export async function GET() {
   // Static sitemap to avoid importing heavy server deps during build
   const routes = [
     '/',
-    '/admin',
+    '/loja',
+    '/termos',
   ]
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n` +

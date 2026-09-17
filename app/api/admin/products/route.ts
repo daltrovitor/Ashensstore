@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const supabase = getSupabaseService()
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const supabase = getSupabaseService()

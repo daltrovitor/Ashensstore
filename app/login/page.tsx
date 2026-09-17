@@ -51,11 +51,12 @@ function LoginContent() {
             }
           }
 
+          const adminPath = process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin'
           if (isAdmin) {
-            router.replace('/admin')
+            router.replace(adminPath)
           } else {
             // Se for cliente e tentou acessar admin, manda pro pedidos
-            const target = redirectTo?.includes('/admin') ? '/pedidos' : (redirectTo || '/')
+            const target = redirectTo?.includes('/admin') || (adminPath !== '/admin' && redirectTo?.includes(adminPath)) ? '/pedidos' : (redirectTo || '/')
             router.replace(target)
           }
           return // Não mostra a tela de login

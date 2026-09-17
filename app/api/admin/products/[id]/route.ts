@@ -35,7 +35,7 @@ export async function DELETE(
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await paramsPromise
@@ -111,7 +111,7 @@ export async function PUT(
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await paramsPromise

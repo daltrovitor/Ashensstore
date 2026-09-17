@@ -44,11 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (error || !user) {
-      console.warn('[api/admin/login] User not authenticated:', error?.message)
-      return NextResponse.json(
-        { error: "Usuário não autenticado" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Busca o perfil do usuário para verificar se é admin
@@ -58,21 +54,8 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    if (profileError || !profile) {
-      console.warn('[api/admin/login] Profile not found:', profileError?.message)
-      return NextResponse.json(
-        { error: "Perfil não encontrado" },
-        { status: 404 }
-      )
-    }
-
-    // Verifica se é admin ou manager
-    if (!['admin', 'manager'].includes(profile.role)) {
-      console.warn('[api/admin/login] User not authorized:', profile.role)
-      return NextResponse.json(
-        { error: "Usuário não é admin" },
-        { status: 403 }
-      )
+    if (profileError || !profile || !['admin', 'manager'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Retorna dados do usuário admin

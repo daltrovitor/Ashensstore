@@ -26,7 +26,8 @@ import {
   ArrowDown,
   Filter,
   Save,
-  Tag
+  Tag,
+  Sparkles
 } from "lucide-react"
 import { BannersManager } from "@/components/admin/banners-manager"
 import { OrdersManager } from "@/components/admin/orders-manager"
@@ -36,6 +37,7 @@ import { InventoryManager } from "@/components/admin/inventory-manager"
 import { FinancialManager } from "@/components/admin/financial-manager"
 import { AffiliatesManager } from "@/components/admin/affiliates-manager"
 import { CouponsManager } from "@/components/admin/coupons-manager"
+import { RouletteManager } from "@/components/admin/roulette-manager"
 import { ImageUpload } from "@/components/admin/image-upload"
 import { DigitalStockDialog } from "@/components/admin/digital-stock-dialog"
 import { Button } from "@/components/ui/button"
@@ -516,6 +518,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <Button variant={activeTab === 'coupons' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('coupons'); setMobileNavOpen(false); }}>
               <Tag className="mr-2 h-4 w-4 text-[#48B9FA]" /> Cupons
             </Button>
+            <Button variant={activeTab === 'roulette' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('roulette'); setMobileNavOpen(false); }}>
+              <Sparkles className="mr-2 h-4 w-4 text-[#48B9FA]" /> Roleta
+            </Button>
             <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('banners'); setMobileNavOpen(false); }}>
               <ImageIcon className="mr-2 h-4 w-4" /> Banners
             </Button>
@@ -560,6 +565,9 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </Button>
           <Button variant={activeTab === 'coupons' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('coupons')}>
             <Tag className="mr-2 h-4 w-4 text-[#48B9FA]" /> Cupons
+          </Button>
+          <Button variant={activeTab === 'roulette' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('roulette')}>
+            <Sparkles className="mr-2 h-4 w-4 text-[#48B9FA]" /> Roleta
           </Button>
           <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('banners')}>
             <ImageIcon className="mr-2 h-4 w-4" /> Banners
@@ -1177,6 +1185,11 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           {activeTab === 'coupons' && (
             <div className="space-y-6">
               <CouponsManager />
+            </div>
+          )}
+          {activeTab === 'roulette' && (
+            <div className="space-y-6">
+              <RouletteManager />
             </div>
           )}
           {activeTab === 'banners' && (

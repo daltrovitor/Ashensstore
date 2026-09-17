@@ -29,12 +29,10 @@ export default function AdminPage() {
 
         if (res.ok) {
           setIsAuthenticated(true)
-        } else if (res.status === 401) {
-          // Not authenticated -> Login
-          router.push('/login?redirect=/admin')
+        } else if (res.status === 401 || res.status === 404) {
+          // Sessão expirada ou não autorizada -> vai para login comum sem vazar rota
+          router.push('/login')
         } else if (res.status === 403) {
-          // Forbidden -> Access Denied (redirect to home or show error)
-          toast.error('Acesso negado. Você não tem permissão de administrador.')
           router.push('/')
         } else {
           // Other errors

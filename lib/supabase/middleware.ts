@@ -42,22 +42,22 @@ export async function updateSession(request: NextRequest) {
     if (url.pathname.startsWith('/_next') ||
         url.pathname.includes('.') ||
         url.pathname.startsWith('/monitoring')) {
-        return response
+        return { response, user: null, supabase }
     }
 
-    // This call will refresh the session if needed
-    // We add a timeout of 8 seconds to prevent 504 Gateway Timeouts
+    let user = null
     try {
         const getUserPromise = supabase.auth.getUser()
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 8000)
         )
-        await Promise.race([getUserPromise, timeoutPromise])
+        const result = await Promise.race([getUserPromise, timeoutPromise]) as any
+        user = result?.data?.user || null
     } catch (e) {
         console.error('Middleware getUser error or timeout:', e)
         // If it times out or errors, we proceed with the current response
         // This is better than hanging and causing a 504
     }
 
-    return response
+    return { response, user, supabase }
 }

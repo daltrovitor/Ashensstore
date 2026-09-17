@@ -10,7 +10,7 @@ export async function GET() {
     const profile = await getCurrentProfile()
 
     if (!profile || !['admin', 'manager'].includes(profile.role)) {
-      return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const affiliates = await readAffiliates()

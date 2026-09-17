@@ -28,7 +28,7 @@ export function HeroSliderSimple() {
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        const res = await fetch("/api/admin/banners", { cache: "no-store" })
+        const res = await fetch("/api/banners", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {

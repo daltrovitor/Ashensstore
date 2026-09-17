@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const supabase = getSupabaseService()
@@ -126,7 +126,7 @@ export async function PATCH(request: Request) {
     try {
         const auth = await checkAdminAuth(request)
         if (!auth) {
-            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const supabase = getSupabaseService()

@@ -11,7 +11,7 @@ export async function GET(
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await params
@@ -35,7 +35,7 @@ export async function PUT(
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await params
@@ -61,7 +61,7 @@ export async function PATCH(
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await params
@@ -94,7 +94,7 @@ export async function DELETE(
     try {
         const profile = await getCurrentProfile()
         if (!profile || !['admin', 'manager'].includes(profile.role)) {
-            return NextResponse.json({ error: 'Acesso negado. Apenas administradores.' }, { status: 403 })
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
         }
 
         const { id } = await params

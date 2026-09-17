@@ -102,13 +102,15 @@ export function LoginForm({ onSuccess, redirectTo }: LoginFormProps) {
 
       const isAdmin = userRole === 'admin' || userRole === 'manager'
 
+      const adminPath = process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin'
+
       if (onSuccess) {
         onSuccess()
       } else if (isAdmin) {
-        router.push("/admin")
+        router.push(adminPath)
       } else {
         // Clientes: se tentarem ir para admin, mandamos para pedidos
-        const target = redirectTo?.includes('/admin') ? '/pedidos' : (redirectTo || '/pedidos')
+        const target = redirectTo?.includes('/admin') || (adminPath !== '/admin' && redirectTo?.includes(adminPath)) ? '/pedidos' : (redirectTo || '/pedidos')
         router.push(target)
       }
 

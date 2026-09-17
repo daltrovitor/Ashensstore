@@ -1,12 +1,15 @@
-
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth, adminNotFoundResponse } from '@/lib/auth/admin-middleware'
 
-// Simple in-memory fallback if table doesn't exist (temporary)
-// But ideally we use a table 'banners'
-// Schema assumption: banners (id uuid, title text, image_url text, active boolean, created_at timestamp)
+export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
+    const auth = await checkAdminAuth(request)
+    if (!auth) {
+        return adminNotFoundResponse()
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -15,18 +18,22 @@ export async function GET() {
     const { data, error } = await supabase
         .from('banners')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('display_order', { ascending: true })
 
     if (error) {
         console.error('Error fetching banners:', error)
-        // If table doesn't exist, return empty to avoid crash
         return NextResponse.json([])
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(data || [])
 }
 
 export async function POST(request: Request) {
+    const auth = await checkAdminAuth(request)
+    if (!auth) {
+        return adminNotFoundResponse()
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -62,6 +69,11 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+    const auth = await checkAdminAuth(request)
+    if (!auth) {
+        return adminNotFoundResponse()
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -96,6 +108,11 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    const auth = await checkAdminAuth(request)
+    if (!auth) {
+        return adminNotFoundResponse()
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
