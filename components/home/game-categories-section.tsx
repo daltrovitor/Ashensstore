@@ -1,14 +1,99 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Search } from "lucide-react"
 import { getAllGames, type GameCategory } from "@/lib/store/games"
 
+interface DbCategory {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  display_order?: number
+}
+
+const GAME_BANNERS_MAP: Record<string, { bannerUrl: string; tag?: string }> = {
+  "blox-fruits": { bannerUrl: "/games/blox-fruits.png", tag: "MAIS POPULAR" },
+  "adopt-me": { bannerUrl: "/games/adopt-me.png", tag: "DESTAQUE" },
+  "grow-a-garden-2": { bannerUrl: "/games/grow-a-garden.png", tag: "NOVO" },
+  "murder-mystery-2": { bannerUrl: "/games/murder-mystery-2.png", tag: "POPULAR" },
+  "rivals": { bannerUrl: "/games/rivals.png", tag: "DESTAQUE" },
+}
+
 export function GameCategoriesSection() {
   const [searchTerm, setSearchTerm] = useState("")
-  const allGames = useMemo(() => getAllGames(), [])
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([])
+  const fallbackGames = useMemo(() => getAllGames(), [])
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const res = await fetch("/api/categories", { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            setDbCategories(data)
+          }
+        }
+      } catch (e) {
+        console.warn("Erro ao buscar categorias para a seção de jogos:", e)
+      }
+    }
+    fetchCats()
+  }, [])
+
+  // Constrói a lista final priorizando as categorias criadas no painel
+  const allGames: GameCategory[] = useMemo(() => {
+    if (dbCategories.length === 0) return fallbackGames
+
+    // Filtra as categorias principais de jogos ou as criadas no banco
+    const mapped = dbCategories.map((cat) => {
+      const slugNormalized = (cat.slug || "").toLowerCase().trim()
+      const nameLower = cat.name.toLowerCase()
+
+      // Identifica banner de jogo se corresponder
+      let banner = "/games/blox-fruits.png"
+      let tag = "CATEGORIA"
+
+      if (slugNormalized.includes("blox") || nameLower.includes("blox")) {
+        banner = "/games/blox-fruits.png"
+        tag = "MAIS POPULAR"
+      } else if (slugNormalized.includes("adopt") || nameLower.includes("adopt")) {
+        banner = "/games/adopt-me.png"
+        tag = "DESTAQUE"
+      } else if (slugNormalized.includes("garden") || nameLower.includes("garden")) {
+        banner = "/games/grow-a-garden.png"
+        tag = "NOVO"
+      } else if (slugNormalized.includes("murder") || slugNormalized.includes("mm2") || nameLower.includes("murder")) {
+        banner = "/games/murder-mystery-2.png"
+        tag = "POPULAR"
+      } else if (slugNormalized.includes("rival") || nameLower.includes("rival")) {
+        banner = "/games/rivals.png"
+        tag = "DESTAQUE"
+      } else if (GAME_BANNERS_MAP[slugNormalized]) {
+        banner = GAME_BANNERS_MAP[slugNormalized].bannerUrl
+        tag = GAME_BANNERS_MAP[slugNormalized].tag || "CATEGORIA"
+      } else {
+        banner = "/banners/banner-1.jpg"
+        tag = "DESTAQUE"
+      }
+
+      return {
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug || cat.id,
+        aliases: [cat.name.toLowerCase(), (cat.slug || "").toLowerCase()],
+        bannerUrl: banner,
+        description: cat.description || "Confira os itens disponíveis nesta categoria.",
+        tag,
+        hasProducts: true,
+      }
+    })
+
+    return mapped
+  }, [dbCategories, fallbackGames])
 
   const filteredGames = useMemo(() => {
     if (!searchTerm.trim()) return allGames
@@ -28,7 +113,7 @@ export function GameCategoriesSection() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-neutral-900">
-              Categorias Principais
+              Escolha um jogo
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
               Escolha seu jogo para navegar pelas ofertas e categorias de produtos

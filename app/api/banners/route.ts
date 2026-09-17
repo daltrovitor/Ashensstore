@@ -16,7 +16,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('banners')
-      .select('id, title, image_url, mobile_image_url, link_url, display_order, active')
+      .select('*')
       .eq('active', true)
       .order('display_order', { ascending: true })
 

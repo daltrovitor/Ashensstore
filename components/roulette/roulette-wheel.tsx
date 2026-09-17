@@ -237,23 +237,23 @@ export function RouletteWheel({
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768
 
   return (
-    <div className="w-full bg-neutral-900 border border-neutral-800 rounded-2xl p-4 sm:p-8 shadow-2xl relative overflow-hidden text-white">
-      {/* Background Decorativo Gamer / Roblox */}
-      <div className="absolute inset-0 bg-[radial-gradient(#48B9FA_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none" />
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#48B9FA]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="w-full bg-white border border-neutral-200 rounded-2xl p-4 sm:p-8 shadow-sm relative overflow-hidden text-neutral-900">
+      {/* Background Decorativo Gamer / Roblox em tons claros */}
+      <div className="absolute inset-0 bg-[radial-gradient(#48B9FA_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#48B9FA]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Bar da Roleta: Saldo e Som */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-neutral-800/80">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-neutral-200">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/20 border border-[#48B9FA]/30 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-[#48B9FA]" />
+          <div className="w-8 h-8 rounded-lg bg-[#48B9FA]/10 border border-[#48B9FA]/30 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-[#0284c7]" />
           </div>
           <div>
-            <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold block leading-tight">
+            <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold block leading-tight">
               Roleta da Sorte
             </span>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-neutral-900">
               Ashens Store Blox Fruits
             </span>
           </div>
@@ -261,9 +261,9 @@ export function RouletteWheel({
 
         <div className="flex items-center gap-3">
           {/* Badge de Saldo de Giros */}
-          <div className="bg-neutral-800/90 border border-neutral-700/80 px-4 py-1.5 rounded-full flex items-center gap-2">
-            <span className="text-xs text-neutral-400 font-medium">Seus giros:</span>
-            <span className="text-base font-extrabold text-[#48B9FA]">
+          <div className="bg-neutral-100 border border-neutral-200 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-2xs">
+            <span className="text-xs text-neutral-500 font-medium">Seus giros:</span>
+            <span className="text-base font-extrabold text-[#0284c7]">
               {isLoggedIn ? userSpins : 0}
             </span>
           </div>
@@ -271,11 +271,11 @@ export function RouletteWheel({
           {/* Mudo / Som */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/70 transition-colors cursor-pointer"
             title={soundEnabled ? "Desativar sons" : "Ativar sons"}
             aria-label="Controle de Som"
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#48B9FA]" /> : <VolumeX className="w-4 h-4" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#0284c7]" /> : <VolumeX className="w-4 h-4" />}
           </button>
         </div>
       </div>
@@ -288,19 +288,19 @@ export function RouletteWheel({
         </div>
 
         {/* Linha Guia Central Vertical */}
-        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b from-[#48B9FA] via-[#48B9FA]/60 to-[#48B9FA] z-20 pointer-events-none shadow-[0_0_12px_#48B9FA]" />
+        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-gradient-to-b from-[#48B9FA] via-[#48B9FA]/60 to-[#48B9FA] z-20 pointer-events-none shadow-[0_0_10px_#48B9FA]" />
 
         {/* Indicador Fixo Inferior (Seta Dourada / Azul Apontando para Cima) */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-2 z-30 pointer-events-none flex flex-col items-center">
           <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[14px] border-b-[#48B9FA] drop-shadow-[0_-2px_8px_rgba(72,185,250,0.8)]" />
         </div>
 
-        {/* Efeito de Gradiente de Sombra nas Laterais */}
-        <div className="absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-neutral-900 via-neutral-900/80 to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-y-0 right-0 w-16 sm:w-28 bg-gradient-to-l from-neutral-900 via-neutral-900/80 to-transparent z-10 pointer-events-none" />
+        {/* Efeito de Gradiente de Sombra nas Laterais em Branco */}
+        <div className="absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-neutral-50 via-neutral-50/80 to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-16 sm:w-28 bg-gradient-to-l from-neutral-50 via-neutral-50/80 to-transparent z-10 pointer-events-none" />
 
         {/* A Esteira de Cards */}
-        <div className="overflow-hidden py-4 rounded-xl bg-neutral-950/90 border border-neutral-800">
+        <div className="overflow-hidden py-4 rounded-xl bg-neutral-50 border border-neutral-200">
           <div
             ref={trackRef}
             className="flex items-center"
@@ -322,14 +322,14 @@ export function RouletteWheel({
               const isRare = rarity === 'rare'
 
               const borderColor = isMythic
-                ? 'border-amber-400/90 bg-gradient-to-b from-amber-500/20 via-neutral-900/90 to-neutral-950 shadow-[0_0_20px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40'
+                ? 'border-amber-400/90 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-white shadow-[0_0_14px_rgba(245,158,11,0.2)] ring-1 ring-amber-400/40'
                 : isLegendary
-                ? 'border-purple-400/80 bg-gradient-to-b from-purple-500/20 via-neutral-900/90 to-neutral-950 shadow-[0_0_16px_rgba(168,85,247,0.2)]'
+                ? 'border-purple-400/80 bg-gradient-to-b from-purple-500/10 via-purple-500/5 to-white shadow-[0_0_12px_rgba(168,85,247,0.15)]'
                 : isEpic
-                ? 'border-pink-400/70 bg-gradient-to-b from-pink-500/15 via-neutral-900/90 to-neutral-950 shadow-[0_0_12px_rgba(236,72,153,0.15)]'
+                ? 'border-pink-400/70 bg-gradient-to-b from-pink-500/10 via-pink-500/5 to-white shadow-[0_0_10px_rgba(236,72,153,0.1)]'
                 : isRare
-                ? 'border-blue-400/80 bg-gradient-to-b from-blue-500/15 via-neutral-900/90 to-neutral-950'
-                : 'border-neutral-700 bg-neutral-900/90'
+                ? 'border-blue-400/80 bg-gradient-to-b from-blue-500/10 via-blue-500/5 to-white'
+                : 'border-neutral-200 bg-white'
 
               const rarityLabel = isMythic
                 ? 'MÍTICO'
@@ -342,26 +342,26 @@ export function RouletteWheel({
                 : 'COMUM'
 
               const rarityTextColor = isMythic
-                ? 'text-amber-400 font-black tracking-wide'
+                ? 'text-amber-600 font-black tracking-wide'
                 : isLegendary
-                ? 'text-purple-300 font-black tracking-wide'
+                ? 'text-purple-600 font-black tracking-wide'
                 : isEpic
-                ? 'text-pink-300 font-bold'
+                ? 'text-pink-600 font-bold'
                 : isRare
-                ? 'text-[#48B9FA] font-bold'
-                : 'text-neutral-400 font-semibold'
+                ? 'text-[#0284c7] font-bold'
+                : 'text-neutral-500 font-semibold'
 
               return (
                 <div
                   key={`${prize.id}-${index}`}
-                  className={`shrink-0 w-[118px] sm:w-[150px] h-[160px] sm:h-[190px] mx-[5px] sm:mx-[7px] rounded-xl border p-2.5 sm:p-3 flex flex-col items-center justify-between relative transition-transform ${borderColor}`}
+                  className={`shrink-0 w-[118px] sm:w-[150px] h-[160px] sm:h-[190px] mx-[5px] sm:mx-[7px] rounded-xl border p-2.5 sm:p-3 flex flex-col items-center justify-between relative transition-transform shadow-2xs ${borderColor}`}
                 >
                   {/* Topo do Card: Raridade e % */}
                   <div className="w-full flex items-center justify-between text-[10px] sm:text-[11px] font-semibold">
                     <span className={rarityTextColor}>
                       {rarityLabel}
                     </span>
-                    <span className="text-neutral-400 font-mono text-[10px] sm:text-xs">
+                    <span className="text-neutral-500 font-mono text-[10px] sm:text-xs">
                       {prize.probability}%
                     </span>
                   </div>
@@ -371,13 +371,13 @@ export function RouletteWheel({
                     <img
                       src={prize.image_url}
                       alt={prize.name}
-                      className="w-full h-full object-contain drop-shadow-md transition-transform duration-200 hover:scale-105"
+                      className="w-full h-full object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105"
                       loading="lazy"
                     />
                   </div>
 
                   {/* Nome do Item */}
-                  <p className="text-[11px] sm:text-xs font-semibold text-center text-white line-clamp-1 w-full" title={prize.name}>
+                  <p className="text-[11px] sm:text-xs font-semibold text-center text-neutral-900 line-clamp-1 w-full" title={prize.name}>
                     {prize.name}
                   </p>
                 </div>
@@ -414,8 +414,8 @@ export function RouletteWheel({
 
       {/* Aviso quando sem giros */}
       {isLoggedIn && userSpins === 0 && !isSpinning && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-amber-300/90">
-          <AlertCircle className="w-3.5 h-3.5" />
+        <div className="mt-4 inline-flex items-center justify-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200/80 px-4 py-2 rounded-lg mx-auto shadow-2xs">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <span>Você está sem giros. Resgate um código abaixo ou adquira novos giros!</span>
         </div>
       )}

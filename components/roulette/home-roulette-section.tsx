@@ -59,7 +59,7 @@ export function HomeRouletteSection() {
   const pendingClaims = history.filter(h => h.claim_status === 'pending')
 
   return (
-    <section className="py-8 sm:py-12 bg-neutral-50/60 border-b border-neutral-200 relative overflow-hidden">
+    <section className="py-8 sm:py-12 bg-white border-b border-neutral-200 relative overflow-hidden">
       {/* Background Decorativo sutil */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-64 bg-gradient-to-b from-[#48B9FA]/5 to-transparent pointer-events-none" />
 
