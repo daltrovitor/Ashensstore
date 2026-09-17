@@ -47,9 +47,10 @@ function HomeContent() {
     }
   }
 
-  // Lista de categorias com fallback seguro
-  const activeCategories = useMemo(() => {
-    if (categories.length > 0) return categories
+  // Apenas categorias comuns aparecem ao rolar a página para baixo com os produtos
+  const commonCategories = useMemo(() => {
+    const filtered = categories.filter((c) => c.is_main !== true)
+    if (filtered.length > 0) return filtered
     return BLOX_CATEGORIES
   }, [categories])
 
@@ -59,9 +60,9 @@ function HomeContent() {
     return BLOX_PRODUCTS
   }, [products])
 
-  // Agrupamento de produtos por categoria para exibição contínua para baixo
+  // Agrupamento de produtos por categoria comum para exibição contínua para baixo
   const categoryGroups = useMemo(() => {
-    const groups = activeCategories.map((cat) => {
+    const groups = commonCategories.map((cat) => {
       const catProducts = allProducts.filter((p) => {
         if (p.category_id === cat.id) return true
         if (cat.slug && p.category_id === cat.slug) return true
@@ -101,7 +102,7 @@ function HomeContent() {
     }
 
     return Array.from(map.values())
-  }, [activeCategories, allProducts])
+  }, [commonCategories, allProducts])
 
   // Produtos que não entraram em nenhum grupo (se houver)
   const uncategorizedProducts = useMemo(() => {

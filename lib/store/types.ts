@@ -63,4 +63,9 @@ export interface Category {
     name: string
     slug: string
     description?: string
+    display_order?: number
+    is_active?: boolean
+    is_main?: boolean
+    image_url?: string | null
+    parent_id?: string | null
 }

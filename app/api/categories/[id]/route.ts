@@ -2,6 +2,7 @@ import { getSupabaseServer, getSupabaseService } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/auth/admin-middleware"
 import { normalizeCategorySlug } from "@/lib/utils/category-matcher"
+import { parseCategoryRecord, serializeCategoryDescription } from "@/lib/categories/category-helper"
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function GET(
       .maybeSingle()
 
     if (catData) {
-      return NextResponse.json(catData)
+      return NextResponse.json(parseCategoryRecord(catData))
     }
 
     // Fallback para store_categories
@@ -38,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: "Category not found" }, { status: 404 })
     }
 
-    return NextResponse.json(storeData)
+    return NextResponse.json(parseCategoryRecord(storeData))
   } catch (error) {
     return NextResponse.json({ error: "Category not found" }, { status: 404 })
   }
@@ -55,12 +56,25 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const service = getSupabaseService()
+    if (!service) {
+      return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
+    }
+
+    // Busca o registro atual para mesclar metadados se necessário
+    const { data: existingData } = await service
+      .from("categories")
+      .select("*")
+      .eq("id", params.id)
+      .maybeSingle()
+
+    const existingParsed = existingData ? parseCategoryRecord(existingData) : null
+
     const body = await request.json()
     const allowed: any = {}
 
     if (body.name !== undefined) allowed.name = String(body.name)
     if (body.slug !== undefined) allowed.slug = normalizeCategorySlug(String(body.slug))
-    if (body.description !== undefined) allowed.description = body.description ?? null
     if (body.display_order !== undefined) {
       allowed.display_order = parseInt(String(body.display_order || 0)) || 0
     }
@@ -68,10 +82,17 @@ export async function PUT(
       allowed.is_active = Boolean(body.is_active)
     }
 
-    const service = getSupabaseService()
-    if (!service) {
-      return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
-    }
+    // Atualiza metadados mesclando com o existente
+    const newDescription = body.description !== undefined ? body.description : existingParsed?.description
+    const newIsMain = body.is_main !== undefined ? Boolean(body.is_main) : existingParsed?.is_main
+    const newImageUrl = body.image_url !== undefined ? body.image_url : existingParsed?.image_url
+    const newParentId = body.parent_id !== undefined ? body.parent_id : existingParsed?.parent_id
+
+    allowed.description = serializeCategoryDescription(newDescription, {
+      is_main: newIsMain,
+      image_url: newImageUrl,
+      parent_id: newParentId,
+    })
 
     // Atualiza na tabela categories
     const { data: updatedCat, error: catError } = await service
@@ -92,7 +113,7 @@ export async function PUT(
       return NextResponse.json({ error: catError.message }, { status: 500 })
     }
 
-    return NextResponse.json(updatedCat?.[0] || null)
+    return NextResponse.json(updatedCat?.[0] ? parseCategoryRecord(updatedCat[0]) : null)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

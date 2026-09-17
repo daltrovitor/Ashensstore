@@ -2,109 +2,49 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import Image from "next/image"
-import { Search } from "lucide-react"
-import { getAllGames, type GameCategory } from "@/lib/store/games"
-
-interface DbCategory {
-  id: string
-  name: string
-  slug: string
-  description?: string
-  display_order?: number
-}
-
-const GAME_BANNERS_MAP: Record<string, { bannerUrl: string; tag?: string }> = {
-  "blox-fruits": { bannerUrl: "/games/blox-fruits.png", tag: "MAIS POPULAR" },
-  "adopt-me": { bannerUrl: "/games/adopt-me.png", tag: "DESTAQUE" },
-  "grow-a-garden-2": { bannerUrl: "/games/grow-a-garden.png", tag: "NOVO" },
-  "murder-mystery-2": { bannerUrl: "/games/murder-mystery-2.png", tag: "POPULAR" },
-  "rivals": { bannerUrl: "/games/rivals.png", tag: "DESTAQUE" },
-}
+import { Search, Sparkles, Layers } from "lucide-react"
+import type { Category } from "@/lib/store/types"
 
 export function GameCategoriesSection() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [dbCategories, setDbCategories] = useState<DbCategory[]>([])
-  const fallbackGames = useMemo(() => getAllGames(), [])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchCats = async () => {
       try {
+        setLoading(true)
         const res = await fetch("/api/categories", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
-            setDbCategories(data)
+          if (Array.isArray(data)) {
+            setCategories(data)
           }
         }
       } catch (e) {
         console.warn("Erro ao buscar categorias para a seção de jogos:", e)
+      } finally {
+        setLoading(false)
       }
     }
     fetchCats()
   }, [])
 
-  // Constrói a lista final priorizando as categorias criadas no painel
-  const allGames: GameCategory[] = useMemo(() => {
-    if (dbCategories.length === 0) return fallbackGames
-
-    // Filtra as categorias principais de jogos ou as criadas no banco
-    const mapped = dbCategories.map((cat) => {
-      const slugNormalized = (cat.slug || "").toLowerCase().trim()
-      const nameLower = cat.name.toLowerCase()
-
-      // Identifica banner de jogo se corresponder
-      let banner = "/games/blox-fruits.png"
-      let tag = "CATEGORIA"
-
-      if (slugNormalized.includes("blox") || nameLower.includes("blox")) {
-        banner = "/games/blox-fruits.png"
-        tag = "MAIS POPULAR"
-      } else if (slugNormalized.includes("adopt") || nameLower.includes("adopt")) {
-        banner = "/games/adopt-me.png"
-        tag = "DESTAQUE"
-      } else if (slugNormalized.includes("garden") || nameLower.includes("garden")) {
-        banner = "/games/grow-a-garden.png"
-        tag = "NOVO"
-      } else if (slugNormalized.includes("murder") || slugNormalized.includes("mm2") || nameLower.includes("murder")) {
-        banner = "/games/murder-mystery-2.png"
-        tag = "POPULAR"
-      } else if (slugNormalized.includes("rival") || nameLower.includes("rival")) {
-        banner = "/games/rivals.png"
-        tag = "DESTAQUE"
-      } else if (GAME_BANNERS_MAP[slugNormalized]) {
-        banner = GAME_BANNERS_MAP[slugNormalized].bannerUrl
-        tag = GAME_BANNERS_MAP[slugNormalized].tag || "CATEGORIA"
-      } else {
-        banner = "/banners/banner-1.jpg"
-        tag = "DESTAQUE"
-      }
-
-      return {
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug || cat.id,
-        aliases: [cat.name.toLowerCase(), (cat.slug || "").toLowerCase()],
-        bannerUrl: banner,
-        description: cat.description || "Confira os itens disponíveis nesta categoria.",
-        tag,
-        hasProducts: true,
-      }
-    })
-
-    return mapped
-  }, [dbCategories, fallbackGames])
+  // Apenas as Categorias Principais aparecem lá em cima
+  const mainCategories = useMemo(() => {
+    return categories.filter((c) => c.is_main === true)
+  }, [categories])
 
   const filteredGames = useMemo(() => {
-    if (!searchTerm.trim()) return allGames
+    if (!searchTerm.trim()) return mainCategories
     const q = searchTerm.toLowerCase().trim()
-    return allGames.filter(
+    return mainCategories.filter(
       (g) =>
         g.name.toLowerCase().includes(q) ||
-        g.description.toLowerCase().includes(q) ||
-        g.aliases.some((a) => a.toLowerCase().includes(q))
+        (g.description && g.description.toLowerCase().includes(q)) ||
+        g.slug.toLowerCase().includes(q)
     )
-  }, [allGames, searchTerm])
+  }, [mainCategories, searchTerm])
 
   return (
     <section className="py-8 sm:py-10 bg-white text-neutral-900 border-b border-neutral-200">
@@ -133,20 +73,40 @@ export function GameCategoriesSection() {
           </div>
         </div>
 
-        {/* Grid de Cards dos Jogos - Design Mais Quadrado */}
-        {filteredGames.length === 0 ? (
+        {/* Grid de Cards dos Jogos / Categorias Principais */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
+            {[1, 2, 3, 4].map((n) => (
+              <div
+                key={n}
+                className="w-full pt-[56.25%] rounded-md bg-neutral-100 animate-pulse border border-neutral-200"
+              />
+            ))}
+          </div>
+        ) : mainCategories.length === 0 ? (
+          /* Estado Vazio Amigável - Mostrado antes do usuário criar suas categorias principais no painel */
+          <div className="text-center py-10 px-4 bg-neutral-50 border border-dashed border-neutral-200 rounded-lg space-y-2">
+            <Sparkles className="w-8 h-8 text-[#0284c7] mx-auto opacity-70" />
+            <p className="text-sm font-bold text-neutral-800">
+              Nenhuma Categoria Principal cadastrada ainda
+            </p>
+            <p className="text-xs text-neutral-500 max-w-md mx-auto">
+              Acesse a aba <strong>Categorias</strong> no Painel Administrativo para cadastrar suas categorias principais com suas próprias imagens.
+            </p>
+          </div>
+        ) : filteredGames.length === 0 ? (
           <div className="text-center py-12 bg-neutral-50 border border-neutral-200 rounded-md p-6 space-y-2">
             <p className="text-sm font-semibold text-neutral-700">
-              Nenhuma categoria encontrada para &ldquo;{searchTerm}&rdquo;
+              Nenhum jogo encontrado para &ldquo;{searchTerm}&rdquo;
             </p>
             <p className="text-xs text-neutral-500">
-              Tente buscar por &ldquo;Blox Fruits&rdquo;, &ldquo;Adopt Me&rdquo; ou limpe o campo de busca.
+              Limpe o campo de busca para ver todas as categorias principais.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
             {filteredGames.map((game) => (
-              <GameCard key={game.id} game={game} />
+              <MainCategoryCard key={game.id} category={game} />
             ))}
           </div>
         )}
@@ -155,41 +115,33 @@ export function GameCategoriesSection() {
   )
 }
 
-function GameCard({ game }: { game: GameCategory }) {
-  // Remove emojis para um visual mais limpo e profissional
-  const cleanTag = game.tag ? game.tag.replace(/[^a-zA-Z0-9À-ÿ\s]/g, "").trim() : null
-
+function MainCategoryCard({ category }: { category: Category }) {
   return (
     <Link
-      href={`/categoria/${game.slug}`}
+      href={`/categoria/${category.slug}`}
       className="group relative block w-full rounded-md sm:rounded-lg overflow-hidden border border-neutral-200 hover:border-[#48B9FA] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
     >
       {/* Container de Imagem com Aspect Ratio 16:9 */}
       <div className="relative w-full pt-[56.25%] bg-neutral-100 overflow-hidden">
-        <Image
-          src={game.bannerUrl}
-          alt={game.name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-
-        {/* Gradiente sutil inferior */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-
-        {/* Tag do Jogo Limpa e Quadrada */}
-        {cleanTag && (
-          <div className="absolute top-2 right-2 z-10">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#48B9FA] text-white shadow-xs uppercase tracking-wider">
-              {cleanTag}
-            </span>
+        {category.image_url ? (
+          <img
+            src={category.image_url}
+            alt={category.name}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 via-neutral-200 to-neutral-100 flex items-center justify-center p-4">
+            <Sparkles className="w-8 h-8 text-[#0284c7]/40" />
           </div>
         )}
 
-        {/* Nome do Jogo sobreposto na imagem para visual forte */}
-        <div className="absolute bottom-2 left-3 right-3 z-10">
-          <h3 className="text-white font-extrabold text-sm sm:text-base drop-shadow-sm uppercase tracking-wide truncate">
-            {game.name}
+        {/* Gradiente inferior para garantir contraste total com o texto */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+
+        {/* Nome do Jogo / Categoria Principal */}
+        <div className="absolute bottom-2.5 left-3 right-3 z-10">
+          <h3 className="text-white font-extrabold text-sm sm:text-base drop-shadow-md uppercase tracking-wide truncate">
+            {category.name}
           </h3>
         </div>
 

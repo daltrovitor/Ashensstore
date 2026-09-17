@@ -2,6 +2,7 @@ import { getSupabaseServer, getSupabaseService } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/auth/admin-middleware"
 import { normalizeCategorySlug } from "@/lib/utils/category-matcher"
+import { parseCategoryRecord, serializeCategoryDescription } from "@/lib/categories/category-helper"
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle()
 
       if (catData) {
-        return NextResponse.json(catData)
+        return NextResponse.json(parseCategoryRecord(catData))
       }
 
       const { data: storeData } = await supabase
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
         .eq("id", id)
         .maybeSingle()
 
-      return NextResponse.json(storeData ?? null)
+      return NextResponse.json(storeData ? parseCategoryRecord(storeData) : null)
     }
 
     // Busca todas as categorias da tabela categories (onde ficam os dados oficiais)
@@ -52,7 +53,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(data || [])
+    const parsedList = (data || []).map(parseCategoryRecord)
+    return NextResponse.json(parsedList)
   } catch (error: any) {
     console.error("GET /api/categories error:", error)
     return NextResponse.json([])
@@ -75,10 +77,17 @@ export async function POST(request: NextRequest) {
 
     const slug = normalizeCategorySlug(body.slug?.trim() || name)
 
+    // Serializa metadados no campo description
+    const serializedDescription = serializeCategoryDescription(body.description, {
+      is_main: Boolean(body.is_main),
+      image_url: body.image_url || null,
+      parent_id: body.parent_id || null,
+    })
+
     const insertObj: any = {
       name,
       slug,
-      description: body.description ?? null,
+      description: serializedDescription,
       display_order: parseInt(String(body.display_order || 0)) || 0,
       is_active: body.is_active !== undefined ? Boolean(body.is_active) : true
     }
@@ -104,7 +113,7 @@ export async function POST(request: NextRequest) {
       await service.from("store_categories").insert([insertObj])
     } catch (_) {}
 
-    return NextResponse.json(data[0], { status: 201 })
+    return NextResponse.json(parseCategoryRecord(data[0]), { status: 201 })
   } catch (error: any) {
     console.error("POST /api/categories error:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
