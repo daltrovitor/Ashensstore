@@ -2,7 +2,8 @@
 
 import { useRef, useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { IneightProductCard } from "@/components/ecommerce/IneightProductCard"
+import { ProductCard } from "@/components/ecommerce/ProductCard"
+import { CategoryDivider } from "@/components/home/category-divider"
 import type { Product } from "@/lib/store/types"
 
 interface PopularProductsCarouselProps {
@@ -39,7 +40,6 @@ export function PopularProductsCarousel({
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
-            // Prioritiza produtos com destaque ou ordem de exibição
             const sorted = [...data].sort((a, b) => {
               if (a.is_featured && !b.is_featured) return -1
               if (!a.is_featured && b.is_featured) return 1
@@ -75,32 +75,19 @@ export function PopularProductsCarousel({
   }
 
   return (
-    <section className="py-6 sm:py-10 bg-[#090810] relative overflow-hidden">
+    <section className="py-6 sm:py-10 bg-white relative overflow-hidden border-b border-neutral-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Divisor Estilizado com Badge Centralizado (Imagem 2) */}
-        <div className="relative flex items-center justify-center mb-6 sm:mb-8">
-          {/* Linha esquerda neon violeta */}
-          <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-purple-600/70 to-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]" />
-
-          {/* Badge Central */}
-          <div className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-full bg-[#130f22] border-2 border-purple-500/80 shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center gap-2 mx-3 sm:mx-4 shrink-0">
-            <span className="text-sm sm:text-base font-black tracking-wider uppercase text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]">
-              🔥 {title}
-            </span>
-          </div>
-
-          {/* Linha direita neon violeta */}
-          <div className="flex-1 h-[2px] bg-gradient-to-l from-transparent via-purple-600/70 to-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]" />
-        </div>
+        {/* Divisor Quadrado no Estilo da Foto */}
+        <CategoryDivider title={title} />
 
         {/* Container do Carrossel com Botões de Navegação */}
-        <div className="relative group">
+        <div className="relative group mt-4">
           {/* Botão Scroll Esquerda */}
           <button
             type="button"
             onClick={scrollLeft}
             aria-label="Rolar para a esquerda"
-            className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-20 size-9 sm:size-10 rounded-full bg-[#161226]/90 hover:bg-purple-600 border border-purple-500/40 text-white flex items-center justify-center transition-all duration-200 shadow-xl opacity-0 group-hover:opacity-100 hover:scale-110 cursor-pointer backdrop-blur-sm"
+            className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-20 size-9 sm:size-10 rounded-md bg-white hover:bg-[#48B9FA] border border-neutral-200 hover:border-[#48B9FA] text-neutral-700 hover:text-white flex items-center justify-center transition-all duration-200 shadow-md opacity-0 group-hover:opacity-100 hover:scale-105 cursor-pointer"
           >
             <ChevronLeft className="size-5" />
           </button>
@@ -108,26 +95,25 @@ export function PopularProductsCarousel({
           {/* Trilho Horizontal Deslizável */}
           <div
             ref={scrollContainerRef}
-            className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1 cursor-grab active:cursor-grabbing select-none"
+            className="flex items-stretch gap-3 sm:gap-5 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1 cursor-grab active:cursor-grabbing select-none"
           >
             {loading
               ? [...Array(5)].map((_, i) => (
                   <div
                     key={i}
-                    className="w-[220px] sm:w-[240px] md:w-[250px] shrink-0 h-96 bg-[#13111c] border border-purple-500/20 rounded-2xl animate-pulse p-3 space-y-3"
+                    className="w-[230px] sm:w-[260px] shrink-0 h-80 bg-neutral-100 border border-neutral-200 rounded-md animate-pulse p-3 space-y-3"
                   >
-                    <div className="aspect-square bg-purple-950/30 rounded-xl" />
-                    <div className="h-4 bg-purple-950/40 rounded w-3/4" />
-                    <div className="h-4 bg-purple-950/30 rounded w-1/2" />
-                    <div className="h-8 bg-purple-950/50 rounded-xl mt-auto" />
+                    <div className="aspect-square bg-neutral-200 rounded-sm" />
+                    <div className="h-4 bg-neutral-200 rounded w-3/4" />
+                    <div className="h-4 bg-neutral-200 rounded w-1/2" />
                   </div>
                 ))
               : products.map((product) => (
                   <div
                     key={product.id}
-                    className="w-[220px] sm:w-[240px] md:w-[250px] shrink-0 flex"
+                    className="w-[230px] sm:w-[260px] shrink-0 flex"
                   >
-                    <IneightProductCard product={product} />
+                    <ProductCard product={product} />
                   </div>
                 ))}
           </div>
@@ -137,7 +123,7 @@ export function PopularProductsCarousel({
             type="button"
             onClick={scrollRight}
             aria-label="Rolar para a direita"
-            className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-20 size-9 sm:size-10 rounded-full bg-[#161226]/90 hover:bg-purple-600 border border-purple-500/40 text-white flex items-center justify-center transition-all duration-200 shadow-xl opacity-0 group-hover:opacity-100 hover:scale-110 cursor-pointer backdrop-blur-sm"
+            className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-20 size-9 sm:size-10 rounded-md bg-white hover:bg-[#48B9FA] border border-neutral-200 hover:border-[#48B9FA] text-neutral-700 hover:text-white flex items-center justify-center transition-all duration-200 shadow-md opacity-0 group-hover:opacity-100 hover:scale-105 cursor-pointer"
           >
             <ChevronRight className="size-5" />
           </button>

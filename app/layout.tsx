@@ -1,10 +1,12 @@
 import type React from "react"
+import { Suspense } from "react"
 import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from 'sonner'
 import { CartProvider } from '@/hooks/use-shopping-cart'
+import { RouteMasker } from '@/components/routing/RouteMasker'
 
 const SITE_NAME = 'Ashens Store | Loja de Blox Fruits'
 const SITE_DESCRIPTION = 'Sua loja definitiva de Blox Fruits! Frutas Míticas (Kitsune, Dragon, Leopard), Gamepasses com desconto, Contas Level 2550 e Raças V4. Entrega rápida no Roblox e 100% segura via PIX.'
@@ -104,6 +106,9 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="font-sans antialiased bg-white selection:bg-[#48B9FA]/20 selection:text-neutral-900 text-neutral-900 flex flex-col min-h-screen">
         <CartProvider>
+          <Suspense fallback={null}>
+            <RouteMasker />
+          </Suspense>
           <div className="flex-1 flex flex-col bg-white">
             {children}
           </div>

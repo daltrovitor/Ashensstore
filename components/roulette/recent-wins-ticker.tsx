@@ -33,20 +33,20 @@ export function RecentWinsTicker() {
   }
 
   return (
-    <div className="w-full bg-neutral-900 text-white py-2.5 px-4 overflow-hidden border-y border-neutral-800 relative select-none">
+    <div className="w-full bg-blue-50/70 text-neutral-800 py-2.5 px-4 overflow-hidden border-y border-blue-100 select-none">
       <div className="max-w-7xl mx-auto flex items-center gap-3">
-        <div className="flex items-center gap-1.5 shrink-0 bg-[#48B9FA]/20 text-[#48B9FA] px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider">
+        <div className="flex items-center gap-1.5 shrink-0 bg-white text-[#0284c7] px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider border border-blue-200 shadow-2xs">
           <Trophy className="w-3.5 h-3.5 text-[#48B9FA]" />
           <span>Ganhadores Recentes</span>
         </div>
 
         {/* Marquee horizontal suave */}
         <div className="relative flex-1 overflow-hidden">
-          <div className="flex items-center gap-6 animate-[marquee_35s_linear_infinite] whitespace-nowrap text-xs text-neutral-300">
+          <div className="flex items-center gap-6 animate-[marquee_35s_linear_infinite] whitespace-nowrap text-xs text-neutral-700">
             {winners.concat(winners).map((win, idx) => (
-              <div key={`${win.id}-${idx}`} className="flex items-center gap-2 shrink-0 bg-neutral-800/80 px-3 py-1 rounded-full border border-neutral-700/60">
-                <span className="font-semibold text-[#48B9FA]">{win.masked_name}</span>
-                <span className="text-neutral-400">ganhou</span>
+              <div key={`${win.id}-${idx}`} className="flex items-center gap-2 shrink-0 bg-white px-3 py-1 rounded-md border border-blue-100 shadow-2xs">
+                <span className="font-semibold text-[#0284c7]">{win.masked_name}</span>
+                <span className="text-neutral-400 text-[11px]">ganhou</span>
                 <div className="relative w-4 h-4 rounded-sm overflow-hidden flex items-center justify-center shrink-0">
                   <img
                     src={win.prize_image}
@@ -54,7 +54,7 @@ export function RecentWinsTicker() {
                     className="w-full h-full object-contain"
                   />
                 </div>
-                <strong className="text-white font-medium">{win.prize_name}</strong>
+                <strong className="text-neutral-900 font-bold">{win.prize_name}</strong>
               </div>
             ))}
           </div>

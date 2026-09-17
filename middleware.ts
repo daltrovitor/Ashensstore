@@ -7,6 +7,34 @@ export async function middleware(request: NextRequest) {
 
     const pathname = request.nextUrl.pathname
 
+    // 1. Identificar se é rota de API ou a página 404
+    const isApi = pathname.startsWith('/api')
+    const isNotFoundPage = pathname === '/not-found'
+    const isRoot = pathname === '/'
+
+    // 2. Detecção de transição interna do cliente Next.js (SPA / RSC / prefetch)
+    const isRsc = request.headers.get('rsc') === '1'
+    const isPrefetch = request.headers.get('next-router-prefetch') === '1'
+    const isNextAction = request.headers.has('next-action')
+    const isNextStateTree = request.headers.has('next-router-state-tree')
+    const isNextUrl = request.headers.has('next-url')
+    const isClientTransition = isRsc || isPrefetch || isNextAction || isNextStateTree || isNextUrl
+
+    // 3. Detecção de tentativa de acesso direto pelo navegador (digitação direta na barra de URL ou link externo)
+    const secFetchDest = request.headers.get('sec-fetch-dest')
+    const secFetchMode = request.headers.get('sec-fetch-mode')
+    const acceptHeader = request.headers.get('accept') || ''
+    const isDirectDocumentNavigation =
+        !isClientTransition &&
+        (secFetchDest === 'document' || secFetchMode === 'navigate' || acceptHeader.includes('text/html'))
+
+    // BLOQUEIO TOTAL DE ACESSO DIRETO VIA URL:
+    // Se o usuário tentar acessar qualquer rota (ex: /admin, /loja, /roleta, /qualquer-coisa) digitando diretamente
+    // na barra de endereços da URL, retorna 404 Not Found imediatamente.
+    if (!isApi && !isNotFoundPage && !isRoot && isDirectDocumentNavigation) {
+        return NextResponse.rewrite(new URL('/not-found', request.url), { status: 404 })
+    }
+
     // Rota administrativa configurável (ex: /painel-secreto ou default /admin)
     const configuredAdminPath = (process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin').replace(/\/$/, '')
     

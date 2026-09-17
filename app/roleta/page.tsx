@@ -125,7 +125,7 @@ export default function RoulettePage() {
           <BuySpinsSection
             spinPrice={settings?.spin_price}
             userEmail={user?.email}
-            userName={user?.user_metadata?.full_name}
+            userName={(user as any)?.user_metadata?.full_name || user?.name}
           />
         </section>
       </main>

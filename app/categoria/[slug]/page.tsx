@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { StoreLoader } from "@/components/store-loader"
-import { IneightProductCard } from "@/components/ecommerce/IneightProductCard"
-import { PopularProductsCarousel } from "@/components/home/popular-products-carousel"
+import { ProductCard } from "@/components/ecommerce/ProductCard"
+import { CategoryDivider } from "@/components/home/category-divider"
 import { getGameBySlug } from "@/lib/store/games"
 import type { Product, Category } from "@/lib/store/types"
 import {
@@ -18,7 +18,6 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   Layers,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react"
 
@@ -70,13 +69,12 @@ export default function GameCategoryPage({ params }: PageProps) {
     }
   }
 
-  // Se for Blox Fruits, mostra todos os produtos da loja (já que são Blox Fruits)
+  // Se for Blox Fruits, mostra todos os produtos da loja
   // Se for outro jogo que ainda não tem produtos, lista vazia
   const gameProducts = useMemo(() => {
     if (!game || game.slug === "blox-fruits") {
       return products
     }
-    // Outros jogos no momento não possuem produtos cadastrados
     return []
   }, [game, products])
 
@@ -84,12 +82,10 @@ export default function GameCategoryPage({ params }: PageProps) {
   const displayedProducts = useMemo(() => {
     let list = [...gameProducts]
 
-    // Filtro por subcategoria
     if (selectedSubcat !== "all") {
       list = list.filter((p) => p.category_id === selectedSubcat)
     }
 
-    // Filtro por busca
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       list = list.filter(
@@ -99,7 +95,6 @@ export default function GameCategoryPage({ params }: PageProps) {
       )
     }
 
-    // Ordenação
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getPrice = (p: any) => Number(p.price || p.variants?.[0]?.retail_price || 0)
 
@@ -125,11 +120,6 @@ export default function GameCategoryPage({ params }: PageProps) {
     return list
   }, [gameProducts, selectedSubcat, searchQuery, sortBy])
 
-  // Produtos populares do jogo para o carrossel
-  const popularGameProducts = useMemo(() => {
-    return gameProducts.filter((p) => p.is_featured || (p.display_order && p.display_order <= 5)).slice(0, 10)
-  }, [gameProducts])
-
   // Rolagem suave da barra de subcategorias
   const scrollTabs = (direction: "left" | "right") => {
     if (tabsContainerRef.current) {
@@ -145,48 +135,37 @@ export default function GameCategoryPage({ params }: PageProps) {
   const gameBanner = game ? game.bannerUrl : "/games/blox-fruits.png"
 
   return (
-    <div className="min-h-screen bg-[#0a0911] text-white flex flex-col selection:bg-purple-600/30 selection:text-white">
+    <div className="min-h-screen bg-white text-neutral-900 flex flex-col selection:bg-[#48B9FA]/20 selection:text-neutral-900">
       <StoreLoader isLoading={loading} minDurationMs={800} />
       <Navbar />
 
       {/* Top Breadcrumb & Retorno */}
-      <div className="bg-[#0f0c1b] border-b border-purple-900/30 py-3">
+      <div className="bg-neutral-50 border-b border-neutral-200 py-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-400 hover:text-purple-300 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-600 hover:text-[#48B9FA] transition-colors"
           >
             <ArrowLeft className="size-3.5" />
-            <span>← Escolher outro jogo</span>
+            <span>Voltar para todas as categorias</span>
           </Link>
 
-          <div className="flex items-center gap-2 text-xs text-neutral-400">
-            <Link href="/" className="hover:text-white transition-colors">
+          <div className="flex items-center gap-2 text-xs text-neutral-500">
+            <Link href="/" className="hover:text-neutral-900 transition-colors">
               Início
             </Link>
             <span>/</span>
-            <span className="text-purple-400 font-bold">{gameTitle}</span>
+            <span className="text-[#0284c7] font-bold">{gameTitle}</span>
           </div>
         </div>
       </div>
 
-      {/* Banner de Destaque do Jogo */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#130f24] to-[#0a0911] border-b border-purple-900/40 py-8 sm:py-12">
-        <div className="absolute inset-0 opacity-15 pointer-events-none">
-          <Image
-            src={gameBanner}
-            alt={gameTitle}
-            fill
-            className="object-cover blur-md"
-            priority
-          />
-        </div>
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      {/* Banner de Destaque do Jogo (Clean White & Blue) */}
+      <section className="bg-gradient-to-b from-blue-50/40 via-white to-white border-b border-neutral-200 py-8 sm:py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center gap-6 sm:gap-8">
-            {/* Imagem do Jogo */}
-            <div className="relative w-full max-w-xs sm:max-w-sm aspect-video rounded-2xl overflow-hidden border-2 border-purple-500/40 shadow-[0_0_35px_rgba(168,85,247,0.35)] shrink-0">
+            {/* Imagem do Jogo com bordas quadradas */}
+            <div className="relative w-full max-w-xs sm:max-w-sm aspect-video rounded-md sm:rounded-lg overflow-hidden border border-neutral-200 shadow-sm shrink-0 bg-neutral-100">
               <Image
                 src={gameBanner}
                 alt={gameTitle}
@@ -194,27 +173,25 @@ export default function GameCategoryPage({ params }: PageProps) {
                 className="object-cover"
                 priority
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
             </div>
 
             {/* Informações do Jogo */}
             <div className="flex-1 text-center md:text-left space-y-2.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-bold shadow-sm">
-                <ShieldCheck className="size-3.5 text-purple-400" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-blue-50 border border-blue-200/60 text-[#0284c7] text-xs font-bold">
+                <ShieldCheck className="size-3.5 text-[#48B9FA]" />
                 <span>Entrega Digital Garantida • Trade & Servidor VIP</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-neutral-900 uppercase">
                 {gameTitle}
               </h1>
 
-              <p className="text-xs sm:text-sm text-neutral-300 max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-neutral-600 max-w-2xl leading-relaxed">
                 {gameDescription}
               </p>
 
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2 text-xs font-bold text-neutral-400">
-                <span className="flex items-center gap-1.5 text-purple-300">
-                  <Sparkles className="size-3.5 text-yellow-400" />
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-1 text-xs font-semibold text-neutral-500">
+                <span className="text-[#0284c7]">
                   <strong>{gameProducts.length}</strong> produtos disponíveis
                 </span>
                 <span>•</span>
@@ -225,157 +202,152 @@ export default function GameCategoryPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* SUBCATEGORIAS POR ROLAGEM (Solicitação Principal do Usuário) */}
-      {categories.length > 0 && (
-        <section className="bg-[#0e0b19] border-b border-purple-900/30 sticky top-16 sm:top-20 z-40 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                <Layers className="size-3.5 text-purple-400" />
-                <span>Subcategorias de {gameTitle}</span>
-              </div>
-
-              {/* Setas de rolagem em desktop */}
-              <div className="hidden sm:flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => scrollTabs("left")}
-                  aria-label="Rolar subcategorias para a esquerda"
-                  className="size-7 rounded-full bg-white/5 hover:bg-purple-600/40 border border-white/10 text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollTabs("right")}
-                  aria-label="Rolar subcategorias para a direita"
-                  className="size-7 rounded-full bg-white/5 hover:bg-purple-600/40 border border-white/10 text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
+      {/* Subcategorias por Rolagem (Design Mais Quadrado) */}
+      <section className="bg-white border-b border-neutral-200 sticky top-16 sm:top-20 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              <Layers className="size-3.5 text-[#48B9FA]" />
+              <span>Subcategorias de {gameTitle}</span>
             </div>
 
-            {/* Trilho de Subcategorias com Rolagem Horizontal Suave */}
-            <div
-              ref={tabsContainerRef}
-              className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth py-1 select-none"
-            >
-              {/* Botão Todas */}
+            {/* Setas de rolagem em desktop */}
+            <div className="hidden sm:flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setSelectedSubcat("all")}
-                className={`snap-start shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 border whitespace-nowrap cursor-pointer ${
-                  selectedSubcat === "all"
-                    ? "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white border-purple-400/50 shadow-[0_0_20px_rgba(147,51,234,0.45)] scale-[1.02]"
-                    : "bg-[#161224] text-neutral-400 hover:text-white border-white/10 hover:border-purple-500/30"
-                }`}
+                onClick={() => scrollTabs("left")}
+                aria-label="Rolar subcategorias para a esquerda"
+                className="size-7 rounded-md bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
               >
-                Todas ({gameProducts.length})
+                <ChevronLeft className="size-4" />
               </button>
-
-              {/* Subcategorias do Banco de Dados */}
-              {categories.map((cat) => {
-                const count = gameProducts.filter((p) => p.category_id === cat.id).length
-                const isActive = selectedSubcat === cat.id
-
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedSubcat(cat.id)}
-                    className={`snap-start shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 border whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white border-purple-400/50 shadow-[0_0_20px_rgba(147,51,234,0.45)] scale-[1.02]"
-                        : "bg-[#161224] text-neutral-400 hover:text-white border-white/10 hover:border-purple-500/30"
-                    }`}
-                  >
-                    {cat.name} {count > 0 ? `(${count})` : ""}
-                  </button>
-                )
-              })}
+              <button
+                type="button"
+                onClick={() => scrollTabs("right")}
+                aria-label="Rolar subcategorias para a direita"
+                className="size-7 rounded-md bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <ChevronRight className="size-4" />
+              </button>
             </div>
           </div>
-        </section>
-      )}
 
-      {/* CARROSSEL DE PRODUTOS POPULARES DO JOGO (Seção da Imagem 2) */}
-      {popularGameProducts.length > 0 && selectedSubcat === "all" && !searchQuery && (
-        <PopularProductsCarousel
-          products={popularGameProducts}
-          title="PRODUTOS POPULARES"
-        />
-      )}
+          {/* Trilho de Subcategorias com Rolagem Horizontal */}
+          <div
+            ref={tabsContainerRef}
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 select-none"
+          >
+            {/* Botão Todas */}
+            <button
+              type="button"
+              onClick={() => setSelectedSubcat("all")}
+              className={`shrink-0 px-4 py-1.5 rounded-md text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
+                selectedSubcat === "all"
+                  ? "bg-[#48B9FA] text-white border-[#48B9FA] shadow-xs"
+                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-200"
+              }`}
+            >
+              Todas ({gameProducts.length})
+            </button>
 
-      {/* CATÁLOGO DE PRODUTOS FILTRADO DO JOGO */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 w-full">
-        {/* Barra de Busca e Ordenação interna do jogo */}
-        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 sm:mb-8 pb-4 border-b border-purple-900/30">
-          {/* Campo de Busca dentro do Jogo */}
+            {/* Subcategorias */}
+            {categories.length > 0
+              ? categories.map((cat) => {
+                  const count = gameProducts.filter((p) => p.category_id === cat.id).length
+                  const isActive = selectedSubcat === cat.id
+
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedSubcat(cat.id)}
+                      className={`shrink-0 px-4 py-1.5 rounded-md text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
+                        isActive
+                          ? "bg-[#48B9FA] text-white border-[#48B9FA] shadow-xs"
+                          : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-200"
+                      }`}
+                    >
+                      {cat.name} {count > 0 ? `(${count})` : ""}
+                    </button>
+                  )
+                })
+              : null}
+          </div>
+        </div>
+      </section>
+
+      {/* Catálogo de Produtos do Jogo com ProductCard Oficial */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex-1 w-full">
+        {/* Barra de Busca e Ordenação */}
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6 sm:mb-8 pb-4 border-b border-neutral-200">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-neutral-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-neutral-400 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Buscar itens em ${gameTitle}...`}
-              className="w-full bg-[#161224] border border-purple-500/20 focus:border-purple-500/60 rounded-xl h-10 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-neutral-500 outline-none transition-all focus:ring-2 focus:ring-purple-500/20"
+              className="w-full bg-neutral-50 hover:bg-white focus:bg-white border border-neutral-200 focus:border-[#48B9FA] rounded-md h-10 pl-10 pr-4 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-all shadow-2xs focus:ring-2 focus:ring-[#48B9FA]/20"
             />
           </div>
 
           {/* Contador e Ordenação */}
           <div className="flex items-center justify-between sm:justify-end gap-3">
-            <span className="text-xs text-neutral-400">
-              <strong className="text-white font-bold">{displayedProducts.length}</strong> produtos
+            <span className="text-xs text-neutral-500">
+              <strong className="text-neutral-900 font-bold">{displayedProducts.length}</strong> produtos
             </span>
 
-            <div className="flex items-center gap-1.5 bg-[#161224] border border-purple-500/20 rounded-xl px-2.5 py-1.5">
-              <SlidersHorizontal className="size-3.5 text-purple-400" />
+            <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-md px-2.5 py-1.5">
+              <SlidersHorizontal className="size-3.5 text-neutral-500" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-neutral-800 outline-none cursor-pointer"
               >
-                <option value="popular" className="bg-[#161224]">Mais Populares</option>
-                <option value="price_asc" className="bg-[#161224]">Menor Preço</option>
-                <option value="price_desc" className="bg-[#161224]">Maior Preço</option>
-                <option value="newest" className="bg-[#161224]">Mais Recentes</option>
-                <option value="name" className="bg-[#161224]">Nome (A-Z)</option>
+                <option value="popular">Mais Populares</option>
+                <option value="price_asc">Menor Preço</option>
+                <option value="price_desc">Maior Preço</option>
+                <option value="newest">Mais Recentes</option>
+                <option value="name">Nome (A-Z)</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Grid de Produtos */}
+        {/* Divisor no estilo quadrado da foto */}
+        <CategoryDivider
+          title={selectedSubcat === "all" ? "Catálogo Completo" : categories.find(c => c.id === selectedSubcat)?.name || "Produtos"}
+        />
+
+        {/* Grid de Produtos Oficiais */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="h-96 bg-[#13111c] border border-purple-500/20 rounded-2xl animate-pulse p-3 space-y-3"
+                className="h-80 bg-neutral-100 border border-neutral-200 rounded-md animate-pulse p-3 space-y-3"
               >
-                <div className="aspect-square bg-purple-950/30 rounded-xl" />
-                <div className="h-4 bg-purple-950/40 rounded w-3/4" />
-                <div className="h-4 bg-purple-950/30 rounded w-1/2" />
-                <div className="h-8 bg-purple-950/50 rounded-xl mt-auto" />
+                <div className="aspect-square bg-neutral-200 rounded-sm" />
+                <div className="h-4 bg-neutral-200 rounded w-3/4" />
+                <div className="h-4 bg-neutral-200 rounded w-1/2" />
               </div>
             ))}
           </div>
         ) : displayedProducts.length === 0 ? (
-          <div className="text-center py-16 sm:py-20 bg-[#131021]/80 border border-purple-500/30 rounded-2xl p-8 max-w-xl mx-auto space-y-4">
-            <div className="size-16 rounded-full bg-purple-600/10 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-400">
-              <Layers className="size-8" />
+          <div className="text-center py-16 bg-neutral-50 border border-neutral-200 rounded-md p-8 max-w-xl mx-auto space-y-4 mt-6">
+            <div className="size-14 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto text-[#0284c7]">
+              <Layers className="size-6" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg sm:text-xl font-bold text-white">
+              <h3 className="text-base sm:text-lg font-bold text-neutral-900">
                 {game && !game.hasProducts
                   ? `Novidades de ${gameTitle} em breve!`
                   : "Nenhum produto encontrado nesta subcategoria"}
               </h3>
-              <p className="text-xs sm:text-sm text-neutral-400 max-w-sm mx-auto">
+              <p className="text-xs sm:text-sm text-neutral-500 max-w-sm mx-auto">
                 {game && !game.hasProducts
-                  ? "Nossa equipe está cadastrando o estoque para este jogo. Visite o catálogo do Blox Fruits para ver as melhores ofertas ativas."
+                  ? "Nossa equipe está cadastrando o estoque para este jogo. Visite a categoria de Blox Fruits para ver todas as ofertas disponíveis."
                   : "Tente selecionar outra subcategoria acima ou limpar os termos de busca."}
               </p>
             </div>
@@ -385,7 +357,7 @@ export default function GameCategoryPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={() => router.push("/categoria/blox-fruits")}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-2.5 text-xs font-bold rounded-xl shadow-lg transition-all cursor-pointer"
+                  className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white px-5 py-2 text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
                 >
                   Ver produtos de Blox Fruits
                 </button>
@@ -396,7 +368,7 @@ export default function GameCategoryPage({ params }: PageProps) {
                     setSelectedSubcat("all")
                     setSearchQuery("")
                   }}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-2.5 text-xs font-bold rounded-xl shadow-lg transition-all cursor-pointer"
+                  className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white px-5 py-2 text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
                 >
                   Ver Todas as Subcategorias
                 </button>
@@ -404,16 +376,16 @@ export default function GameCategoryPage({ params }: PageProps) {
 
               <Link
                 href="/"
-                className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-4 py-2.5 text-xs font-bold rounded-xl transition-all"
+                className="bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 px-4 py-2 text-xs font-bold rounded-md transition-colors"
               >
                 Voltar ao Início
               </Link>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
             {displayedProducts.map((product) => (
-              <IneightProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

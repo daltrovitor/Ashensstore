@@ -12,8 +12,23 @@ interface Slide {
   alt?: string
 }
 
+const DEFAULT_BANNERS: Slide[] = [
+  {
+    id: "default-banner-1",
+    image_url: "/banners/banner-1.jpg",
+    link_url: "/loja",
+    alt: "Ashens Store - Ofertas Especiais",
+  },
+  {
+    id: "default-banner-2",
+    image_url: "/banners/banner-2.jpg",
+    link_url: "/loja",
+    alt: "Ashens Store - Entrega Rápida e Segura",
+  },
+]
+
 export function HeroSliderSimple() {
-  const [slides, setSlides] = useState<Slide[]>([])
+  const [slides, setSlides] = useState<Slide[]>(DEFAULT_BANNERS)
   const [loaded, setLoaded] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -45,11 +60,14 @@ export function HeroSliderSimple() {
                 alt: b.title || "Banner",
               }))
 
-            setSlides(activeDbBanners)
+            if (activeDbBanners.length > 0) {
+              setSlides(activeDbBanners)
+              return
+            }
           }
         }
       } catch {
-        setSlides([])
+        // mantém DEFAULT_BANNERS
       } finally {
         setLoaded(true)
       }

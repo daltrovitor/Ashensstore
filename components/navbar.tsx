@@ -96,17 +96,13 @@ function NavbarContent() {
                     <Link
                       key={link.href}
                       href="/roleta"
-                      className={`relative group px-3.5 py-1.5 rounded-full font-bold text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                      className={`relative px-3.5 py-1.5 rounded-md font-bold text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                         isActive(link.href)
-                          ? "bg-gradient-to-r from-[#48B9FA] to-blue-600 text-white shadow-md shadow-[#48B9FA]/30 ring-2 ring-[#48B9FA]/50"
-                          : "bg-gradient-to-r from-[#48B9FA]/15 via-sky-500/10 to-blue-600/15 text-[#0284c7] hover:bg-[#48B9FA] hover:text-white border border-[#48B9FA]/30 shadow-xs hover:shadow-md hover:shadow-[#48B9FA]/30 hover:scale-105"
+                          ? "bg-[#48B9FA] text-white shadow-sm"
+                          : "bg-blue-50 text-[#0284c7] hover:bg-[#48B9FA] hover:text-white border border-blue-200/60"
                       }`}
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                       <span>Roleta da Sorte</span>
-                      <span className="text-[9px] bg-amber-400 text-neutral-900 font-black px-1.5 py-0.5 rounded-full uppercase tracking-tight shadow-xs">
-                        GIRE
-                      </span>
                     </Link>
                   )
                 }
@@ -321,15 +317,13 @@ function NavbarContent() {
                       key={link.href}
                       href="/roleta"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between py-2.5 px-3.5 rounded-lg bg-gradient-to-r from-[#48B9FA] via-sky-500 to-blue-600 text-white font-bold text-sm shadow-md shadow-[#48B9FA]/30 my-1"
+                      className={`flex items-center justify-between py-2.5 px-3.5 rounded-md font-bold text-sm my-1 transition-colors ${
+                        isActive(link.href)
+                          ? "bg-[#48B9FA] text-white"
+                          : "bg-blue-50 text-[#0284c7] hover:bg-blue-100 border border-blue-200/60"
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                        <span>Roleta da Sorte</span>
-                      </div>
-                      <span className="text-[10px] bg-amber-400 text-neutral-950 font-black px-2 py-0.5 rounded-full uppercase tracking-tight shadow-xs">
-                        GIRE AGORA
-                      </span>
+                      <span>Roleta da Sorte</span>
                     </Link>
                   )
                 }
