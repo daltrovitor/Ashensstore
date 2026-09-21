@@ -1,3 +1,4 @@
+// Hello World
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { createClient } from '@supabase/supabase-js'
@@ -29,7 +30,7 @@ export async function middleware(request: NextRequest) {
         (secFetchDest === 'document' || secFetchMode === 'navigate' || acceptHeader.includes('text/html'))
 
     // BLOQUEIO TOTAL DE ACESSO DIRETO VIA URL:
-    // Se o usuário tentar acessar qualquer rota (ex: /admin, /loja, /roleta, /qualquer-coisa) digitando diretamente
+    // Se o usuário tentar acessar qualquer rota (ex: /admin, /loja, /afiliados, /qualquer-coisa) digitando diretamente
     // na barra de endereços da URL, retorna 404 Not Found imediatamente.
     if (!isApi && !isNotFoundPage && !isRoot && isDirectDocumentNavigation) {
         return NextResponse.rewrite(new URL('/not-found', request.url), { status: 404 })

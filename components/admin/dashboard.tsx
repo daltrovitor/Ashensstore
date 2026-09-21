@@ -1,4 +1,4 @@
-
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -37,7 +37,6 @@ import { InventoryManager } from "@/components/admin/inventory-manager"
 import { FinancialManager } from "@/components/admin/financial-manager"
 import { AffiliatesManager } from "@/components/admin/affiliates-manager"
 import { CouponsManager } from "@/components/admin/coupons-manager"
-import { RouletteManager } from "@/components/admin/roulette-manager"
 import { ImageUpload } from "@/components/admin/image-upload"
 import { DigitalStockDialog } from "@/components/admin/digital-stock-dialog"
 import { Button } from "@/components/ui/button"
@@ -120,7 +119,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     imageUrl: '',
     category_id: '',
     display_order: '0',
-    is_featured: false
+    is_featured: false,
+    is_active: true
   })
 
   // Multiple images state
@@ -167,12 +167,35 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   const resetForm = () => {
-    setFormData({ name: '', slug: '', description: '', price: '', stock: '10', imageUrl: '', category_id: '', display_order: '0', is_featured: false })
+    setFormData({ name: '', slug: '', description: '', price: '', stock: '10', imageUrl: '', category_id: '', display_order: '0', is_featured: false, is_active: true })
     setProductImages([])
     setVariants([])
     setEditingId(null)
     setDefaultVariantId(null)
     setDefaultVariantName('Padrão')
+  }
+
+  const handleToggleProductActive = async (productId: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    // Atualização otimista na tabela
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_active: nextStatus } : p))
+    try {
+      const res = await fetchWithAuth(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: nextStatus })
+      })
+      if (res.ok) {
+        toast.success(`Produto ${nextStatus ? 'ativado' : 'inativado'} com sucesso!`)
+      } else {
+        // Rollback se falhar
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_active: currentStatus } : p))
+        toast.error('Erro ao alterar status do produto')
+      }
+    } catch {
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_active: currentStatus } : p))
+      toast.error('Erro ao conectar com o servidor')
+    }
   }
 
   const handleSaveProduct = async (e?: React.FormEvent | React.MouseEvent) => {
@@ -233,7 +256,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           images: allImages,
           category_id: (formData.category_id && formData.category_id !== "none") ? formData.category_id : null,
           display_order: parseInt(formData.display_order || '0', 10) || 0,
-          is_active: true,
+          is_active: formData.is_active !== false,
           is_featured: formData.is_featured,
           variants: variantsPayload
         })
@@ -275,7 +298,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       imageUrl: product.thumbnail_url || product.images?.[0] || '',
       category_id: product.category_id || '',
       display_order: (product.display_order || 0).toString(),
-      is_featured: product.is_featured
+      is_featured: product.is_featured,
+      is_active: product.is_active !== false
     })
 
     // Load existing images
@@ -518,9 +542,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <Button variant={activeTab === 'coupons' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('coupons'); setMobileNavOpen(false); }}>
               <Tag className="mr-2 h-4 w-4 text-[#48B9FA]" /> Cupons
             </Button>
-            <Button variant={activeTab === 'roulette' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('roulette'); setMobileNavOpen(false); }}>
-              <Sparkles className="mr-2 h-4 w-4 text-[#48B9FA]" /> Roleta
-            </Button>
             <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start text-xs font-medium" onClick={() => { setActiveTab('banners'); setMobileNavOpen(false); }}>
               <ImageIcon className="mr-2 h-4 w-4" /> Banners
             </Button>
@@ -565,9 +586,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </Button>
           <Button variant={activeTab === 'coupons' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('coupons')}>
             <Tag className="mr-2 h-4 w-4 text-[#48B9FA]" /> Cupons
-          </Button>
-          <Button variant={activeTab === 'roulette' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('roulette')}>
-            <Sparkles className="mr-2 h-4 w-4 text-[#48B9FA]" /> Roleta
           </Button>
           <Button variant={activeTab === 'banners' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setActiveTab('banners')}>
             <ImageIcon className="mr-2 h-4 w-4" /> Banners
@@ -719,6 +737,31 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+                        </div>
+
+                        {/* Status de Visibilidade do Produto (Ativo / Inativo na Loja) */}
+                        <div className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="is-active-switch" className="font-bold text-neutral-800 text-xs sm:text-sm">
+                              Visibilidade do Produto
+                            </Label>
+                            <p className="text-[11px] text-neutral-500">
+                              {formData.is_active
+                                ? "Produto ativo e visível na loja e em todas as categorias."
+                                : "Produto inativado (oculto na loja, categorias e busca; visível apenas aqui no painel)."}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="is-active-switch"
+                              checked={formData.is_active}
+                              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                              className="cursor-pointer"
+                            />
+                            <span className={`text-xs font-bold ${formData.is_active ? 'text-emerald-700' : 'text-rose-600'}`}>
+                              {formData.is_active ? 'Ativo' : 'Inativo'}
+                            </span>
                           </div>
                         </div>
 
@@ -1119,9 +1162,17 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                               })()}
                             </TableCell>
                             <TableCell>
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {product.is_active ? 'Ativo' : 'Inativo'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={product.is_active !== false}
+                                  onCheckedChange={() => handleToggleProductActive(product.id, product.is_active !== false)}
+                                  className="cursor-pointer"
+                                  title={product.is_active !== false ? "Clique para inativar produto" : "Clique para ativar produto"}
+                                />
+                                <span className={`text-xs font-bold ${product.is_active !== false ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                                  {product.is_active !== false ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" onClick={() => handleEditProduct(product)} title="Editar detalhes">
@@ -1185,11 +1236,6 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           {activeTab === 'coupons' && (
             <div className="space-y-6">
               <CouponsManager />
-            </div>
-          )}
-          {activeTab === 'roulette' && (
-            <div className="space-y-6">
-              <RouletteManager />
             </div>
           )}
           {activeTab === 'banners' && (

@@ -1,3 +1,4 @@
+// Hello World
 /**
  * GET /api/admin/orders
  * APIs administrativas para gerenciamento de pedidos
@@ -7,7 +8,6 @@ import { NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/auth/admin-middleware'
 import { getSupabaseService } from '@/lib/supabase/server'
 import { deliverRandomStockItems } from '@/lib/stock/digital-stock-service'
-import { bulkGenerateSpinCodes } from '@/lib/roulette/service'
 import { z } from 'zod'
 
 // Schema para filtros
@@ -166,47 +166,19 @@ async function processOrderDigitalDelivery(supabase: any, orderId: string) {
                 }
             }
 
-            // Verifica se o produto é de Giro da Roleta
-            const nameLower = (item.name || '').toLowerCase()
-            const isSpinProduct = nameLower.includes('giro') || nameLower.includes('roleta')
+            // Entrega automática de estoque digital configurado
+            const deliveryResult = await deliverRandomStockItems({
+                productId,
+                variantId,
+                quantity: item.quantity || 1,
+                orderId: order.id,
+                orderExternalId: order.external_id,
+            })
 
-            if (isSpinProduct) {
-                let spinsPerCode = 1
-                if (nameLower.includes('10')) spinsPerCode = 10
-                else if (nameLower.includes('5')) spinsPerCode = 5
-                else if (nameLower.includes('1')) spinsPerCode = 1
-
-                try {
-                    const generatedCodes = await bulkGenerateSpinCodes({
-                        quantity: item.quantity || 1,
-                        spinsPerCode,
-                        createdBy: `pedido_${order.external_id}`,
-                        orderId: order.external_id,
-                    })
-
-                    generatedCodes.forEach((code) => {
-                        deliveredSummary.push({
-                            itemName: item.name,
-                            message: `🎰 CÓDIGO DO SEU GIRO DA ROLETA GERADO COM SUCESSO!\n\n👉 Código: ${code.code} (${spinsPerCode} ${spinsPerCode === 1 ? 'Giro' : 'Giros'})\n\nComo resgatar:\n1. Acesse o menu "Roleta" na barra de navegação\n2. Vá na seção "Resgatar Giro"\n3. Digite o código ${code.code} e clique em RESGATAR\n4. Boa sorte no seu giro! 🍀`,
-                        })
-                    })
-                } catch (codeErr) {
-                    console.error('[Admin Orders] Erro ao gerar códigos de giro para o pedido:', codeErr)
-                }
-            } else {
-                const deliveryResult = await deliverRandomStockItems({
-                    productId,
-                    variantId,
-                    quantity: item.quantity || 1,
-                    orderId: order.id,
-                    orderExternalId: order.external_id,
+            if (deliveryResult.deliveredMessages && deliveryResult.deliveredMessages.length > 0) {
+                deliveryResult.deliveredMessages.forEach((msg: string) => {
+                    deliveredSummary.push({ itemName: item.name, message: msg })
                 })
-
-                if (deliveryResult.deliveredMessages && deliveryResult.deliveredMessages.length > 0) {
-                    deliveryResult.deliveredMessages.forEach((msg: string) => {
-                        deliveredSummary.push({ itemName: item.name, message: msg })
-                    })
-                }
             }
         }
 

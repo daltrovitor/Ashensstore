@@ -1,8 +1,10 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { Search, Sparkles, Layers } from "lucide-react"
+import { Search } from "lucide-react"
+import { GAMES_DATA } from "@/lib/store/games"
 import type { Category } from "@/lib/store/types"
 
 export function GameCategoriesSection() {
@@ -30,9 +32,30 @@ export function GameCategoriesSection() {
     fetchCats()
   }, [])
 
-  // Apenas as Categorias Principais aparecem lá em cima
+  // Apenas as Categorias Principais ativas aparecem na seção
   const mainCategories = useMemo(() => {
-    return categories.filter((c) => c.is_main === true)
+    const explicitlyMain = categories.filter((c) => c.is_main === true && c.is_active !== false)
+    if (explicitlyMain.length > 0) return explicitlyMain
+
+    // Fallback para categorias raiz se nenhuma tiver marcado is_main explicitamente
+    const rootCats = categories.filter((c) => !c.parent_id && c.is_active !== false)
+    if (rootCats.length > 0) return rootCats
+
+    // Fallback seguro caso o banco ainda não possua categorias cadastradas
+    if (categories.length === 0) {
+      return GAMES_DATA.map((g) => ({
+        id: g.id,
+        name: g.name,
+        slug: g.slug,
+        description: g.description,
+        display_order: 0,
+        is_active: true,
+        is_main: true,
+        image_url: g.bannerUrl,
+      }))
+    }
+
+    return []
   }, [categories])
 
   const filteredGames = useMemo(() => {
@@ -42,7 +65,7 @@ export function GameCategoriesSection() {
       (g) =>
         g.name.toLowerCase().includes(q) ||
         (g.description && g.description.toLowerCase().includes(q)) ||
-        g.slug.toLowerCase().includes(q)
+        (g.slug && g.slug.toLowerCase().includes(q))
     )
   }, [mainCategories, searchTerm])
 
@@ -79,14 +102,12 @@ export function GameCategoriesSection() {
             {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
-                className="w-full pt-[56.25%] rounded-md bg-neutral-100 animate-pulse border border-neutral-200"
+                className="w-full aspect-[16/9] rounded-md bg-neutral-100 animate-pulse border border-neutral-200"
               />
             ))}
           </div>
         ) : mainCategories.length === 0 ? (
-          /* Estado Vazio Amigável - Mostrado antes do usuário criar suas categorias principais no painel */
           <div className="text-center py-10 px-4 bg-neutral-50 border border-dashed border-neutral-200 rounded-lg space-y-2">
-            <Sparkles className="w-8 h-8 text-[#0284c7] mx-auto opacity-70" />
             <p className="text-sm font-bold text-neutral-800">
               Nenhuma Categoria Principal cadastrada ainda
             </p>
@@ -116,30 +137,47 @@ export function GameCategoriesSection() {
 }
 
 function MainCategoryCard({ category }: { category: Category }) {
+  // Proporção dinâmica que se adapta à imagem real enviada pelo usuário
+  const [aspect, setAspect] = useState<string>("16 / 9")
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget
+    if (naturalWidth && naturalHeight) {
+      setAspect(`${naturalWidth} / ${naturalHeight}`)
+    }
+  }
+
+  const categorySlug = category.slug || category.id
+  const targetHref = `/categoria/${encodeURIComponent(categorySlug)}`
+
   return (
     <Link
-      href={`/categoria/${category.slug}`}
+      href={targetHref}
       className="group relative block w-full rounded-md sm:rounded-lg overflow-hidden border border-neutral-200 hover:border-[#48B9FA] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
     >
-      {/* Container de Imagem com Aspect Ratio 16:9 */}
-      <div className="relative w-full pt-[56.25%] bg-neutral-100 overflow-hidden">
+      {/* Container com molde dinâmico adaptado à proporção real da imagem */}
+      <div
+        className="relative w-full bg-neutral-100 overflow-hidden transition-[aspect-ratio] duration-300"
+        style={{ aspectRatio: aspect }}
+      >
         {category.image_url ? (
           <img
             src={category.image_url}
             alt={category.name}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onLoad={handleImageLoad}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 via-neutral-200 to-neutral-100 flex items-center justify-center p-4">
-            <Sparkles className="w-8 h-8 text-[#0284c7]/40" />
+          <div className="w-full h-full min-h-[140px] bg-gradient-to-br from-neutral-100 via-neutral-200 to-neutral-100 flex items-center justify-center p-4">
+            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{category.name}</span>
           </div>
         )}
 
-        {/* Gradiente inferior para garantir contraste total com o texto */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+        {/* Gradiente inferior para legibilidade de alto contraste */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-85 group-hover:opacity-95 transition-opacity pointer-events-none" />
 
         {/* Nome do Jogo / Categoria Principal */}
-        <div className="absolute bottom-2.5 left-3 right-3 z-10">
+        <div className="absolute bottom-2.5 left-3 right-3 z-10 pointer-events-none">
           <h3 className="text-white font-extrabold text-sm sm:text-base drop-shadow-md uppercase tracking-wide truncate">
             {category.name}
           </h3>

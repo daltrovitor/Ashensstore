@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -129,6 +130,33 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleToggleProductActive = async (productId: string, currentStatus: boolean) => {
+        const nextStatus = !currentStatus
+        setProducts((prev) =>
+            prev.map((p) => (p.id === productId ? { ...p, is_active: nextStatus } : p))
+        )
+        try {
+            const res = await fetchWithAuth(`/api/admin/products/${productId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ is_active: nextStatus }),
+            })
+            if (res.ok) {
+                toast.success(`Produto ${nextStatus ? "ativado" : "inativado"} na loja!`)
+            } else {
+                setProducts((prev) =>
+                    prev.map((p) => (p.id === productId ? { ...p, is_active: currentStatus } : p))
+                )
+                toast.error("Erro ao alterar status do produto")
+            }
+        } catch {
+            setProducts((prev) =>
+                prev.map((p) => (p.id === productId ? { ...p, is_active: currentStatus } : p))
+            )
+            toast.error("Erro ao conectar com o servidor")
         }
     }
 
@@ -527,8 +555,15 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
                                                     </TableCell>
                                                     <TableCell>
                                                         <div>
-                                                            <span className="font-semibold text-sm">{product.name}</span>
-                                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-semibold text-sm">{product.name}</span>
+                                                                {product.is_active === false && (
+                                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
+                                                                        Inativo
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                                                                 <Badge variant="outline" className="text-[10px] py-0 px-1.5">
                                                                     {variant.name || "Padrão"}
                                                                 </Badge>

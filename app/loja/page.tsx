@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -65,7 +66,7 @@ function LojaContent() {
       const res = await fetch('/api/categories')
       if (res.ok) {
         const data = await res.json()
-        setCategories(Array.isArray(data) ? data : [])
+        setCategories(Array.isArray(data) ? data.filter((c: any) => c.is_active !== false) : [])
       }
     } catch (error) {
       console.error('Erro ao buscar categorias:', error)
@@ -84,16 +85,19 @@ function LojaContent() {
       if (res.ok) {
         let data = await res.json()
         if (Array.isArray(data)) {
+          // Garante que nenhum produto inativo seja renderizado na loja
+          data = data.filter((p: any) => p.is_active !== false)
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const getPrice = (p: any) => Number(p.price || p.variants?.[0]?.retail_price || 0)
 
-          if (sortBy === 'name') data.sort((a, b) => a.name.localeCompare(b.name))
-          else if (sortBy === 'price_asc') data.sort((a, b) => getPrice(a) - getPrice(b))
-          else if (sortBy === 'price_desc') data.sort((a, b) => getPrice(b) - getPrice(a))
-          else if (sortBy === 'newest') data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          if (sortBy === 'name') data.sort((a: any, b: any) => a.name.localeCompare(b.name))
+          else if (sortBy === 'price_asc') data.sort((a: any, b: any) => getPrice(a) - getPrice(b))
+          else if (sortBy === 'price_desc') data.sort((a: any, b: any) => getPrice(b) - getPrice(a))
+          else if (sortBy === 'newest') data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           else {
             // Padrão / popular: respeita a ordem definida pelo admin
-            data.sort((a, b) => {
+            data.sort((a: any, b: any) => {
               const ordA = a.display_order && a.display_order > 0 ? a.display_order : 9999
               const ordB = b.display_order && b.display_order > 0 ? b.display_order : 9999
               if (ordA !== ordB) return ordA - ordB

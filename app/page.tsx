@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, Suspense, useMemo } from "react"
@@ -47,26 +48,28 @@ function HomeContent() {
     }
   }
 
-  // Apenas categorias comuns aparecem ao rolar a página para baixo com os produtos
-  const commonCategories = useMemo(() => {
-    const filtered = categories.filter((c) => c.is_main !== true)
-    if (filtered.length > 0) return filtered
+  // Lista de produtos estritamente ativos com fallback seguro
+  const allProducts = useMemo(() => {
+    const list = products.length > 0 ? products : BLOX_PRODUCTS
+    return list.filter((p) => p.is_active !== false)
+  }, [products])
+
+  // Categorias ativas que possuem produtos para exibição fluida ao rolar a página
+  const activeCategories = useMemo(() => {
+    const active = categories.filter((c) => c.is_active !== false)
+    if (active.length > 0) return active
     return BLOX_CATEGORIES
   }, [categories])
 
-  // Lista de produtos com fallback seguro
-  const allProducts = useMemo(() => {
-    if (products.length > 0) return products
-    return BLOX_PRODUCTS
-  }, [products])
-
-  // Agrupamento de produtos por categoria comum para exibição contínua para baixo
+  // Agrupamento de produtos por categoria para exibição contínua ao rolar a página para baixo
   const categoryGroups = useMemo(() => {
-    const groups = commonCategories.map((cat) => {
+    // 1. Tenta mapear as categorias cadastradas
+    const groups = activeCategories.map((cat) => {
       const catProducts = allProducts.filter((p) => {
         if (p.category_id === cat.id) return true
         if (cat.slug && p.category_id === cat.slug) return true
         if (p.category && (p.category.id === cat.id || p.category.slug === cat.slug)) return true
+        if (p.category?.parent_id === cat.id) return true
         return false
       })
       return {
@@ -75,12 +78,12 @@ function HomeContent() {
       }
     }).filter((group) => group.products.length > 0)
 
-    // Se as categorias do banco baterem, retorna os grupos
+    // Se as categorias do banco baterem e tiverem produtos, retorna os grupos
     if (groups.length > 0) {
       return groups
     }
 
-    // Fallback dinâmico: agrupa os produtos pelas categorias disponíveis nos próprios produtos
+    // 2. Fallback dinâmico: agrupa os produtos pelas categorias disponíveis nos próprios produtos
     const map = new Map<string, { category: Category; products: Product[] }>()
     for (const p of allProducts) {
       const catName = p.category?.name || "Ofertas em Destaque"
@@ -102,7 +105,7 @@ function HomeContent() {
     }
 
     return Array.from(map.values())
-  }, [commonCategories, allProducts])
+  }, [activeCategories, allProducts])
 
   // Produtos que não entraram em nenhum grupo (se houver)
   const uncategorizedProducts = useMemo(() => {

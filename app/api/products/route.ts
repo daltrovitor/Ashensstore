@@ -1,3 +1,4 @@
+// Hello World
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/server'
 import { findCategory } from '@/lib/utils/category-matcher'

@@ -1,10 +1,11 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
-import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift, Sparkles } from "lucide-react"
+import { Menu, X, Search, User, LogOut, Settings, MessageSquare, ShoppingBag, Package, Gift } from "lucide-react"
 import { FaDiscord } from "react-icons/fa"
 import { CartIcon, CartDrawer } from "@/components/ecommerce/Cart"
 import { useAuth } from "@/hooks/use-auth"
@@ -29,10 +30,9 @@ function NavbarContent() {
   const router = useRouter()
   const { user, signOut } = useAuth()
 
-  const navLinks = [
+  const navLinks: { name: string; href: string; isHot?: boolean }[] = [
     { name: "Início", href: "/" },
     { name: "Catálogo", href: "/loja" },
-    { name: "Roleta", href: "/roleta", isHot: true },
     { name: "Afiliados", href: "/afiliados" },
   ]
 
@@ -91,22 +91,6 @@ function NavbarContent() {
             {/* Centro: Abas de Navegação Centralizadas */}
             <nav className="hidden md:flex items-center justify-center gap-7 px-4">
               {navLinks.map((link) => {
-                if (link.href === "/roleta") {
-                  return (
-                    <Link
-                      key={link.href}
-                      href="/roleta"
-                      className={`relative px-3.5 py-1.5 rounded-md font-bold text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                        isActive(link.href)
-                          ? "bg-[#48B9FA] text-white shadow-sm"
-                          : "bg-blue-50 text-[#0284c7] hover:bg-[#48B9FA] hover:text-white border border-blue-200/60"
-                      }`}
-                    >
-                      <span>Roleta da Sorte</span>
-                    </Link>
-                  )
-                }
-
                 return (
                   <Link
                     key={link.href}
@@ -207,12 +191,6 @@ function NavbarContent() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/roleta" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
-                          <Sparkles className="w-4 h-4 text-[#48B9FA]" />
-                          Roleta da Sorte
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
                         <Link href="/afiliados" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
                           <Gift className="w-4 h-4 text-[#48B9FA]" />
                           Área do Afiliado (10% OFF)
@@ -242,12 +220,6 @@ function NavbarContent() {
                         <Link href="/pedidos" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50">
                           <Package className="w-4 h-4 text-neutral-500" />
                           Acompanhar Pedido
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/roleta" className="w-full cursor-pointer flex items-center gap-2 text-xs py-2 px-3 hover:bg-neutral-50 text-neutral-900 font-medium">
-                          <Sparkles className="w-4 h-4 text-[#48B9FA]" />
-                          Roleta da Sorte
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -311,23 +283,6 @@ function NavbarContent() {
               className="md:hidden bg-white border-b border-neutral-200 px-4 py-4 space-y-2"
             >
               {navLinks.map((link) => {
-                if (link.href === "/roleta") {
-                  return (
-                    <Link
-                      key={link.href}
-                      href="/roleta"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center justify-between py-2.5 px-3.5 rounded-md font-bold text-sm my-1 transition-colors ${
-                        isActive(link.href)
-                          ? "bg-[#48B9FA] text-white"
-                          : "bg-blue-50 text-[#0284c7] hover:bg-blue-100 border border-blue-200/60"
-                      }`}
-                    >
-                      <span>Roleta da Sorte</span>
-                    </Link>
-                  )
-                }
-
                 return (
                   <Link
                     key={link.href}

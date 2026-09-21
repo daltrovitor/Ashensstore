@@ -1,4 +1,4 @@
-
+// Hello World
 import { NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/auth/admin-middleware'
 import { getSupabaseService } from '@/lib/supabase/server'
@@ -297,3 +297,72 @@ export async function PUT(
         return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 500 })
     }
 }
+
+export async function PATCH(
+    request: Request,
+    { params: paramsPromise }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const auth = await checkAdminAuth(request)
+        if (!auth) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 })
+        }
+
+        const { id } = await paramsPromise
+        if (!id) {
+            return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
+        }
+
+        const body = await request.json()
+        const supabase = getSupabaseService()
+        if (!supabase) {
+            return NextResponse.json({ error: 'Database service configuration error' }, { status: 500 })
+        }
+
+        const updates: Record<string, any> = {
+            updated_at: new Date().toISOString()
+        }
+
+        if (typeof body.is_active === 'boolean') {
+            updates.is_active = body.is_active
+        }
+
+        if (typeof body.is_featured === 'boolean') {
+            updates.is_featured = body.is_featured
+        }
+
+        if (typeof body.display_order === 'number') {
+            updates.display_order = body.display_order
+        }
+
+        if (body.category_id !== undefined) {
+            updates.category_id = body.category_id || null
+        }
+
+        if (body.price !== undefined) {
+            updates.price = Number(body.price)
+        }
+
+        if (body.name) {
+            updates.name = String(body.name).trim()
+        }
+
+        const { data, error } = await supabase
+            .from('products')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('[Admin Products PATCH] Error:', error)
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        return NextResponse.json({ success: true, product: data })
+    } catch (error: any) {
+        console.error('[Admin Products PATCH] Error:', error)
+        return NextResponse.json({ error: error.message || 'Failed to patch product' }, { status: 500 })
+    }
+}
+

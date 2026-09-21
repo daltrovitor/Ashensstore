@@ -1,3 +1,4 @@
+// Hello World
 import { Metadata, ResolvingMetadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getSupabaseService } from '@/lib/supabase/server'
@@ -16,6 +17,7 @@ async function getProduct(slug: string): Promise<Product | null> {
         .from('products')
         .select('*, variants:product_variants(*), mockups:product_mockups(*)')
         .eq('slug', slug)
+        .eq('is_active', true)
         .maybeSingle()
 
       if (!data && !error) {
@@ -26,6 +28,7 @@ async function getProduct(slug: string): Promise<Product | null> {
             .from('products')
             .select('*, variants:product_variants(*), mockups:product_mockups(*)')
             .eq('id', slug)
+            .eq('is_active', true)
             .maybeSingle()
           data = res.data
         }

@@ -1,4 +1,4 @@
-
+// Hello World
 import { NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/auth/admin-middleware'
 import { getSupabaseService } from '@/lib/supabase/server'
