@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from "lucide-react"
@@ -173,9 +174,9 @@ export function CartDrawer() {
                             <div className="p-4 border-t border-neutral-200 bg-neutral-50/60 space-y-3">
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-xs text-neutral-500">
-                                        <span>Entrega Digital no Roblox:</span>
-                                        <span className="text-blue-600 font-medium">
-                                            Grátis (Servidor VIP)
+                                        <span>Entrega Digital:</span>
+                                        <span className="text-[#0284c7] font-medium">
+                                            Grátis (Envio Automático)
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-baseline pt-1">

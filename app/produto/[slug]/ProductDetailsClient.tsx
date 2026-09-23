@@ -12,13 +12,12 @@ import {
   Zap,
   ShieldCheck,
   ShoppingCart,
-  Gamepad2,
-  MessageSquare,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
-  HelpCircle,
-  XCircle
+  XCircle,
+  Lock,
+  Headphones,
+  RotateCcw,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { Product, Variant } from "@/lib/store/types"
@@ -121,10 +120,6 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                                 </div>
                             )}
 
-                            <div className="absolute top-4 left-4 z-20 text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-[#48B9FA] border border-blue-200 uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-[#48B9FA]" />
-                                <span>Blox Fruits Oficial</span>
-                            </div>
                         </div>
                     </div>
 
@@ -145,12 +140,12 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                                         <XCircle className="w-4 h-4 text-rose-600" /> Estoque Esgotado
                                     </span>
                                 ) : (
-                                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                    <span className="flex items-center gap-1 text-emerald-600 font-semibold">
                                         <CheckCircle2 className="w-4 h-4" /> Em Estoque
                                     </span>
                                 )}
-                                <span>•</span>
-                                <span>Entrega via Servidor VIP Roblox</span>
+                                <span className="text-neutral-300">•</span>
+                                <span className="text-neutral-600 font-medium">Entrega Automática</span>
                             </div>
                         </div>
 
@@ -174,12 +169,29 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                             </p>
                         </div>
 
-                        {/* Descrição */}
-                        <div className="space-y-2">
-                            <h3 className="font-semibold text-sm text-neutral-900">Sobre este item:</h3>
-                            <p className="text-sm text-neutral-600 leading-relaxed">
-                                {product.description || "Item lendário e exclusivo de Blox Fruits entregue de forma imediata via trade em servidor seguro no Roblox."}
-                            </p>
+                        {/* Descrição do Produto */}
+                        <div className="border border-neutral-200 rounded-lg p-5 bg-white space-y-3">
+                            <h3 className="font-bold text-xs uppercase tracking-wider text-neutral-800">
+                                Descrição do produto
+                            </h3>
+
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-2.5 p-3 rounded-md bg-emerald-50/70 border border-emerald-200/80 text-emerald-950">
+                                    <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-emerald-800">
+                                            Entrega automática após o pagamento!
+                                        </p>
+                                        <p className="text-xs text-emerald-700 mt-0.5">
+                                            Receba seu produto <strong>na hora</strong>, direto no site e no seu e-mail.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-line pt-1">
+                                    {product.description || "Item oficial entregue de forma imediata com segurança e garantia."}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Botões de Ação */}
@@ -221,18 +233,56 @@ export default function ProductDetailsClient({ initialProduct }: { initialProduc
                             </Button>
                         </div>
 
-                        {/* Card Informativo de Como Funciona a Entrega */}
-                        <div className="border border-neutral-200 rounded-lg p-5 bg-neutral-50 space-y-3">
-                            <div className="flex items-center gap-2 font-semibold text-sm text-neutral-900">
-                                <Gamepad2 className="w-4 h-4 text-[#48B9FA]" />
-                                <span>Como funciona a entrega?</span>
+                        {/* 1. Card INFORMAÇÕES (Fiel à referência da Imagem 3) */}
+                        <div className="border border-neutral-200 rounded-lg p-5 bg-neutral-50/80 space-y-4">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-800">
+                                Informações
+                            </h3>
+
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                    <Zap className="w-4 h-4 text-[#48B9FA] shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-[13px] font-medium text-neutral-700 leading-snug">
+                                        Entrega automática após confirmação do pagamento.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <Lock className="w-4 h-4 text-[#48B9FA] shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-[13px] font-medium text-neutral-700 leading-snug">
+                                        Pagamento 100% seguro e criptografado.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <Headphones className="w-4 h-4 text-[#48B9FA] shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-[13px] font-medium text-neutral-700 leading-snug">
+                                        Suporte disponível em caso de dúvidas.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <RotateCcw className="w-4 h-4 text-[#48B9FA] shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-[13px] font-medium text-neutral-700 leading-snug">
+                                        Garantia de reembolso em casos de problemas.
+                                    </p>
+                                </div>
                             </div>
-                            <ul className="text-xs text-neutral-600 space-y-2 list-disc pl-5">
-                                <li>Você finaliza a compra informando seu <strong>Nick do Roblox</strong>.</li>
-                                <li>Realiza o pagamento via PIX (QR Code ou Copia e Cola gerado na hora).</li>
-                                <li>Acessa o <strong>Chat do Pedido</strong> aqui mesmo na loja.</li>
-                                <li>O vendedor entra em contato imediatamente com o link do servidor VIP para entregar seu item!</li>
-                            </ul>
+                        </div>
+
+                        {/* 2. Card FORMAS DE PAGAMENTO (Fiel à referência da Imagem 3) */}
+                        <div className="border border-neutral-200 rounded-lg p-5 bg-neutral-50/80 space-y-3">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-800">
+                                Formas de Pagamento
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-900 text-white text-xs font-bold shadow-2xs">
+                                    <svg className="w-3.5 h-3.5 fill-[#00BDAE]" viewBox="0 0 512 512">
+                                        <path d="M407.9 339.4L339.4 408c-45.7 45.7-120.9 45.7-166.7 0L104.1 339.4c-45.7-45.7-45.7-120.9 0-166.7L172.6 104.1c45.7-45.7 120.9-45.7 166.7 0l68.5 68.5c45.7 45.7 45.7 120.9 0 166.8zM256 160l-96 96 96 96 96-96-96-96z" />
+                                    </svg>
+                                    <span>Pix</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

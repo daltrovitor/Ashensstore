@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import Link from "next/link"
@@ -79,7 +80,7 @@ function SuccessContent() {
                     Pedido Registrado com Sucesso!
                 </h1>
                 <p className="text-neutral-500 mb-8 text-sm sm:text-base leading-relaxed">
-                    Assim que seu PIX for confirmado, nossa equipe iniciará a entrega no Roblox. Você pode falar diretamente com o vendedor através do chat do pedido para combinar o servidor VIP ou trade.
+                    Assim que seu PIX for confirmado, sua entrega será iniciada automaticamente. Você pode acompanhar todos os detalhes e mensagens diretamente na página do seu pedido.
                 </p>
 
                 {orderId && (

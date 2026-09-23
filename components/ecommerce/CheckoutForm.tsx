@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState } from "react"
@@ -218,7 +219,7 @@ export function CheckoutForm() {
                         <p className="text-xs text-red-500">{errors.robloxUsername.message}</p>
                     )}
                     <p className="text-[11px] text-neutral-400">
-                        Informe o @usuário exato da sua conta para realizarmos a entrega via trade ou servidor VIP.
+                        Informe o @usuário exato da sua conta para a entrega do pedido.
                     </p>
                 </div>
 

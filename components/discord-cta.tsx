@@ -1,3 +1,4 @@
+// Hello World
 import { FaDiscord } from "react-icons/fa"
 import { ArrowUpRight, Gift, ShieldCheck, Users } from "lucide-react"
 
@@ -34,7 +35,7 @@ export function DiscordCta() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-neutral-700 font-medium">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Suporte & Servidor VIP</span>
+                  <span>Suporte 24/7 Exclusivo</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-neutral-700 font-medium">
                   <Users className="w-4 h-4 text-[#48B9FA] shrink-0" />

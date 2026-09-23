@@ -118,8 +118,8 @@ function HomeContent() {
   const trustBadges = [
     {
       icon: ShieldCheck,
-      title: "Entrega Digital no Roblox",
-      desc: "Coordenação direta via Servidor VIP ou Trade seguro no Mar 2 e 3.",
+      title: "Entrega Digital Automática",
+      desc: "Envio instantâneo e seguro de itens e contas direto após a confirmação.",
     },
     {
       icon: Zap,

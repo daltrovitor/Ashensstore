@@ -286,7 +286,7 @@ export default function GameCategoryPage({ params }: PageProps) {
             <div className="flex-1 text-center md:text-left space-y-2.5">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-blue-50 border border-blue-200/60 text-[#0284c7] text-xs font-bold">
                 <ShieldCheck className="size-3.5 text-[#48B9FA]" />
-                <span>Entrega Digital Garantida • Trade & Servidor VIP</span>
+                <span>Entrega Digital Garantida • Envio Imediato</span>
               </div>
 
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-neutral-900 uppercase">

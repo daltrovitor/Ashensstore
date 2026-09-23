@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, useRef, Suspense } from "react"
@@ -358,14 +359,14 @@ function OrdersContent() {
                             </span>
                           </div>
                           <p className="text-xs text-emerald-900 leading-relaxed">
-                            O vendedor já confirmou seu pagamento! Nossa equipe está pronta para realizar a entrega dos seus itens no Roblox para o Nick <strong>&quot;{robloxNick}&quot;</strong>. Abra o chat abaixo para receber o link do servidor VIP ou combinar a troca no jogo.
+                            O vendedor já confirmou seu pagamento! Nossa equipe está pronta para realizar a entrega dos seus itens no Roblox para o Nick <strong>&quot;{robloxNick}&quot;</strong>. Abra o chat abaixo para acompanhar as instruções e receber seus itens.
                           </p>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-emerald-200 text-xs">
                         <span className="text-emerald-900 font-medium">
-                          Fique atento ao chat do pedido para receber o link do servidor VIP:
+                          Fique atento ao chat do pedido para acompanhar a entrega dos seus itens:
                         </span>
                         <Button
                           onClick={() => openChatForOrder(order)}
@@ -433,7 +434,7 @@ function OrdersContent() {
                             </span>
                           </div>
                           <p className="text-xs text-blue-900 leading-relaxed">
-                            O vendedor está online realizando a entrega para o jogador <strong>&quot;{robloxNick}&quot;</strong>. Entre no servidor VIP enviado no chat para receber seus itens.
+                            O vendedor está online realizando a entrega para o jogador <strong>&quot;{robloxNick}&quot;</strong>. Acompanhe as orientações enviadas no chat para receber seus itens.
                           </p>
                         </div>
                       </div>

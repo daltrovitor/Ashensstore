@@ -1,3 +1,4 @@
+// Hello World
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -69,7 +70,7 @@ export async function GET(
                     id: 'msg-init',
                     sender: 'system',
                     sender_name: 'Ashens Store Suporte',
-                    message: `Olá! Seu pedido foi registrado. Nick do Roblox: "${robloxNick}". Assim que o pagamento for verificado, nosso vendedor enviará o link do servidor VIP ou organizará a entrega dos itens diretamente aqui no chat.`,
+                    message: `Olá! Seu pedido foi registrado. Nick do Roblox: "${robloxNick}". Assim que o pagamento for verificado, os dados e instruções de entrega do seu pedido serão disponibilizados diretamente aqui no chat.`,
                     timestamp: order.created_at || new Date().toISOString(),
                 }
             ]

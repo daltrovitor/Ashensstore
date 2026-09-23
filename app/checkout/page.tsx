@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -85,7 +86,7 @@ function CheckoutContent() {
                 </div>
                 <div className="flex justify-between text-neutral-500">
                   <span>Entrega Digital</span>
-                  <span className="text-neutral-900 font-medium">Grátis (Servidor VIP)</span>
+                  <span className="text-neutral-900 font-medium">Grátis (Envio Automático)</span>
                 </div>
                 <div className="flex justify-between text-sm font-semibold pt-3 border-t border-neutral-200 text-neutral-900">
                   <span>Total no PIX:</span>

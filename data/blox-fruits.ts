@@ -1,3 +1,4 @@
+// Hello World
 import type { Product, Category } from "@/lib/store/types"
 
 export const BLOX_CATEGORIES: Category[] = [
@@ -5,7 +6,7 @@ export const BLOX_CATEGORIES: Category[] = [
     id: "frutas",
     name: "Frutas Míticas & Físicas",
     slug: "frutas",
-    description: "Akuma no Mi / Devil Fruits físicas entregues via trade ou servidor VIP no Roblox.",
+    description: "Akuma no Mi / Devil Fruits físicas entregues de forma rápida e segura no jogo.",
   },
   {
     id: "gamepasses",
@@ -33,7 +34,7 @@ export const BLOX_PRODUCTS: Product[] = [
     id: "prod-kitsune",
     name: "Kitsune Fruit (Física / Trade)",
     slug: "kitsune-fruit",
-    description: "A fruta mítica mais poderosa e rara do Blox Fruits! Transformação épica de Kitsune com 9 caudas, velocidade insana e chamas azuis espectrais. Entrega via trade em servidor VIP.",
+    description: "A fruta mítica mais poderosa e rara do Blox Fruits! Transformação épica de Kitsune com 9 caudas, velocidade insana e chamas azuis espectrais. Entrega rápida e garantida.",
     price: 64.90,
     compare_at_price: 89.90,
     thumbnail_url: "https://static.wikia.nocookie.net/roblox-blox-piece/images/7/7b/KitsuneFruit.png/revision/latest?cb=20231225091720",

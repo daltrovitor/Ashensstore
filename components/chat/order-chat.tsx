@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -119,13 +120,13 @@ export function OrderChat({
 
     // Sugestões rápidas de mensagens
     const quickSuggestions = currentRole === 'seller' ? [
-        "Olá! Já localizei seu pedido. Estou gerando o link do servidor VIP!",
-        "Pode entrar neste servidor privado para a troca?",
+        "Olá! Já localizei seu pedido. Seus itens/dados estão sendo liberados!",
         "Itens entregues com sucesso! Obrigado pela compra na Ashens Store.",
+        "Qualquer dúvida sobre seu produto ou conta, estou à disposição!",
     ] : [
-        orderInfo?.roblox_username ? `Meu nick no Roblox é: ${orderInfo.roblox_username}` : "Qual o próximo passo para entrega?",
+        orderInfo?.roblox_username ? `Meu nick no Roblox é: ${orderInfo.roblox_username}` : "Qual o próximo passo para a entrega?",
         "Já realizei o pagamento via PIX!",
-        "Estou pronto no jogo, pode mandar o convite!",
+        "Estou pronto, aguardo a entrega!",
     ]
 
     const getStatusBadge = (status: string) => {

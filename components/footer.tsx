@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -162,7 +163,7 @@ export function Footer() {
               </li>
               <li>
                 <span className="text-neutral-500">
-                  🎮 Entrega via Servidor VIP Roblox
+                  ⚡ Entrega Automática Imediata
                 </span>
               </li>
             </ul>
