@@ -9,7 +9,8 @@ import { Footer } from "@/components/footer"
 import { StoreLoader } from "@/components/store-loader"
 import { ProductCard } from "@/components/ecommerce/ProductCard"
 import { CategoryDivider } from "@/components/home/category-divider"
-import { getGameBySlug } from "@/lib/store/games"
+import { GAMES_DATA, getGameBySlug } from "@/lib/store/games"
+import { BLOX_CATEGORIES, BLOX_PRODUCTS } from "@/data/blox-fruits"
 import type { Product, Category } from "@/lib/store/types"
 import {
   ChevronLeft,
@@ -72,6 +73,29 @@ export default function GameCategoryPage({ params }: PageProps) {
     }
   }
 
+  // Função auxiliar universal para detecção de Blox Fruits
+  const isBloxFruitsCategory = (
+    catOrSlug: { slug?: string | null; name?: string | null; id?: string | null } | string | null | undefined
+  ): boolean => {
+    if (!catOrSlug) return false
+    if (typeof catOrSlug === "string") {
+      const s = catOrSlug.toLowerCase().trim()
+      return s === "blox-fruits" || s === "bloxfruits" || s === "blox" || s.includes("blox fruit")
+    }
+    const s = (catOrSlug.slug || "").toLowerCase().trim()
+    const n = (catOrSlug.name || "").toLowerCase().trim()
+    const id = (catOrSlug.id || "").toLowerCase().trim()
+    return (
+      s === "blox-fruits" ||
+      s === "bloxfruits" ||
+      s === "blox" ||
+      id === "blox-fruits" ||
+      id === "bloxfruits" ||
+      n.includes("blox fruit") ||
+      n === "blox fruits"
+    )
+  }
+
   // 1. Identificação precisa da Categoria Principal selecionada (Banco de Dados com fallback seguro)
   const currentCategory = useMemo(() => {
     if (!slug) return null
@@ -112,62 +136,270 @@ export default function GameCategoryPage({ params }: PageProps) {
     } as Category
   }, [slug, categories])
 
+  const isBloxFruits = useMemo(() => isBloxFruitsCategory(currentCategory), [currentCategory])
+
   const categoryTitle = currentCategory ? currentCategory.name : "Categoria"
   const categoryDescription = currentCategory?.description || "Itens e ofertas disponíveis com entrega rápida via Pix."
   const categoryImage = currentCategory?.image_url || "/ashens-logo.jpg"
 
+  // Conjunto de IDs e Slugs de OUTROS jogos e suas subcategorias (para isolamento estrito contra poluição cruzada)
+  const otherCategoryIds = useMemo(() => {
+    const ids = new Set<string>()
+    const slugs = new Set<string>()
+
+    const otherMains = categories.filter((c) => {
+      if (!currentCategory) return false
+      if (c.id === currentCategory.id) return false
+      if (c.slug && currentCategory.slug && c.slug.toLowerCase().trim() === currentCategory.slug.toLowerCase().trim()) return false
+      if (isBloxFruits && isBloxFruitsCategory(c)) return false
+      return Boolean(c.is_main)
+    })
+
+    for (const other of otherMains) {
+      if (other.id) ids.add(other.id.toLowerCase().trim())
+      if (other.slug) slugs.add(other.slug.toLowerCase().trim())
+
+      // Subcategorias explicitamente filhas dessa outra categoria principal
+      for (const c of categories) {
+        if (c.parent_id && (c.parent_id === other.id || (other.slug && c.parent_id === other.slug))) {
+          if (c.id) ids.add(c.id.toLowerCase().trim())
+          if (c.slug) slugs.add(c.slug.toLowerCase().trim())
+        }
+      }
+    }
+
+    // Jogos estáticos conhecidos que não sejam a categoria atual
+    for (const g of GAMES_DATA) {
+      const isCurrent = isBloxFruits
+        ? isBloxFruitsCategory(g.slug)
+        : (currentCategory?.slug?.toLowerCase() === g.slug.toLowerCase() || currentCategory?.id?.toLowerCase() === g.id.toLowerCase())
+
+      if (!isCurrent) {
+        ids.add(g.id.toLowerCase().trim())
+        slugs.add(g.slug.toLowerCase().trim())
+        for (const a of g.aliases) {
+          slugs.add(a.toLowerCase().trim())
+        }
+      }
+    }
+
+    return { ids, slugs }
+  }, [categories, currentCategory, isBloxFruits])
+
   // 2. Subcategorias vinculadas a esta Categoria Principal
   const subcategories = useMemo(() => {
     if (!currentCategory) return []
-    return categories.filter((c) => {
+
+    // Subcategorias vinculadas formalmente por parent_id
+    const directChildren = categories.filter((c) => {
       if (c.id === currentCategory.id) return false
       if (c.parent_id === currentCategory.id) return true
       if (currentCategory.slug && c.parent_id === currentCategory.slug) return true
       return false
     })
-  }, [categories, currentCategory])
 
-  // 3. Produtos desta Categoria Principal (apenas ativos)
+    if (!isBloxFruits) {
+      return directChildren
+    }
+
+    // Para Blox Fruits:
+    if (directChildren.length >= 2) {
+      return directChildren
+    }
+
+    // Se o banco não tiver parent_id configurado para Blox Fruits, busca categorias de Blox Fruits no banco
+    const bloxTerms = ["fruta", "fruit", "gamepass", "passe", "conta", "pvp", "raca", "race", "v4"]
+    const matchedFromDb = categories.filter((c) => {
+      if (c.id === currentCategory.id || c.is_main) return false
+      const cid = (c.id || "").toLowerCase().trim()
+      const cslug = (c.slug || "").toLowerCase().trim()
+      const cname = (c.name || "").toLowerCase().trim()
+
+      if (otherCategoryIds.ids.has(cid) || otherCategoryIds.slugs.has(cslug)) return false
+      if (c.parent_id && (otherCategoryIds.ids.has(c.parent_id) || otherCategoryIds.slugs.has(c.parent_id))) return false
+
+      return bloxTerms.some((term) => cslug.includes(term) || cname.includes(term) || cid.includes(term))
+    })
+
+    const mergedMap = new Map<string, Category>()
+    for (const c of [...directChildren, ...matchedFromDb]) {
+      mergedMap.set(c.id, c)
+    }
+
+    // Se ainda assim estiver vazio, garante as 4 subcategorias oficiais de Blox Fruits
+    if (mergedMap.size === 0) {
+      for (const bCat of BLOX_CATEGORIES) {
+        mergedMap.set(bCat.id, bCat)
+      }
+    }
+
+    return Array.from(mergedMap.values())
+  }, [categories, currentCategory, isBloxFruits, otherCategoryIds])
+
+  // Função para associar um produto à sua respectiva subcategoria
+  const productMatchesSubcategory = (p: Product, subcat: Category): boolean => {
+    const subId = (subcat.id || "").toLowerCase().trim()
+    const subSlug = (subcat.slug || "").toLowerCase().trim()
+    const pCatId = (p.category_id || "").toLowerCase().trim()
+    const pCatObjId = (p.category?.id || "").toLowerCase().trim()
+    const pCatObjSlug = (p.category?.slug || "").toLowerCase().trim()
+
+    // 1. Correspondência exata por ID ou Slug
+    if (pCatId && (pCatId === subId || pCatId === subSlug)) return true
+    if (pCatObjId && (pCatObjId === subId || pCatObjId === subSlug)) return true
+    if (pCatObjSlug && (pCatObjSlug === subId || pCatObjSlug === subSlug)) return true
+
+    // 2. Correspondência semântica robusta para Blox Fruits
+    if (isBloxFruits) {
+      const sName = (subcat.name || "").toLowerCase()
+      const pName = (p.name || "").toLowerCase()
+      const pSlug = (p.slug || "").toLowerCase()
+
+      // Subcategoria Frutas
+      if (subId.includes("fruta") || subSlug.includes("fruta") || sName.includes("fruta") || subSlug.includes("fruit")) {
+        if (
+          pCatId.includes("fruta") || pCatId.includes("fruit") ||
+          pName.includes("fruit") || pName.includes("fruta") ||
+          pSlug.includes("fruit") || pSlug.includes("fruta") ||
+          pName.includes("kitsune") || pName.includes("dragon") || pName.includes("leopard") ||
+          pName.includes("dough") || pName.includes("t-rex") || pName.includes("mammoth") ||
+          pName.includes("spirit") || pName.includes("venom") || pName.includes("buddha") ||
+          pName.includes("portal") || pName.includes("magma") || pName.includes("blizzard")
+        ) {
+          return true
+        }
+      }
+
+      // Subcategoria Gamepasses
+      if (subId.includes("gamepass") || subSlug.includes("gamepass") || sName.includes("gamepass") || sName.includes("passe")) {
+        if (
+          pCatId.includes("gamepass") || pCatId.includes("pass") ||
+          pName.includes("gamepass") || pName.includes("game pass") ||
+          pName.includes("dark blade") || pName.includes("fast boats") || pName.includes("barcos") ||
+          pName.includes("2x money") || pName.includes("2x mastery") || pName.includes("2x maestria") ||
+          pName.includes("2x drop") || pName.includes("fruit notifier") || pName.includes("notificador") ||
+          pSlug.includes("gamepass") || pSlug.includes("dark-blade")
+        ) {
+          return true
+        }
+      }
+
+      // Subcategoria Contas
+      if (subId.includes("conta") || subSlug.includes("conta") || sName.includes("conta") || subSlug.includes("account")) {
+        if (
+          pCatId.includes("conta") || pCatId.includes("account") ||
+          pName.includes("conta") || pName.includes("account") ||
+          pName.includes("level 2550") || pName.includes("lvl 2550") ||
+          pName.includes("godhuman") || pName.includes("cdk") || pName.includes("soul guitar") ||
+          pName.includes("bounty 30m") || pSlug.includes("conta")
+        ) {
+          return true
+        }
+      }
+
+      // Subcategoria Raças
+      if (subId.includes("raca") || subSlug.includes("raca") || sName.includes("raça") || sName.includes("raca") || subSlug.includes("race")) {
+        if (
+          pCatId.includes("raca") || pCatId.includes("race") ||
+          pName.includes("raça") || pName.includes("raca") || pName.includes("race") ||
+          pName.includes("v4 full gear") || pName.includes("v4") ||
+          pName.includes("cyborg") || pName.includes("shark") || pName.includes("mink") ||
+          pName.includes("ghoul") || pName.includes("angel") || pSlug.includes("raca")
+        ) {
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  // 3. Produtos desta Categoria Principal (apenas ativos, isolando outros jogos e exibindo Blox Fruits corretamente)
   const mainCategoryProducts = useMemo(() => {
     if (!currentCategory) return []
-    const subcatIds = new Set(subcategories.map((s) => s.id))
-    const subcatSlugs = new Set(subcategories.map((s) => s.slug).filter(Boolean))
 
-    return products.filter((p) => {
+    // Lista base de produtos com fallback para Blox Fruits caso o banco ainda não tenha itens
+    let sourceProducts = products
+    if (isBloxFruits) {
+      const hasAnyBloxInDb = products.some((p) => {
+        if (p.is_active === false) return false
+        const pCatId = (p.category_id || "").toLowerCase().trim()
+        if (otherCategoryIds.ids.has(pCatId) || otherCategoryIds.slugs.has(pCatId)) return false
+        return subcategories.some((subcat) => productMatchesSubcategory(p, subcat))
+      })
+
+      if (!hasAnyBloxInDb) {
+        sourceProducts = [...products, ...BLOX_PRODUCTS]
+      }
+    }
+
+    const subcatIds = new Set(subcategories.map((s) => s.id.toLowerCase().trim()))
+    const subcatSlugs = new Set(subcategories.map((s) => (s.slug || "").toLowerCase().trim()).filter(Boolean))
+
+    return sourceProducts.filter((p) => {
       if (p.is_active === false) return false
 
-      // Atribuição direta à categoria principal
+      const pCatId = (p.category_id || "").toLowerCase().trim()
+      const pSubCatId = (p.category?.id || "").toLowerCase().trim()
+      const pSubCatSlug = (p.category?.slug || "").toLowerCase().trim()
+      const pParentId = (p.category?.parent_id || "").toLowerCase().trim()
+
+      // REJEIÇÃO TOTAL SE PERTENCER A OUTRO JOGO OU SUAS SUBCATEGORIAS
+      if (pCatId && (otherCategoryIds.ids.has(pCatId) || otherCategoryIds.slugs.has(pCatId))) return false
+      if (pSubCatId && (otherCategoryIds.ids.has(pSubCatId) || otherCategoryIds.slugs.has(pSubCatId))) return false
+      if (pSubCatSlug && (otherCategoryIds.ids.has(pSubCatSlug) || otherCategoryIds.slugs.has(pSubCatSlug))) return false
+      if (pParentId && (otherCategoryIds.ids.has(pParentId) || otherCategoryIds.slugs.has(pParentId))) return false
+
+      const catName = (p.category?.name || "").toLowerCase().trim()
+      if (
+        catName.includes("adopt me") ||
+        catName.includes("murder mystery") ||
+        catName.includes("mm2") ||
+        catName.includes("grow a garden") ||
+        catName.includes("rivals")
+      ) {
+        return false
+      }
+
+      // Se a categoria atual for Blox Fruits
+      if (isBloxFruits) {
+        // Atribuição direta à categoria principal
+        if (currentCategory.id && pCatId === currentCategory.id.toLowerCase().trim()) return true
+        if (currentCategory.slug && pCatId === currentCategory.slug.toLowerCase().trim()) return true
+        if (p.category && (p.category.id === currentCategory.id || p.category.slug === currentCategory.slug)) return true
+
+        // Atribuição a alguma subcategoria de Blox Fruits
+        if (subcategories.some((subcat) => productMatchesSubcategory(p, subcat))) {
+          return true
+        }
+
+        // Se pertencer ao conjunto de IDs/slugs de subcategorias
+        if (pCatId && (subcatIds.has(pCatId) || subcatSlugs.has(pCatId))) return true
+        if (pSubCatId && (subcatIds.has(pSubCatId) || subcatSlugs.has(pSubCatId))) return true
+
+        return false
+      }
+
+      // Para qualquer outra categoria principal (Adopt Me, MM2, etc.)
       if (p.category_id === currentCategory.id) return true
       if (currentCategory.slug && p.category_id === currentCategory.slug) return true
       if (p.category && (p.category.id === currentCategory.id || p.category.slug === currentCategory.slug)) return true
-
-      // Atribuição a uma subcategoria desta categoria principal
-      if (p.category_id && (subcatIds.has(p.category_id) || subcatSlugs.has(p.category_id))) return true
-      if (p.category?.id && subcatIds.has(p.category.id)) return true
-      if (p.category?.parent_id === currentCategory.id) return true
-
-      // Fallback para Blox Fruits caso os produtos ainda não tenham sido remanejados
-      if (currentCategory.slug === "blox-fruits") {
-        const hasOtherMainCat = categories.some(
-          (c) => c.is_main && c.id !== currentCategory.id && (p.category_id === c.id || p.category?.id === c.id)
-        )
-        if (!hasOtherMainCat) return true
-      }
+      if (p.category_id && (subcatIds.has(pCatId) || subcatSlugs.has(pCatId))) return true
+      if (p.category?.id && (subcatIds.has(pSubCatId) || subcatSlugs.has(pSubCatId))) return true
+      if (p.category?.parent_id === currentCategory.id || (currentCategory.slug && p.category?.parent_id === currentCategory.slug)) return true
 
       return false
     })
-  }, [products, currentCategory, subcategories, categories])
+  }, [products, currentCategory, subcategories, isBloxFruits, otherCategoryIds])
 
-  // 4. Agrupamento de produtos por subcategoria para exibição ao rolar a página
+  // 4. Agrupamento de produtos por subcategoria para exibição ao rolar a página para baixo
   const categoryGroups = useMemo(() => {
     if (subcategories.length === 0) return []
 
     return subcategories
       .map((subcat) => {
         const catProducts = mainCategoryProducts.filter((p) => {
-          if (p.category_id === subcat.id || p.category_id === subcat.slug) return true
-          if (p.category && (p.category.id === subcat.id || p.category.slug === subcat.slug)) return true
-          return false
+          return productMatchesSubcategory(p, subcat)
         })
         return {
           category: subcat,
@@ -175,7 +407,7 @@ export default function GameCategoryPage({ params }: PageProps) {
         }
       })
       .filter((group) => group.products.length > 0)
-  }, [subcategories, mainCategoryProducts])
+  }, [subcategories, mainCategoryProducts, isBloxFruits])
 
   // Produtos que não pertencem a nenhuma subcategoria específica
   const directProducts = useMemo(() => {
@@ -188,7 +420,12 @@ export default function GameCategoryPage({ params }: PageProps) {
     let list = [...mainCategoryProducts]
 
     if (selectedSubcat !== "all") {
-      list = list.filter((p) => p.category_id === selectedSubcat || p.category?.id === selectedSubcat)
+      const targetSubcat = subcategories.find((s) => s.id === selectedSubcat)
+      if (targetSubcat) {
+        list = list.filter((p) => productMatchesSubcategory(p, targetSubcat))
+      } else {
+        list = list.filter((p) => p.category_id === selectedSubcat || p.category?.id === selectedSubcat)
+      }
     }
 
     if (searchQuery.trim()) {
@@ -222,7 +459,7 @@ export default function GameCategoryPage({ params }: PageProps) {
     }
 
     return list
-  }, [mainCategoryProducts, selectedSubcat, searchQuery, sortBy])
+  }, [mainCategoryProducts, selectedSubcat, subcategories, searchQuery, sortBy, isBloxFruits])
 
   // Rolagem suave da barra de subcategorias
   const scrollTabs = (direction: "left" | "right") => {
@@ -360,8 +597,8 @@ export default function GameCategoryPage({ params }: PageProps) {
 
               {/* Subcategorias */}
               {subcategories.map((cat) => {
-                const count = mainCategoryProducts.filter(
-                  (p) => p.category_id === cat.id || p.category?.id === cat.id
+                const count = mainCategoryProducts.filter((p) =>
+                  productMatchesSubcategory(p, cat)
                 ).length
                 const isActive = selectedSubcat === cat.id
 
@@ -530,7 +767,9 @@ export default function GameCategoryPage({ params }: PageProps) {
                   ? searchQuery.trim()
                     ? `Resultados para "${searchQuery}"`
                     : categoryTitle
-                  : categories.find((c) => c.id === selectedSubcat)?.name || "Produtos"
+                  : subcategories.find((c) => c.id === selectedSubcat)?.name ||
+                    categories.find((c) => c.id === selectedSubcat)?.name ||
+                    "Produtos"
               }
             />
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
