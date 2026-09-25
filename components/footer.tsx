@@ -35,13 +35,15 @@ export function Footer() {
           {/* Brand Col - Apenas a Logo Grande */}
           <div className="md:col-span-1 space-y-4">
             <Link href="/" className="inline-block group">
-              <Image
-                src="/ashens-logo.jpg"
-                alt="Ashens Store"
-                width={200}
-                height={60}
-                className="object-contain h-14 sm:h-16 w-auto"
-              />
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden flex items-center justify-center shrink-0 shadow-xs border border-neutral-200/80 bg-neutral-50 group-hover:scale-105 transition-transform duration-200">
+                <Image
+                  src="/ashens-logo.jpg"
+                  alt="Ashens Store"
+                  width={80}
+                  height={80}
+                  className="object-cover w-full h-full"
+                />
+              </div>
             </Link>
             <p className="text-xs text-neutral-500 leading-relaxed">
               Sua loja especializada em Blox Fruits! Frutas Míticas, Gamepasses e Contas exclusivas com entrega 100% segura via PIX e atendimento em tempo real pelo chat integrado.

@@ -1,7 +1,7 @@
 // Hello World
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -12,6 +12,7 @@ import { Search, X } from "lucide-react"
 import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
 import { findCategory } from "@/lib/utils/category-matcher"
+import { buildCategoryHierarchy, normalizeSlug } from "@/lib/categories/category-resolver"
 
 function LojaContent() {
   const [products, setProducts] = useState<Product[]>([])
@@ -115,18 +116,42 @@ function LojaContent() {
     }
   }
 
-  const displayCategories = [
-    { id: "all", slug: "all", name: "Todos os Itens" },
-    ...categories.map((c) => ({ id: c.id, slug: c.slug || c.id, name: c.name })),
-  ]
+  const hierarchy = useMemo(() => {
+    return buildCategoryHierarchy(categories)
+  }, [categories])
 
-  const activeCategory = findCategory(categories, selectedCategory)
+  const displayCategories = useMemo(() => {
+    const list: { id: string; slug: string; name: string }[] = [
+      { id: "all", slug: "all", name: "Todos os Itens" },
+    ]
+
+    // Adiciona categorias principais primeiro
+    for (const main of hierarchy.mainCategories) {
+      if (main.is_active !== false) {
+        list.push({ id: main.id, slug: main.slug || main.id, name: main.name })
+      }
+    }
+
+    // Adiciona subcategorias ativas
+    for (const sub of hierarchy.subcategories) {
+      if (sub.is_active !== false) {
+        list.push({ id: sub.id, slug: sub.slug || sub.id, name: sub.name })
+      }
+    }
+
+    return list
+  }, [hierarchy])
 
   const isTabActive = (cat: { id: string; slug?: string; name: string }) => {
     if (cat.id === "all") {
-      return !selectedCategory || selectedCategory === "all" || !activeCategory
+      return !selectedCategory || selectedCategory === "all"
     }
-    return activeCategory?.id === cat.id
+    const cleanSel = normalizeSlug(selectedCategory)
+    return (
+      cat.id === selectedCategory ||
+      (cat.slug && cat.slug === selectedCategory) ||
+      normalizeSlug(cat.slug || cat.name) === cleanSel
+    )
   }
 
   return (
@@ -150,7 +175,7 @@ function LojaContent() {
 
         {/* Abas Horizontais de Categorias Dinâmicas do Banco */}
         <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
-          {displayCategories.map((cat) => {
+          {displayCategories.map((cat: { id: string; slug: string; name: string }) => {
             const isSelected = isTabActive(cat)
             const targetFilterValue = cat.id === "all" ? "all" : (cat.slug || cat.id)
 

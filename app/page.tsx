@@ -14,6 +14,7 @@ import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
 import { DiscordCta } from "@/components/discord-cta"
 import { BLOX_CATEGORIES, BLOX_PRODUCTS } from "@/data/blox-fruits"
+import { buildCategoryHierarchy, resolveProductAssignment } from "@/lib/categories/category-resolver"
 
 function HomeContent() {
   const [products, setProducts] = useState<Product[]>([])
@@ -54,58 +55,63 @@ function HomeContent() {
     return list.filter((p) => p.is_active !== false)
   }, [products])
 
-  // Categorias ativas que possuem produtos para exibição fluida ao rolar a página
-  const activeCategories = useMemo(() => {
-    const active = categories.filter((c) => c.is_active !== false)
-    if (active.length > 0) return active
-    return BLOX_CATEGORIES
+  // Hierarquia canônica de categorias
+  const hierarchy = useMemo(() => {
+    return buildCategoryHierarchy(categories)
   }, [categories])
 
   // Agrupamento de produtos por categoria para exibição contínua ao rolar a página para baixo
   const categoryGroups = useMemo(() => {
-    // 1. Tenta mapear as categorias cadastradas
-    const groups = activeCategories.map((cat) => {
+    const groups: { category: Category; products: Product[] }[] = []
+    const usedProductIds = new Set<string>()
+
+    // 1. Itera sobre as subcategorias ativas (ex: Frutas Míticas, Gamepasses, Contas, Raças, Pets, etc.)
+    for (const sub of hierarchy.subcategories) {
+      if (sub.is_active === false) continue
       const catProducts = allProducts.filter((p) => {
-        if (p.category_id === cat.id) return true
-        if (cat.slug && p.category_id === cat.slug) return true
-        if (p.category && (p.category.id === cat.id || p.category.slug === cat.slug)) return true
-        if (p.category?.parent_id === cat.id) return true
-        return false
+        const { subcategory } = resolveProductAssignment(p, hierarchy)
+        if (subcategory) {
+          return subcategory.id === sub.id || subcategory.slug === sub.slug
+        }
+        return p.category_id === sub.id || p.category_id === sub.slug
       })
-      return {
-        category: cat,
-        products: catProducts,
-      }
-    }).filter((group) => group.products.length > 0)
 
-    // Se as categorias do banco baterem e tiverem produtos, retorna os grupos
-    if (groups.length > 0) {
-      return groups
-    }
-
-    // 2. Fallback dinâmico: agrupa os produtos pelas categorias disponíveis nos próprios produtos
-    const map = new Map<string, { category: Category; products: Product[] }>()
-    for (const p of allProducts) {
-      const catName = p.category?.name || "Ofertas em Destaque"
-      const catId = p.category_id || p.category?.id || "destaques"
-      const catSlug = p.category?.slug || catId
-
-      if (!map.has(catName)) {
-        map.set(catName, {
-          category: {
-            id: catId,
-            name: catName,
-            slug: catSlug,
-            description: "Confira todos os itens disponíveis nesta categoria",
-          },
-          products: [],
+      if (catProducts.length > 0) {
+        catProducts.forEach((p) => usedProductIds.add(p.id))
+        groups.push({
+          category: sub,
+          products: catProducts,
         })
       }
-      map.get(catName)!.products.push(p)
     }
 
-    return Array.from(map.values())
-  }, [activeCategories, allProducts])
+    // 2. Se houver categorias principais com produtos diretos que não entraram em nenhuma subcategoria:
+    for (const main of hierarchy.mainCategories) {
+      if (main.is_active === false) continue
+      const remainingForMain = allProducts.filter((p) => {
+        if (usedProductIds.has(p.id)) return false
+        const { mainCategory } = resolveProductAssignment(p, hierarchy)
+        if (mainCategory) {
+          return mainCategory.id === main.id || mainCategory.slug === main.slug
+        }
+        return p.category_id === main.id || p.category_id === main.slug
+      })
+
+      if (remainingForMain.length > 0) {
+        remainingForMain.forEach((p) => usedProductIds.add(p.id))
+        groups.push({
+          category: {
+            ...main,
+            name: `Ofertas de ${main.name}`,
+            description: main.description || `Confira todos os itens disponíveis para ${main.name}`,
+          },
+          products: remainingForMain,
+        })
+      }
+    }
+
+    return groups
+  }, [hierarchy, allProducts])
 
   // Produtos que não entraram em nenhum grupo (se houver)
   const uncategorizedProducts = useMemo(() => {

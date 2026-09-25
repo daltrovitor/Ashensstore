@@ -75,13 +75,13 @@ function NavbarContent() {
                 className="flex items-center transition-opacity hover:opacity-80 shrink-0"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 overflow-hidden flex items-center justify-center shrink-0">
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden flex items-center justify-center shrink-0 shadow-2xs border border-neutral-200/80 bg-neutral-50">
                   <Image
                     src="/ashens-logo.jpg"
-                    alt="Logo Oficial"
+                    alt="Ashens Store"
                     width={48}
                     height={48}
-                    className="object-contain w-full h-full"
+                    className="object-cover w-full h-full"
                     priority
                   />
                 </div>

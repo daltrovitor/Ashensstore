@@ -1,7 +1,14 @@
 // Hello World
 import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase/server'
-import { findCategory } from '@/lib/utils/category-matcher'
+import { parseCategoryRecord } from '@/lib/categories/category-helper'
+import {
+    buildCategoryHierarchy,
+    resolveProductAssignment,
+    normalizeSlug,
+    isBloxFruitsReference,
+    filterProductsByTargetCategory,
+} from '@/lib/categories/category-resolver'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +24,20 @@ export async function GET(request: Request) {
             return NextResponse.json([])
         }
 
+        // 1. Carrega todas as categorias para construir a hierarquia canônica
+        const [catsRes, storeCatsRes] = await Promise.all([
+            supabase.from('categories').select('*'),
+            supabase.from('store_categories').select('*'),
+        ])
+
+        const rawAllCats = [
+            ...(catsRes.data || []),
+            ...(storeCatsRes.data || []),
+        ]
+        const parsedCats = rawAllCats.map(parseCategoryRecord)
+        const hierarchy = buildCategoryHierarchy(parsedCats)
+
+        // 2. Constrói query básica de produtos ativos
         let query = supabase
             .from('products')
             .select(`
@@ -26,38 +47,53 @@ export async function GET(request: Request) {
             `)
             .eq('is_active', true)
 
+        // 3. Se houver filtro por categoria
         if (categoryId && categoryId !== 'all') {
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)
-            if (isUUID) {
-                query = query.eq('category_id', categoryId)
+            const cleanTarget = normalizeSlug(categoryId)
+
+            // Verifica se é uma Categoria Principal
+            const mainTarget = hierarchy.mainCategories.find(
+                (m) => m.id === categoryId || normalizeSlug(m.slug || m.id || m.name) === cleanTarget
+            )
+
+            if (mainTarget) {
+                // IDs válidos para a categoria principal e suas subcategorias
+                const validIds = new Set<string>()
+                if (mainTarget.id) validIds.add(mainTarget.id)
+                if (mainTarget.slug) validIds.add(mainTarget.slug)
+
+                const subs = hierarchy.mainToSubsMap.get(mainTarget.id) || []
+                for (const s of subs) {
+                    if (s.id) validIds.add(s.id)
+                    if (s.slug) validIds.add(s.slug)
+                }
+
+                if (isBloxFruitsReference(mainTarget.slug || mainTarget.name)) {
+                    validIds.add('frutas')
+                    validIds.add('gamepasses')
+                    validIds.add('contas')
+                    validIds.add('racas')
+                    validIds.add('c1000000-0000-0000-0000-000000000001')
+                    validIds.add('c2000000-0000-0000-0000-000000000002')
+                    validIds.add('c3000000-0000-0000-0000-000000000003')
+                    validIds.add('c4000000-0000-0000-0000-000000000004')
+                }
+
+                const idArray = Array.from(validIds)
+                if (idArray.length > 0) {
+                    query = query.in('category_id', idArray)
+                }
             } else {
-                // Busca categorias de ambas as tabelas para correspondência inteligente
-                const [catsRes, storeCatsRes] = await Promise.all([
-                    supabase.from('categories').select('*'),
-                    supabase.from('store_categories').select('*')
-                ])
-
-                const allCats = [
-                    ...(catsRes.data || []),
-                    ...(storeCatsRes.data || [])
-                ]
-
-                const matchedCat = findCategory(allCats, categoryId)
-
-                if (matchedCat) {
-                    // Se a categoria encontrada foi de store_categories, mapeia para o ID de categories
-                    let targetId = matchedCat.id
-                    const equivInCategories = (catsRes.data || []).find(
-                        (c: any) => c.slug === matchedCat.slug || c.name === matchedCat.name
-                    )
-                    if (equivInCategories) {
-                        targetId = equivInCategories.id
-                    }
-
-                    query = query.eq('category_id', targetId)
+                // É uma subcategoria específica
+                const subTarget = hierarchy.subcategories.find(
+                    (s) => s.id === categoryId || normalizeSlug(s.slug || s.id || s.name) === cleanTarget
+                )
+                if (subTarget) {
+                    const subIds = [subTarget.id]
+                    if (subTarget.slug) subIds.push(subTarget.slug)
+                    query = query.in('category_id', subIds)
                 } else {
-                    // Categoria inexistente no banco
-                    return NextResponse.json([])
+                    query = query.eq('category_id', categoryId)
                 }
             }
         }
@@ -76,7 +112,7 @@ export async function GET(request: Request) {
             return NextResponse.json([])
         }
 
-        const formatted = (data || []).map((prod: any) => {
+        let formatted = (data || []).map((prod: any) => {
             let order = 0
             if (typeof prod.display_order === 'number') {
                 order = prod.display_order
@@ -84,24 +120,53 @@ export async function GET(request: Request) {
                 const parsed = parseInt(prod.printful_id.split(':')[1], 10)
                 order = isNaN(parsed) ? 0 : parsed
             }
+
+            // Enriquecimento com categoria resolvível
+            const assignment = resolveProductAssignment(prod, hierarchy)
+            const catObj = assignment.subcategory || assignment.mainCategory || null
+
             return {
                 ...prod,
                 display_order: order,
+                category: catObj
+                    ? {
+                          id: catObj.id,
+                          name: catObj.name,
+                          slug: catObj.slug,
+                          parent_id: catObj.parent_id,
+                          is_main: catObj.is_main,
+                      }
+                    : null,
+                main_category: assignment.mainCategory
+                    ? {
+                          id: assignment.mainCategory.id,
+                          name: assignment.mainCategory.name,
+                          slug: assignment.mainCategory.slug,
+                      }
+                    : null,
                 variants: (prod.variants || []).map((v: any) => {
-                    const stockNum = typeof v.stock === 'number'
-                        ? v.stock
-                        : (v.printful_catalog_variant_id && !isNaN(parseInt(v.printful_catalog_variant_id, 10))
+                    const stockNum =
+                        typeof v.stock === 'number'
+                            ? v.stock
+                            : v.printful_catalog_variant_id && !isNaN(parseInt(v.printful_catalog_variant_id, 10))
                             ? parseInt(v.printful_catalog_variant_id, 10)
-                            : (v.in_stock ? 10 : 0))
+                            : v.in_stock
+                            ? 10
+                            : 0
                     const finalStock = isNaN(stockNum) ? 0 : stockNum
                     return {
                         ...v,
                         stock: finalStock,
-                        in_stock: Boolean(v.in_stock !== false && finalStock > 0)
+                        in_stock: Boolean(v.in_stock !== false && finalStock > 0),
                     }
-                })
+                }),
             }
         })
+
+        // Se houver categoryId, passa também pelo filtro canônico da hierarquia para blindagem extra
+        if (categoryId && categoryId !== 'all') {
+            formatted = filterProductsByTargetCategory(formatted, categoryId, hierarchy)
+        }
 
         // Ordena por display_order ASC (produtos com ordem explícita vêm na frente), desempate por data
         formatted.sort((a: any, b: any) => {
@@ -112,7 +177,6 @@ export async function GET(request: Request) {
         })
 
         return NextResponse.json(formatted)
-
     } catch (error) {
         console.error('[Products API] Erro fatal ao buscar produtos:', error)
         return NextResponse.json([])
