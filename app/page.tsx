@@ -9,7 +9,7 @@ import { ProductCard } from "@/components/ecommerce/ProductCard"
 import { HeroSliderSimple } from "@/components/hero-slider-simple"
 import { GameCategoriesSection } from "@/components/home/game-categories-section"
 import { CategoryDivider } from "@/components/home/category-divider"
-import { ArrowRight, ShieldCheck, Zap, MessageSquare, Headphones } from "lucide-react"
+import { ShieldCheck, Zap, MessageSquare, Headphones } from "lucide-react"
 import type { Product, Category } from "@/lib/store/types"
 import { StoreLoader } from "@/components/store-loader"
 import { DiscordCta } from "@/components/discord-cta"
@@ -166,25 +166,12 @@ function HomeContent() {
                 subtitle={category.description || undefined}
               />
 
-              {/* Grade de Produtos com o Nosso ProductCard Oficial */}
+              {/* Grade de Produtos com todos os itens carregados diretamente */}
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
-                {catProducts.slice(0, 8).map((product) => (
+                {catProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
-
-              {/* Link Limpo para ver mais itens da categoria se houver mais de 8 */}
-              {catProducts.length > 8 && (
-                <div className="text-center mt-6">
-                  <Link
-                    href={`/loja?categoryId=${encodeURIComponent(category.slug || category.id)}`}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-md bg-white border border-[#48B9FA] text-[#0284c7] hover:bg-[#48B9FA] hover:text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                  >
-                    <span>Ver todos os {catProducts.length} itens de {category.name}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              )}
             </div>
           </section>
         ))}

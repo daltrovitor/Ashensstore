@@ -1,7 +1,7 @@
 // Hello World
 "use client"
 
-import { useState, useEffect, useRef, useMemo, use } from "react"
+import { useState, useEffect, useMemo, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
@@ -20,8 +20,6 @@ import {
 } from "@/lib/categories/category-resolver"
 import type { Product, Category } from "@/lib/store/types"
 import {
-  ChevronLeft,
-  ChevronRight,
   Search,
   ArrowLeft,
   SlidersHorizontal,
@@ -42,15 +40,12 @@ export default function GameCategoryPage({ params }: PageProps) {
 
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [selectedSubcat, setSelectedSubcat] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<string>("popular")
   const [loading, setLoading] = useState(true)
 
   // Proporção dinâmica que se adapta à imagem real enviada na página principal
   const [bannerAspect, setBannerAspect] = useState<string>("16 / 9")
-
-  const tabsContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchGameData()
@@ -169,6 +164,31 @@ export default function GameCategoryPage({ params }: PageProps) {
     return filterProductsByTargetCategory(sourceProducts, currentCategory.id, hierarchy)
   }, [products, currentCategory, hierarchy, isBloxFruits])
 
+  // Helper de ordenação que respeita o seletor sortBy
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sortProducts = (list: Product[]) => {
+    const copy = [...list]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getPrice = (p: any) => Number(p.price || p.variants?.[0]?.retail_price || 0)
+
+    if (sortBy === "name") {
+      copy.sort((a, b) => a.name.localeCompare(b.name))
+    } else if (sortBy === "price_asc") {
+      copy.sort((a, b) => getPrice(a) - getPrice(b))
+    } else if (sortBy === "price_desc") {
+      copy.sort((a, b) => getPrice(b) - getPrice(a))
+    } else if (sortBy === "newest") {
+      copy.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else {
+      copy.sort((a, b) => {
+        if (a.is_featured && !b.is_featured) return -1
+        if (!a.is_featured && b.is_featured) return 1
+        return (a.display_order || 999) - (b.display_order || 999)
+      })
+    }
+    return copy
+  }
+
   // 5. Agrupamento de produtos por subcategoria para exibição ao rolar a página para baixo
   const categoryGroups = useMemo(() => {
     if (subcategories.length === 0) return []
@@ -184,77 +204,30 @@ export default function GameCategoryPage({ params }: PageProps) {
         })
         return {
           category: subcat,
-          products: catProducts,
+          products: sortProducts(catProducts),
         }
       })
       .filter((group) => group.products.length > 0)
-  }, [subcategories, mainCategoryProducts, hierarchy])
+  }, [subcategories, mainCategoryProducts, hierarchy, sortBy])
 
   // Produtos que não pertencem a nenhuma subcategoria específica
   const directProducts = useMemo(() => {
     const inGroups = new Set(categoryGroups.flatMap((g) => g.products.map((p) => p.id)))
-    return mainCategoryProducts.filter((p) => !inGroups.has(p.id))
-  }, [categoryGroups, mainCategoryProducts])
+    const remaining = mainCategoryProducts.filter((p) => !inGroups.has(p.id))
+    return sortProducts(remaining)
+  }, [categoryGroups, mainCategoryProducts, sortBy])
 
-  // 6. Lista filtrada para busca ou subcategoria específica selecionada na barra
-  const displayedProducts = useMemo(() => {
-    let list = [...mainCategoryProducts]
-
-    if (selectedSubcat !== "all") {
-      const targetSubcat = subcategories.find((s) => s.id === selectedSubcat)
-      if (targetSubcat) {
-        list = list.filter((p) => {
-          const assignment = resolveProductAssignment(p, hierarchy)
-          if (assignment.subcategory) {
-            return assignment.subcategory.id === targetSubcat.id || assignment.subcategory.slug === targetSubcat.slug
-          }
-          return p.category_id === targetSubcat.id || p.category_id === targetSubcat.slug
-        })
-      } else {
-        list = list.filter((p) => p.category_id === selectedSubcat || p.category?.id === selectedSubcat)
-      }
-    }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.description && p.description.toLowerCase().includes(q))
-      )
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const getPrice = (p: any) => Number(p.price || p.variants?.[0]?.retail_price || 0)
-
-    if (sortBy === "name") {
-      list.sort((a, b) => a.name.localeCompare(b.name))
-    } else if (sortBy === "price_asc") {
-      list.sort((a, b) => getPrice(a) - getPrice(b))
-    } else if (sortBy === "price_desc") {
-      list.sort((a, b) => getPrice(b) - getPrice(a))
-    } else if (sortBy === "newest") {
-      list.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    } else {
-      list.sort((a, b) => {
-        if (a.is_featured && !b.is_featured) return -1
-        if (!a.is_featured && b.is_featured) return 1
-        return (a.display_order || 999) - (b.display_order || 999)
-      })
-    }
-
-    return list
-  }, [mainCategoryProducts, selectedSubcat, subcategories, searchQuery, sortBy, hierarchy])
-
-  // Rolagem suave da barra de subcategorias
-  const scrollTabs = (direction: "left" | "right") => {
-    if (tabsContainerRef.current) {
-      const offset = direction === "left" ? -260 : 260
-      tabsContainerRef.current.scrollBy({ left: offset, behavior: "smooth" })
-    }
-  }
+  // 6. Lista filtrada exclusivamente para quando há termo de busca ativo
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    const q = searchQuery.toLowerCase().trim()
+    const filtered = mainCategoryProducts.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q))
+    )
+    return sortProducts(filtered)
+  }, [mainCategoryProducts, searchQuery, sortBy])
 
   const handleBannerImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget
@@ -333,86 +306,6 @@ export default function GameCategoryPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Barra de Subcategorias (Se existirem subcategorias cadastradas) */}
-      {subcategories.length > 0 && (
-        <section className="bg-white border-b border-neutral-200 sticky top-16 sm:top-20 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
-                <Layers className="size-3.5 text-[#48B9FA]" />
-                <span>Categorias de {categoryTitle}</span>
-              </div>
-
-              {/* Setas de rolagem em desktop */}
-              <div className="hidden sm:flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => scrollTabs("left")}
-                  aria-label="Rolar subcategorias para a esquerda"
-                  className="size-7 rounded-md bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollTabs("right")}
-                  aria-label="Rolar subcategorias para a direita"
-                  className="size-7 rounded-md bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Trilho de Subcategorias com Rolagem Horizontal */}
-            <div
-              ref={tabsContainerRef}
-              className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 select-none"
-            >
-              {/* Botão Todas */}
-              <button
-                type="button"
-                onClick={() => setSelectedSubcat("all")}
-                className={`shrink-0 px-4 py-1.5 rounded-md text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
-                  selectedSubcat === "all"
-                    ? "bg-[#48B9FA] text-white border-[#48B9FA] shadow-xs"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-200"
-                }`}
-              >
-                Todas ({mainCategoryProducts.length})
-              </button>
-
-              {/* Subcategorias */}
-              {subcategories.map((cat) => {
-                const count = mainCategoryProducts.filter((p) => {
-                  const assignment = resolveProductAssignment(p, hierarchy)
-                  if (assignment.subcategory) {
-                    return assignment.subcategory.id === cat.id || assignment.subcategory.slug === cat.slug
-                  }
-                  return p.category_id === cat.id || p.category_id === cat.slug
-                }).length
-                const isActive = selectedSubcat === cat.id
-
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedSubcat(cat.id)}
-                    className={`shrink-0 px-4 py-1.5 rounded-md text-xs font-bold transition-all border whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? "bg-[#48B9FA] text-white border-[#48B9FA] shadow-xs"
-                        : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-200"
-                    }`}
-                  >
-                    {cat.name} {count > 0 ? `(${count})` : ""}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Catálogo de Produtos da Categoria Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex-1 w-full">
         {/* Barra de Busca e Ordenação */}
@@ -432,10 +325,8 @@ export default function GameCategoryPage({ params }: PageProps) {
           <div className="flex items-center justify-between sm:justify-end gap-3">
             <span className="text-xs text-neutral-500">
               <strong className="text-neutral-900 font-bold">
-                {selectedSubcat === "all" && !searchQuery.trim()
-                  ? mainCategoryProducts.length
-                  : displayedProducts.length}
-              </strong> produtos
+                {searchQuery.trim() ? searchResults.length : mainCategoryProducts.length}
+              </strong> produtos disponíveis
             </span>
 
             <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-md px-2.5 py-1.5">
@@ -494,9 +385,44 @@ export default function GameCategoryPage({ params }: PageProps) {
               </Link>
             </div>
           </div>
-        ) : selectedSubcat === "all" && !searchQuery.trim() && categoryGroups.length > 0 ? (
-          /* As Categorias aparecem conforme é rolada a página para baixo */
-          <div className="space-y-10">
+        ) : searchQuery.trim() ? (
+          /* Busca ativa */
+          searchResults.length === 0 ? (
+            <div className="text-center py-16 bg-neutral-50 border border-neutral-200 rounded-md p-8 max-w-xl mx-auto space-y-4 mt-6">
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-bold text-neutral-900">
+                  Nenhum produto encontrado
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-500 max-w-sm mx-auto">
+                  Nenhum produto em {categoryTitle} corresponde a &ldquo;{searchQuery}&rdquo;.
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white px-5 py-2 text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
+                >
+                  Limpar Busca
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <CategoryDivider
+                title={`Resultados para "${searchQuery}"`}
+                subtitle={`${searchResults.length} produtos encontrados em ${categoryTitle}`}
+              />
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                {searchResults.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
+          /* Padrão: Categoria por rolagem (cada subcategoria com seu divisor e todos os produtos carregados) */
+          <div className="space-y-12">
             {categoryGroups.map(({ category: subcat, products: catProducts }) => (
               <section key={subcat.id} className="border-b border-neutral-100 pb-10 last:border-b-0 last:pb-0">
                 <CategoryDivider
@@ -515,8 +441,8 @@ export default function GameCategoryPage({ params }: PageProps) {
             {directProducts.length > 0 && (
               <section className="border-b border-neutral-100 pb-10 last:border-b-0 last:pb-0">
                 <CategoryDivider
-                  title="Mais Ofertas"
-                  subtitle={`Outros produtos e ofertas de ${categoryTitle}`}
+                  title={`Mais Ofertas de ${categoryTitle}`}
+                  subtitle={`Outros produtos e ofertas disponíveis`}
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
                   {directProducts.map((product) => (
@@ -525,49 +451,21 @@ export default function GameCategoryPage({ params }: PageProps) {
                 </div>
               </section>
             )}
-          </div>
-        ) : displayedProducts.length === 0 ? (
-          <div className="text-center py-16 bg-neutral-50 border border-neutral-200 rounded-md p-8 max-w-xl mx-auto space-y-4 mt-6">
-            <div className="space-y-1">
-              <h3 className="text-base sm:text-lg font-bold text-neutral-900">
-                Nenhum produto encontrado
-              </h3>
-              <p className="text-xs sm:text-sm text-neutral-500 max-w-sm mx-auto">
-                Tente selecionar outra categoria acima ou limpar o termo pesquisado.
-              </p>
-            </div>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSubcat("all")
-                  setSearchQuery("")
-                }}
-                className="bg-[#48B9FA] hover:bg-[#20a6f5] text-white px-5 py-2 text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
-              >
-                Ver Todas as Categorias
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Grid quando uma subcategoria específica está selecionada ou há busca ativa */
-          <div>
-            <CategoryDivider
-              title={
-                selectedSubcat === "all"
-                  ? searchQuery.trim()
-                    ? `Resultados para "${searchQuery}"`
-                    : categoryTitle
-                  : subcategories.find((c) => c.id === selectedSubcat)?.name ||
-                    categories.find((c) => c.id === selectedSubcat)?.name ||
-                    "Produtos"
-              }
-            />
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
-              {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+
+            {/* Fallback caso não haja subcategorias cadastradas mas existam produtos diretos da categoria principal */}
+            {categoryGroups.length === 0 && directProducts.length === 0 && mainCategoryProducts.length > 0 && (
+              <section>
+                <CategoryDivider
+                  title={categoryTitle}
+                  subtitle={categoryDescription}
+                />
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                  {sortProducts(mainCategoryProducts).map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>

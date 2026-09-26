@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useEffect, useState } from "react"
@@ -139,112 +140,113 @@ export function HeroSliderSimple() {
   const currentAspect = (currentSlide && aspectRatios[currentSlide.id]) || "1983 / 793"
 
   return (
-    <section className="w-full bg-white border-b border-neutral-200 select-none">
-      <div
-        className="relative w-full overflow-hidden bg-white transition-[aspect-ratio] duration-300 group cursor-grab active:cursor-grabbing"
-        style={{ aspectRatio: currentAspect }}
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {slides.map((slide, index) => {
-          const isActive = index === activeIndex
+    <section className="w-full bg-white select-none py-2.5 sm:py-4 border-b border-neutral-100">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div
+          className="relative w-full overflow-hidden bg-neutral-900 rounded-xl sm:rounded-2xl border border-neutral-200/80 shadow-2xs group cursor-grab active:cursor-grabbing h-[180px] xs:h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px]"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {slides.map((slide, index) => {
+            const isActive = index === activeIndex
 
-          const content = (
-            <div
-              key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                isActive ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
-              }`}
-            >
-              {/* Se o banner tiver imagem específica de mobile, exibe ela no celular */}
-              {slide.mobile_image_url ? (
-                <>
-                  <div className="relative w-full h-full block sm:hidden">
-                    <img
-                      src={slide.mobile_image_url}
-                      alt={slide.alt || "Banner promocional"}
-                      onLoad={(e) => handleImageLoad(slide.id, e)}
-                      className="w-full h-full object-cover object-center block"
-                    />
-                  </div>
-                  <div className="relative w-full h-full hidden sm:block">
-                    <img
-                      src={slide.image_url}
-                      alt={slide.alt || "Banner promocional"}
-                      onLoad={(e) => handleImageLoad(slide.id, e)}
-                      className="w-full h-full object-cover object-center block"
-                    />
-                  </div>
-                </>
-              ) : (
-                <img
-                  src={slide.image_url}
-                  alt={slide.alt || "Banner promocional"}
-                  onLoad={(e) => handleImageLoad(slide.id, e)}
-                  className="w-full h-full object-cover object-center block"
-                />
-              )}
-            </div>
-          )
-
-          if (slide.link_url) {
-            return (
-              <Link key={slide.id} href={slide.link_url} className="block w-full h-full">
-                {content}
-              </Link>
+            const content = (
+              <div
+                key={slide.id}
+                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                  isActive ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
+                }`}
+              >
+                {/* Se o banner tiver imagem específica de mobile, exibe ela no celular */}
+                {slide.mobile_image_url ? (
+                  <>
+                    <div className="relative w-full h-full block sm:hidden">
+                      <img
+                        src={slide.mobile_image_url}
+                        alt={slide.alt || "Banner promocional"}
+                        onLoad={(e) => handleImageLoad(slide.id, e)}
+                        className="w-full h-full object-cover object-center block"
+                      />
+                    </div>
+                    <div className="relative w-full h-full hidden sm:block">
+                      <img
+                        src={slide.image_url}
+                        alt={slide.alt || "Banner promocional"}
+                        onLoad={(e) => handleImageLoad(slide.id, e)}
+                        className="w-full h-full object-cover object-center block"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <img
+                    src={slide.image_url}
+                    alt={slide.alt || "Banner promocional"}
+                    onLoad={(e) => handleImageLoad(slide.id, e)}
+                    className="w-full h-full object-cover object-center block"
+                  />
+                )}
+              </div>
             )
-          }
 
-          return content
-        })}
+            if (slide.link_url) {
+              return (
+                <Link key={slide.id} href={slide.link_url} className="block w-full h-full">
+                  {content}
+                </Link>
+              )
+            }
 
-        {/* Setas Sutis de Navegação */}
-        {slides.length > 1 && (
-          <>
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                goToPrevious()
-              }}
-              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 text-neutral-800 hover:bg-white hover:text-[#48B9FA] border border-neutral-200 items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
-              aria-label="Slide anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
+            return content
+          })}
 
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                goToNext()
-              }}
-              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 text-neutral-800 hover:bg-white hover:text-[#48B9FA] border border-neutral-200 items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
-              aria-label="Próximo slide"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+          {/* Setas Sutis de Navegação */}
+          {slides.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  goToPrevious()
+                }}
+                className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 text-neutral-800 hover:bg-white hover:text-[#48B9FA] border border-neutral-200 items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
+                aria-label="Slide anterior"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-            {/* Indicadores Minimalistas com Destaque Oficial Azul */}
-            <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/30 backdrop-blur-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setIsPaused(true)
-                    setActiveIndex(index)
-                  }}
-                  className={`h-1 sm:h-1.5 transition-all duration-300 rounded-full cursor-pointer ${
-                    index === activeIndex ? "w-5 sm:w-7 bg-[#48B9FA] shadow-sm" : "w-1.5 sm:w-2 bg-white/60 hover:bg-white"
-                  }`}
-                  aria-label={`Slide ${index + 1}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  goToNext()
+                }}
+                className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/90 text-neutral-800 hover:bg-white hover:text-[#48B9FA] border border-neutral-200 items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
+                aria-label="Próximo slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Indicadores Minimalistas com Destaque Oficial Azul */}
+              <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/30 backdrop-blur-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setIsPaused(true)
+                      setActiveIndex(index)
+                    }}
+                    className={`h-1 sm:h-1.5 transition-all duration-300 rounded-full cursor-pointer ${
+                      index === activeIndex ? "w-5 sm:w-7 bg-[#48B9FA] shadow-sm" : "w-1.5 sm:w-2 bg-white/60 hover:bg-white"
+                    }`}
+                    aria-label={`Slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </section>
   )
