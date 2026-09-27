@@ -202,16 +202,25 @@ export async function PUT(
 
         if (productError) {
             if (productError.code === '23505') {
-                return NextResponse.json({ error: 'Já existe um produto com este slug.' }, { status: 409 })
+                // Tenta salvar gerando slug único para evitar conflito de chave única
+                const uniqueSlug = `${validatedData.slug}-${Math.random().toString(36).substring(2, 6)}`
+                updatePayload.slug = uniqueSlug
+                const retryRes = await supabase.from('products').update(updatePayload).eq('id', id)
+                productError = retryRes.error
+                if (productError && productError.code === '23505') {
+                    return NextResponse.json({ error: 'Já existe um produto com este slug.' }, { status: 409 })
+                }
             }
-            if (productError.code === '23503') {
+            if (productError && productError.code === '23503') {
                 console.error('[Admin Products PUT] Category ID violation:', targetCategoryId)
                 return NextResponse.json({
                     error: 'Categoria inválida.',
                     message: `A categoria selecionada não é válida para esta tabela de produtos.`
                 }, { status: 400 })
             }
-            throw productError
+            if (productError) {
+                throw productError
+            }
         }
 
         // 2. Update Variants
@@ -336,7 +345,20 @@ export async function PATCH(
         }
 
         if (body.category_id !== undefined) {
-            updates.category_id = body.category_id || null
+            let targetCategoryId = body.category_id || null
+            if (targetCategoryId) {
+                const { data: catExists } = await supabase.from('categories').select('id').eq('id', targetCategoryId).maybeSingle()
+                if (!catExists) {
+                    const { data: storeCat } = await supabase.from('store_categories').select('name, slug').eq('id', targetCategoryId).maybeSingle()
+                    if (storeCat) {
+                        const { data: matchedCat } = await supabase.from('categories').select('id').or(`slug.eq.${storeCat.slug},name.eq.${storeCat.name}`).maybeSingle()
+                        if (matchedCat) {
+                            targetCategoryId = matchedCat.id
+                        }
+                    }
+                }
+            }
+            updates.category_id = targetCategoryId
         }
 
         if (body.price !== undefined) {

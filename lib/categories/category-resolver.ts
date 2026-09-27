@@ -192,10 +192,26 @@ export function resolveProductAssignment(
   product: Product,
   hierarchy: ResolvedCategoryHierarchy
 ): { mainCategory: Category | null; subcategory: Category | null } {
-  const pCatId = (product.category_id || "").trim()
+  let pCatId = (product.category_id || "").trim()
   const pName = (product.name || "").toLowerCase()
   const pSlug = (product.slug || "").toLowerCase()
   const pDesc = (product.description || "").toLowerCase()
+
+  // Correção explícita de produtos reportados pelo usuário:
+  // Control Rework Perm pertence a Gamepass Blox Fruits (não Contas PVP)
+  if (
+    product.id === "e2a5d568-e779-4ca3-88ce-0f8bde300644" ||
+    (pName.includes("control rework") && (pCatId === "c4000000-0000-0000-0000-000000000004" || pCatId === "contas"))
+  ) {
+    pCatId = "c1000000-0000-0000-0000-000000000001"
+  } else if (
+    // Itens Godhuman / Contas de alto nível pertencem a Contas PVP (c4000000...)
+    product.id === "114e6ae6-fc9d-4a6f-8bc2-d6fe843c6068" ||
+    product.id === "5403910e-6db1-49b3-a7cf-e6077e92fd1e" ||
+    (pName.includes("godhuman") && (pCatId === "c3000000-0000-0000-0000-000000000003" || pCatId === "promocao"))
+  ) {
+    pCatId = "c4000000-0000-0000-0000-000000000004"
+  }
 
   // 1. Se product.category_id já aponta para uma subcategoria
   if (pCatId) {

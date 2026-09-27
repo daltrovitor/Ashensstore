@@ -464,35 +464,20 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
     try {
       const res = await fetchWithAuth(`/api/admin/products/${productId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: target.name,
-          slug: target.slug,
-          description: target.description,
-          price: target.price,
-          category_id: catId,
-          display_order: target.display_order || 0,
-          is_active: target.is_active,
-          is_featured: target.is_featured,
-          variants: target.variants?.map(v => ({
-            id: v.id,
-            name: v.name,
-            price: v.retail_price || v.price,
-            stock: v.stock,
-            in_stock: v.in_stock
-          }))
-        })
+        body: JSON.stringify({ category_id: catId })
       })
 
       if (res.ok) {
-        toast.success("Categoria do produto atualizada!")
+        toast.success("Categoria do produto atualizada com sucesso!")
       } else {
-        toast.error("Erro ao mudar categoria do produto")
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error || data.message || "Erro ao mudar categoria do produto")
         fetchProducts()
       }
     } catch {
-      toast.error("Erro ao mudar categoria do produto")
+      toast.error("Erro ao conectar com o servidor para mudar categoria")
       fetchProducts()
     }
   }

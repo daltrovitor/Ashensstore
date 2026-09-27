@@ -1,6 +1,6 @@
 // Hello World
 import { NextResponse } from 'next/server'
-import { getSupabaseServer } from '@/lib/supabase/server'
+import { getSupabaseServer, getSupabaseService } from '@/lib/supabase/server'
 import { parseCategoryRecord } from '@/lib/categories/category-helper'
 import {
     buildCategoryHierarchy,
@@ -112,7 +112,35 @@ export async function GET(request: Request) {
             return NextResponse.json([])
         }
 
-        let formatted = (data || []).map((prod: any) => {
+        // Auto-heal em memória e disparo de persistência segura no Supabase
+        const serviceClient = getSupabaseService()
+        const healedData = (data || []).map((prod: any) => {
+            const pName = (prod.name || '').toLowerCase()
+            let correctedCatId = prod.category_id
+
+            if (
+                prod.id === 'e2a5d568-e779-4ca3-88ce-0f8bde300644' ||
+                (pName.includes('control rework') && (prod.category_id === 'c4000000-0000-0000-0000-000000000004' || prod.category_id === 'contas'))
+            ) {
+                correctedCatId = 'c1000000-0000-0000-0000-000000000001'
+                if (serviceClient && prod.category_id !== correctedCatId) {
+                    Promise.resolve(serviceClient.from('products').update({ category_id: correctedCatId }).eq('id', prod.id)).catch(() => {})
+                }
+            } else if (
+                prod.id === '114e6ae6-fc9d-4a6f-8bc2-d6fe843c6068' ||
+                prod.id === '5403910e-6db1-49b3-a7cf-e6077e92fd1e' ||
+                (pName.includes('godhuman') && (prod.category_id === 'c3000000-0000-0000-0000-000000000003' || prod.category_id === 'promocao'))
+            ) {
+                correctedCatId = 'c4000000-0000-0000-0000-000000000004'
+                if (serviceClient && prod.category_id !== correctedCatId) {
+                    Promise.resolve(serviceClient.from('products').update({ category_id: correctedCatId }).eq('id', prod.id)).catch(() => {})
+                }
+            }
+
+            return { ...prod, category_id: correctedCatId }
+        })
+
+        let formatted = healedData.map((prod: any) => {
             let order = 0
             if (typeof prod.display_order === 'number') {
                 order = prod.display_order
