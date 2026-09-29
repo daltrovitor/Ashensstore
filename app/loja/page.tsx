@@ -127,15 +127,17 @@ function LojaContent() {
 
     // Adiciona categorias principais primeiro
     for (const main of hierarchy.mainCategories) {
-      if (main.is_active !== false) {
+      if (main.is_active !== false && main.slug !== "lixas" && main.name?.toLowerCase() !== "lixas") {
         list.push({ id: main.id, slug: main.slug || main.id, name: main.name })
       }
     }
 
     // Adiciona subcategorias ativas
     for (const sub of hierarchy.subcategories) {
-      if (sub.is_active !== false) {
-        list.push({ id: sub.id, slug: sub.slug || sub.id, name: sub.name })
+      if (sub.is_active !== false && sub.slug !== "lixas" && sub.name?.toLowerCase() !== "lixas") {
+        if (!list.some((item) => item.id === sub.id || (sub.slug && item.slug === sub.slug))) {
+          list.push({ id: sub.id, slug: sub.slug || sub.id, name: sub.name })
+        }
       }
     }
 

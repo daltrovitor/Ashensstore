@@ -9,7 +9,6 @@ import { Footer } from "@/components/footer"
 import { StoreLoader } from "@/components/store-loader"
 import { ProductCard } from "@/components/ecommerce/ProductCard"
 import { CategoryDivider } from "@/components/home/category-divider"
-import { GAMES_DATA, getGameBySlug } from "@/lib/store/games"
 import { BLOX_CATEGORIES, BLOX_PRODUCTS } from "@/data/blox-fruits"
 import {
   buildCategoryHierarchy,
@@ -94,19 +93,14 @@ export default function GameCategoryPage({ params }: PageProps) {
     })
     if (match) return match
 
-    // Fallback para jogos estáticos conhecidos
-    const staticGame = getGameBySlug(slug)
-    if (staticGame) {
-      return {
-        id: staticGame.id,
-        name: staticGame.name,
-        slug: staticGame.slug,
-        description: staticGame.description,
-        image_url: staticGame.bannerUrl,
-        is_main: true,
-        is_active: true,
-      } as Category
-    }
+    // Busca nas subcategorias da hierarquia
+    const matchSub = hierarchy.subcategories.find((c) => {
+      if (c.slug && normalizeSlug(c.slug) === clean) return true
+      if (c.id && normalizeSlug(c.id) === clean) return true
+      if (c.name && normalizeSlug(c.name) === clean) return true
+      return false
+    })
+    if (matchSub) return matchSub
 
     // Fallback genérico caso a rota seja acessada antes da sincronização
     return {

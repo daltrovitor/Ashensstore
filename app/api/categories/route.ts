@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/auth/admin-middleware"
 import { normalizeCategorySlug } from "@/lib/utils/category-matcher"
 import { parseCategoryRecord, serializeCategoryDescription } from "@/lib/categories/category-helper"
+import type { Category } from "@/lib/store/types"
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,11 @@ export async function GET(request: NextRequest) {
         .maybeSingle()
 
       if (catData) {
-        return NextResponse.json(parseCategoryRecord(catData))
+        const parsed = parseCategoryRecord(catData)
+        if (parsed?.slug === "lixas" || parsed?.name?.toLowerCase() === "lixas") {
+          return NextResponse.json(null)
+        }
+        return NextResponse.json(parsed)
       }
 
       const { data: storeData } = await supabase
@@ -33,7 +38,15 @@ export async function GET(request: NextRequest) {
         .eq("id", id)
         .maybeSingle()
 
-      return NextResponse.json(storeData ? parseCategoryRecord(storeData) : null)
+      if (storeData) {
+        const parsed = parseCategoryRecord(storeData)
+        if (parsed?.slug === "lixas" || parsed?.name?.toLowerCase() === "lixas") {
+          return NextResponse.json(null)
+        }
+        return NextResponse.json(parsed)
+      }
+
+      return NextResponse.json(null)
     }
 
     // Busca todas as categorias da tabela categories (onde ficam os dados oficiais)
@@ -54,7 +67,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const parsedList = (data || []).map(parseCategoryRecord)
+    const parsedList = (data || [])
+      .map(parseCategoryRecord)
+      .filter((cat: Category) => Boolean(cat && cat.id && cat.slug !== "lixas" && cat.name?.toLowerCase() !== "lixas"))
     return NextResponse.json(parsedList)
   } catch (error: any) {
     console.error("GET /api/categories error:", error)

@@ -4,7 +4,6 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { Search } from "lucide-react"
-import { GAMES_DATA } from "@/lib/store/games"
 import type { Category } from "@/lib/store/types"
 
 export function GameCategoriesSection() {
@@ -32,28 +31,17 @@ export function GameCategoriesSection() {
     fetchCats()
   }, [])
 
-  // Apenas as Categorias Principais ativas aparecem na seção
+  // Apenas as Categorias Principais ativas cadastradas pelos admins aparecem na seção
   const mainCategories = useMemo(() => {
-    const explicitlyMain = categories.filter((c) => c.is_main === true && c.is_active !== false)
+    const valid = categories.filter(
+      (c) => c && c.slug !== "lixas" && c.name?.toLowerCase() !== "lixas" && c.is_active !== false
+    )
+    const explicitlyMain = valid.filter((c) => c.is_main === true)
     if (explicitlyMain.length > 0) return explicitlyMain
 
     // Fallback para categorias raiz se nenhuma tiver marcado is_main explicitamente
-    const rootCats = categories.filter((c) => !c.parent_id && c.is_active !== false)
+    const rootCats = valid.filter((c) => !c.parent_id)
     if (rootCats.length > 0) return rootCats
-
-    // Fallback seguro caso o banco ainda não possua categorias cadastradas
-    if (categories.length === 0) {
-      return GAMES_DATA.map((g) => ({
-        id: g.id,
-        name: g.name,
-        slug: g.slug,
-        description: g.description,
-        display_order: 0,
-        is_active: true,
-        is_main: true,
-        image_url: g.bannerUrl,
-      }))
-    }
 
     return []
   }, [categories])

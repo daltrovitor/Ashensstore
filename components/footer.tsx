@@ -17,8 +17,8 @@ export function Footer() {
         const res = await fetch('/api/categories')
         if (res.ok) {
           const data = await res.json()
-          if (isMounted && Array.isArray(data) && data.length > 0) {
-            setCategories(data)
+          if (isMounted && Array.isArray(data)) {
+            setCategories(data.filter((c: any) => c && c.slug !== 'lixas' && c.name?.toLowerCase() !== 'lixas'))
           }
         }
       } catch {
@@ -84,7 +84,7 @@ export function Footer() {
           {/* Categorias */}
           <div>
             <h4 className="font-semibold uppercase tracking-wider text-xs text-neutral-900 mb-4">
-              Catálogo Blox Fruits
+              Categorias
             </h4>
             <ul className="space-y-2.5 text-xs text-neutral-600">
               {categories.length > 0 ? (
@@ -101,28 +101,13 @@ export function Footer() {
               ) : (
                 <>
                   <li>
-                    <Link href="/loja?categoryId=frutas" className="hover:text-blue-600 transition-colors">
-                      🍏 Frutas Físicas & Míticas
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/loja?categoryId=gamepasses" className="hover:text-blue-600 transition-colors">
-                      ⚡ Gamepasses Roblox
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/loja?categoryId=contas" className="hover:text-blue-600 transition-colors">
-                      ⚔️ Contas Level Máximo & PVP
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/loja?categoryId=racas" className="hover:text-blue-600 transition-colors">
-                      🌟 Raças V4 Full Gear
+                    <Link href="/loja" className="hover:text-blue-600 transition-colors">
+                      Todos os Produtos
                     </Link>
                   </li>
                   <li>
                     <Link href="/loja?featured=true" className="hover:text-blue-600 transition-colors">
-                      🔥 Mais Populares & Destaques
+                      Mais Populares & Destaques
                     </Link>
                   </li>
                 </>

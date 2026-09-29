@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -78,7 +79,11 @@ export function CategoriesManager() {
       const res = await fetchWithAuth("/api/categories")
       if (res.ok) {
         const data = await res.json()
-        setCategories(Array.isArray(data) ? data : [])
+        setCategories(
+          Array.isArray(data)
+            ? data.filter((c: any) => c && c.slug !== "lixas" && c.name?.toLowerCase() !== "lixas")
+            : []
+        )
       } else {
         toast.error("Erro ao carregar categorias")
       }

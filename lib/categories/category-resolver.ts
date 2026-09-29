@@ -1,7 +1,5 @@
 // Hello World
 import type { Category, Product } from "@/lib/store/types"
-import { GAMES_DATA } from "@/lib/store/games"
-import { BLOX_CATEGORIES, BLOX_PRODUCTS } from "@/data/blox-fruits"
 
 export interface ResolvedCategoryHierarchy {
   mainCategories: Category[]
@@ -52,60 +50,18 @@ export function buildCategoryHierarchy(rawCategories: Category[]): ResolvedCateg
   const mainToSubsMap = new Map<string, Category[]>()
   const subToMainMap = new Map<string, Category>()
 
-  // 1. Indexa categorias fornecidas
-  for (const cat of rawCategories) {
-    if (!cat || !cat.id) continue
+  // 1. Filtra categorias inválidas ou legadas (como 'lixas')
+  const validCategories = (rawCategories || []).filter(
+    (cat) => cat && cat.id && cat.slug !== "lixas" && normalizeSlug(cat.name) !== "lixas"
+  )
+
+  // Indexa apenas as categorias cadastradas pelos administradores
+  for (const cat of validCategories) {
     categoryMap.set(cat.id, cat)
     if (cat.slug) categoryMap.set(cat.slug, cat)
   }
 
-  // 2. Garante que todas as categorias principais conhecidas existam
-  for (const game of GAMES_DATA) {
-    const existing = Array.from(categoryMap.values()).find(
-      (c) =>
-        (c.is_main && (c.slug === game.slug || c.id === game.id)) ||
-        normalizeSlug(c.name) === normalizeSlug(game.name)
-    )
-
-    if (existing) {
-      existing.is_main = true
-      if (!existing.image_url && game.bannerUrl) {
-        existing.image_url = game.bannerUrl
-      }
-    } else {
-      const syntheticMain: Category = {
-        id: game.id,
-        name: game.name,
-        slug: game.slug,
-        description: game.description,
-        image_url: game.bannerUrl,
-        is_main: true,
-        is_active: true,
-        display_order: 0,
-      }
-      categoryMap.set(syntheticMain.id, syntheticMain)
-      if (syntheticMain.slug) categoryMap.set(syntheticMain.slug, syntheticMain)
-    }
-  }
-
-  // 3. Garante as subcategorias oficiais de Blox Fruits caso ainda não cadastradas
-  for (const bCat of BLOX_CATEGORIES) {
-    const exists = Array.from(categoryMap.values()).find(
-      (c) => !c.is_main && (c.id === bCat.id || c.slug === bCat.slug || normalizeSlug(c.name) === normalizeSlug(bCat.name))
-    )
-    if (!exists) {
-      const syntheticSub: Category = {
-        ...bCat,
-        is_main: false,
-        is_active: true,
-        parent_id: "blox-fruits",
-      }
-      categoryMap.set(syntheticSub.id, syntheticSub)
-      if (syntheticSub.slug) categoryMap.set(syntheticSub.slug, syntheticSub)
-    }
-  }
-
-  // 4. Separação de Principais e Subcategorias
+  // 2. Separação de Principais e Subcategorias
   const uniqueCats = Array.from(new Set(categoryMap.values()))
   for (const cat of uniqueCats) {
     if (cat.is_main) {
@@ -117,7 +73,25 @@ export function buildCategoryHierarchy(rawCategories: Category[]): ResolvedCateg
     }
   }
 
-  // 5. Resolução inteligente de parent_id para cada subcategoria
+  // Se o admin cadastrou categorias mas nenhuma foi marcada explicitamente com is_main:
+  // Categorias sem parent_id viram categorias principais para navegação
+  if (mainCategories.length === 0 && subcategories.length > 0) {
+    const rootCats = subcategories.filter((c) => !c.parent_id)
+    if (rootCats.length > 0) {
+      for (const root of rootCats) {
+        root.is_main = true
+        mainCategories.push(root)
+        mainToSubsMap.set(root.id, [])
+        if (root.slug) mainToSubsMap.set(root.slug, [])
+      }
+      const rootIds = new Set(rootCats.map((r) => r.id))
+      const remainingSubs = subcategories.filter((s) => !rootIds.has(s.id))
+      subcategories.length = 0
+      subcategories.push(...remainingSubs)
+    }
+  }
+
+  // 3. Resolução inteligente de parent_id para cada subcategoria
   const bloxMain = mainCategories.find((c) => isBloxFruitsReference(c.slug) || isBloxFruitsReference(c.name))
   const adoptMain = mainCategories.find((c) => normalizeSlug(c.slug || c.name).includes("adopt-me"))
   const mm2Main = mainCategories.find((c) => normalizeSlug(c.slug || c.name).includes("murder-mystery") || normalizeSlug(c.slug || c.name).includes("mm2"))
@@ -146,7 +120,7 @@ export function buildCategoryHierarchy(rawCategories: Category[]): ResolvedCateg
         sSlug.includes("raca") || sName.includes("raca") ||
         sSlug.includes("devil-fruit") || isBloxFruitsReference(sSlug) || isBloxFruitsReference(sName)
       ) {
-        resolvedParent = bloxMain
+        resolvedParent = bloxMain || (mainCategories.length === 1 ? mainCategories[0] : undefined)
       } else if (sSlug.includes("pet") || sSlug.includes("adopt") || sName.includes("adopt") || sSlug.includes("pocao") || sName.includes("pocao")) {
         resolvedParent = adoptMain
       } else if (sSlug.includes("faca") || sSlug.includes("godly") || sSlug.includes("chroma") || sSlug.includes("mm2") || sName.includes("murder")) {
@@ -155,6 +129,8 @@ export function buildCategoryHierarchy(rawCategories: Category[]): ResolvedCateg
         resolvedParent = gardenMain
       } else if (sSlug.includes("rivals") || sName.includes("rivals") || sSlug.includes("wrap")) {
         resolvedParent = rivalsMain
+      } else if (mainCategories.length === 1) {
+        resolvedParent = mainCategories[0]
       }
     }
 
