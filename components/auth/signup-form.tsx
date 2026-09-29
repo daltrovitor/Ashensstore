@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState } from "react"
@@ -86,7 +87,6 @@ export function SignupForm({ onSuccess, redirectTo }: SignupFormProps) {
       }
 
     } catch (error) {
-      console.error("Signup error:", error)
       const msg = error instanceof Error ? error.message : "Falha ao criar conta"
       setError(msg)
       toast.error(msg)

@@ -1,3 +1,6 @@
+// Hello World
+"use client"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase/client"
@@ -18,95 +21,45 @@ export function useAuth() {
 
   const fetchProfile = async (userId: string, email: string, fullName?: string) => {
     try {
-      const supabase = getSupabaseClient()
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      const profile = data as any
-      if (!error && profile) {
-        let userRole = profile.role || 'customer'
-        if (userRole === 'costumer') userRole = 'customer'
-
-        setUser({
-          id: userId,
-          email: email,
-          full_name: profile.full_name || fullName || email.split('@')[0],
-          role: userRole,
-          phone: profile.phone,
-          avatar_url: profile.avatar_url,
-        })
-
-
-        // Check if role is customer, might be RLS issue for admin, verify with API
-        if ((profile.role || 'customer') === 'customer') {
-          // Verify with API blindly to be sure
-          fetch('/api/auth/check-role', {
-            method: 'POST',
-            body: JSON.stringify({ userId }),
+      const res = await fetch('/api/auth/me')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          setUser({
+            id: userId,
+            email: email,
+            full_name: data.user.full_name || fullName || email.split('@')[0],
+            role: data.user.role || 'customer',
+            phone: data.user.phone,
+            avatar_url: data.user.avatar_url,
           })
-            .then(res => res.json())
-            .then(bypassData => {
-              if (bypassData.role && bypassData.role !== 'customer') {
-                setUser(prev => prev ? ({ ...prev, role: bypassData.role }) : null)
-              }
-            })
-            .catch(e => console.warn('Background role check failed', e))
+          return
         }
+      }
 
-      } else {
-        // Se não encontrar perfil ou der erro, tenta API antes de assumir customer
-        try {
-          const bypassRes = await fetch('/api/auth/check-role', {
-            method: 'POST',
-            body: JSON.stringify({ userId }),
-          })
-          if (bypassRes.ok) {
-            const bypassData = await bypassRes.json()
-            setUser({
-              id: userId,
-              email: email,
-              full_name: fullName || email.split('@')[0],
-              role: bypassData.role || 'customer',
-            })
-            return
-          }
-        } catch (e) {
-          console.warn('API role check failed', e)
-        }
-
-        // Fallback final
+      const bypassRes = await fetch('/api/auth/check-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      if (bypassRes.ok) {
+        const bypassData = await bypassRes.json()
         setUser({
           id: userId,
           email: email,
           full_name: fullName || email.split('@')[0],
-          role: 'customer',
+          role: bypassData.role || 'customer',
         })
-      }
-    } catch (err) {
-      console.error('[useAuth] Error fetching profile:', err)
-      // Tenta API no catch
-      try {
-        const bypassRes = await fetch('/api/auth/check-role', {
-          method: 'POST',
-          body: JSON.stringify({ userId }),
-        })
-        if (bypassRes.ok) {
-          const bypassData = await bypassRes.json()
-          setUser({
-            id: userId,
-            email: email,
-            full_name: fullName || email.split('@')[0],
-            role: bypassData.role || 'customer',
-          })
-          return
-        }
-      } catch (e) {
-        console.warn('API role check failed in catch', e)
+        return
       }
 
+      setUser({
+        id: userId,
+        email: email,
+        full_name: fullName || email.split('@')[0],
+        role: 'customer',
+      })
+    } catch {
       setUser({
         id: userId,
         email: email,
@@ -124,57 +77,42 @@ export function useAuth() {
         const supabase = getSupabaseClient()
         const { data: { session }, error } = await supabase.auth.getSession()
 
-        if (error) {
-          console.error("Auth check error:", error)
-          if (mounted) setLoading(false)
+        if (error || !session?.user) {
+          if (mounted) {
+            setUser(null)
+            setLoading(false)
+          }
           return
         }
 
-        if (session?.user) {
-          // Profile fetch logic inline to ensure control flow
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single()
-
-          let role = profile?.role || 'customer'
-          if (role === 'costumer') role = 'customer'
-
-          // If role is customer, verify with API (bypasses RLS)
-          if (role === 'customer') {
-            try {
-              const bypassRes = await fetch('/api/auth/check-role', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: session.user.id }),
+        try {
+          const res = await fetch('/api/auth/me')
+          if (res.ok) {
+            const data = await res.json()
+            if (mounted && data.user) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                full_name: data.user.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+                role: data.user.role || 'customer',
+                phone: data.user.phone,
+                avatar_url: data.user.avatar_url,
               })
-              if (bypassRes.ok) {
-                const bypassData = await bypassRes.json()
-                if (bypassData.role && bypassData.role !== 'customer') {
-                  role = bypassData.role
-                }
-              }
-            } catch (e) {
-              console.warn('Background role check failed', e)
+              return
             }
           }
+        } catch {}
 
-          if (mounted) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              full_name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-              role,
-              phone: profile?.phone,
-              avatar_url: profile?.avatar_url,
-            })
-          }
-        } else {
-          if (mounted) setUser(null)
+        if (mounted) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+            role: 'customer',
+          })
         }
-      } catch (error) {
-        console.error("Unexpected auth error:", error)
+      } catch {
+        if (mounted) setUser(null)
       } finally {
         if (mounted) {
           setLoading(false)
@@ -190,7 +128,6 @@ export function useAuth() {
           setUser(null)
           setLoading(false)
         } else if (event === 'SIGNED_IN' && session?.user) {
-          // Re-run check or simple set
           checkSession()
         }
       }
@@ -213,7 +150,6 @@ export function useAuth() {
       throw new Error(error.message)
     }
 
-    // Buscar o perfil imediatamente após login
     if (data.user) {
       await fetchProfile(
         data.user.id,

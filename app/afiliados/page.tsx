@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -79,8 +80,8 @@ export default function AfiliadosPage() {
                     setStats(null)
                 }
             }
-        } catch (err) {
-            console.error('Erro ao carregar dados de afiliado:', err)
+        } catch {
+            // Silencioso
         } finally {
             setLoadingStats(false)
         }
@@ -111,8 +112,7 @@ export default function AfiliadosPage() {
             } else {
                 toast.error(data.error || "Erro ao criar cupom de afiliado")
             }
-        } catch (err) {
-            console.error(err)
+        } catch {
             toast.error("Erro ao registrar cupom de afiliado")
         } finally {
             setIsRegistering(false)

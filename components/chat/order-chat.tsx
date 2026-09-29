@@ -59,8 +59,8 @@ export function OrderChat({
                 }
                 setLastFetchTime(new Date())
             }
-        } catch (error) {
-            console.error('Erro ao buscar mensagens do chat:', error)
+        } catch {
+            // Silencioso
         } finally {
             if (isInitial) setLoading(false)
         }
@@ -110,8 +110,7 @@ export function OrderChat({
             } else {
                 toast.error("Erro ao enviar mensagem")
             }
-        } catch (error) {
-            console.error("Erro no envio:", error)
+        } catch {
             toast.error("Erro de conexão ao enviar mensagem")
         } finally {
             setSending(false)

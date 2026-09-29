@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -142,8 +143,7 @@ export function CouponsManager() {
       } else {
         toast.error("Erro ao carregar cupons")
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Falha de conexão com o servidor")
     } finally {
       setLoading(false)
@@ -169,8 +169,8 @@ export function CouponsManager() {
           setAvailableProducts(prods.map(p => ({ id: p.id, name: p.name, price: p.price || 0 })))
         }
       }
-    } catch (error) {
-      console.warn("Aviso ao carregar produtos/categorias para o formulário:", error)
+    } catch {
+      // Silencioso
     }
   }
 

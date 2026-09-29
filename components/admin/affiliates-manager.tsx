@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -111,8 +112,7 @@ export function AffiliatesManager() {
       } else {
         toast.error("Erro ao carregar afiliados")
       }
-    } catch (err) {
-      console.error('Erro ao buscar dados de afiliados:', err)
+    } catch {
       toast.error("Falha de conexão com o servidor")
     } finally {
       setLoading(false)

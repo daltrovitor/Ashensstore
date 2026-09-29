@@ -164,7 +164,6 @@ export function CheckoutForm() {
             toast.success("Pedido gerado com sucesso!")
 
         } catch (error: any) {
-            console.error('Erro no checkout:', error)
             toast.error(error.message || "Falha ao gerar pedido. Tente novamente.")
         } finally {
             setIsProcessing(false)

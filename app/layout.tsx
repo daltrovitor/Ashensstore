@@ -1,3 +1,4 @@
+// Hello World
 import type React from "react"
 import { Suspense } from "react"
 import type { Metadata, Viewport } from "next"
@@ -7,6 +8,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from 'sonner'
 import { CartProvider } from '@/hooks/use-shopping-cart'
 import { RouteMasker } from '@/components/routing/RouteMasker'
+import { ConsoleSilencer } from '@/components/console-silencer'
 
 const SITE_NAME = 'Ashens Store | Loja de Blox Fruits'
 const SITE_DESCRIPTION = 'Sua loja definitiva de Blox Fruits! Frutas Míticas (Kitsune, Dragon, Leopard), Gamepasses com desconto, Contas Level 2550 e Raças V4. Entrega rápida no Roblox e 100% segura via PIX.'
@@ -100,11 +102,17 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var n=function(){};window.console.log=n;window.console.info=n;window.console.warn=n;window.console.error=n;window.console.debug=n;window.console.trace=n;window.console.dir=n;window.console.table=n;}catch(e){}})();`,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
       <body suppressHydrationWarning className="font-sans antialiased bg-white selection:bg-[#48B9FA]/20 selection:text-neutral-900 text-neutral-900 flex flex-col min-h-screen">
+        <ConsoleSilencer />
         <CartProvider>
           <Suspense fallback={null}>
             <RouteMasker />

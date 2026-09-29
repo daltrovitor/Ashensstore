@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -83,8 +84,7 @@ export function DigitalStockDialog({
             } else {
                 toast.error("Erro ao carregar mensagens de estoque")
             }
-        } catch (err) {
-            console.error(err)
+        } catch {
             toast.error("Erro ao carregar estoque")
         } finally {
             setLoading(false)
@@ -122,8 +122,7 @@ export function DigitalStockDialog({
             } else {
                 toast.error(data.error || "Erro ao adicionar mensagens")
             }
-        } catch (err) {
-            console.error(err)
+        } catch {
             toast.error("Erro ao adicionar mensagens")
         } finally {
             setAdding(false)
@@ -142,8 +141,7 @@ export function DigitalStockDialog({
             } else {
                 toast.error(data.error || "Erro ao remover mensagem")
             }
-        } catch (err) {
-            console.error(err)
+        } catch {
             toast.error("Erro ao remover mensagem")
         }
     }

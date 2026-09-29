@@ -134,8 +134,8 @@ function OrdersContent() {
           setOrders(list)
         }
       }
-    } catch (error) {
-      console.error('Erro ao buscar pedidos:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     } finally {
       if (!isSilent) setLoading(false)
     }

@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useCallback } from "react"
@@ -86,7 +87,6 @@ export function ImageUpload({
       }
 
     } catch (error) {
-      console.error('Upload error:', error)
       toast.error(error instanceof Error ? error.message : 'Erro ao fazer upload')
     } finally {
       setIsUploading(false)
@@ -117,8 +117,7 @@ export function ImageUpload({
       
       onRemove?.()
       toast.success('Imagem removida')
-    } catch (error) {
-      console.error('Remove error:', error)
+    } catch {
       toast.error('Erro ao remover imagem')
     }
   }

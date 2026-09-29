@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
@@ -52,8 +53,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                     })
                 }
             }
-        } catch (error) {
-            console.error('Erro ao carregar carrinho:', error)
+        } catch (_) {
+            // Ignora erro silenciosamente
         }
         setIsHydrated(true)
     }, [])
@@ -63,8 +64,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (!isHydrated) return
         try {
             localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
-        } catch (error) {
-            console.error('Erro ao salvar carrinho:', error)
+        } catch (_) {
+            // Ignora erro silenciosamente
         }
     }, [cart, isHydrated])
 

@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -54,8 +55,7 @@ export function BannersManager() {
                 const data = await res.json()
                 setBanners(Array.isArray(data) ? data : [])
             }
-        } catch (error) {
-            console.error('Error fetching banners:', error)
+        } catch {
             toast.error("Erro ao carregar banners")
         } finally {
             setLoading(false)
@@ -96,8 +96,7 @@ export function BannersManager() {
                 const data = await res.json()
                 toast.error(data.error || "Erro ao adicionar banner")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao adicionar banner")
         } finally {
             setIsSubmitting(false)
@@ -119,8 +118,7 @@ export function BannersManager() {
             } else {
                 toast.error("Erro ao atualizar status do banner")
             }
-        } catch (err) {
-            console.error(err)
+        } catch {
             toast.error("Erro ao atualizar status do banner")
         }
     }
@@ -139,8 +137,7 @@ export function BannersManager() {
             } else {
                 toast.error("Erro ao remover banner")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao remover banner")
         } finally {
             setBannerToDelete(null)

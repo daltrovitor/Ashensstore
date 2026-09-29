@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState } from "react"
@@ -195,8 +196,7 @@ export function NewOrderDialog({ onOrderCreated }: NewOrderDialogProps) {
             } else {
                 toast.error(resData.error || "Erro ao criar pedido local")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setIsSaving(false)

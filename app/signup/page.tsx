@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
@@ -22,8 +23,8 @@ function SignupContent() {
           // Usuário já está logado, redireciona para início
           router.push('/')
         }
-      } catch (error) {
-        console.error('Auth check error:', error)
+      } catch (_) {
+        // Ignora erro silenciosamente
       } finally {
         setLoading(false)
       }

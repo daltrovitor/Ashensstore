@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -40,7 +41,6 @@ export default function AdminPage() {
           // Do not redirect blindly to login to avoid loops if API is down
         }
       } catch (err) {
-        console.error('Auth check failed', err)
         if (mounted) {
           if (err instanceof DOMException && err.name === 'AbortError') {
             toast.error('O servidor demorou muito para responder.')

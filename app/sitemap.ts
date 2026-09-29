@@ -1,3 +1,4 @@
+// Hello World
 import { MetadataRoute } from 'next'
 import { getSupabaseService } from '@/lib/supabase/server'
 import { BLOX_PRODUCTS } from '@/data/blox-fruits'
@@ -47,8 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
 
         return [...routes, ...productEntries]
-    } catch (error) {
-        console.error('Sitemap error:', error)
+    } catch {
         return routes
     }
 }

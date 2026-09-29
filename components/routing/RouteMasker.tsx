@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useEffect } from "react"

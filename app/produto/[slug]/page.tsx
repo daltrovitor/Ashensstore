@@ -58,8 +58,8 @@ async function getProduct(slug: string): Promise<Product | null> {
         return data as any
       }
     }
-  } catch (err) {
-    console.error('[Product Page] Erro ao buscar produto no banco:', err)
+  } catch {
+    // Silencioso
   }
 
   // Se não existir no banco de dados, retorna null (aciona notFound)

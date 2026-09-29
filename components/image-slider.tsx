@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -16,8 +17,7 @@ const fetcher = async (url: string) => {
     if (!res.ok) throw new Error("Failed to fetch")
     const data = await res.json()
     return Array.isArray(data) ? data : []
-  } catch (error) {
-    console.error("Image slider fetch error:", error)
+  } catch {
     return []
   }
 }

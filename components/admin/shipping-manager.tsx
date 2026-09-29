@@ -1,4 +1,4 @@
-
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -39,8 +39,7 @@ export function ShippingManager() {
                 const def = data.find((r: any) => r.state_code === 'XX')
                 if (def) setDefaultPrice(def.price)
             }
-        } catch (error) {
-            console.error('Error fetching shipping rules:', error)
+        } catch {
             toast.error("Erro ao carregar regras de frete")
         } finally {
             setLoading(false)
@@ -62,8 +61,7 @@ export function ShippingManager() {
             } else {
                 toast.error("Erro ao salvar regra")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao salvar regra")
         } finally {
             setIsSaving(false)

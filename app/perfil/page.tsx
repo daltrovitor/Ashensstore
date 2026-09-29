@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
@@ -62,8 +63,8 @@ function ProfileContent() {
         const data = await res.json()
         setOrders(data.orders || [])
       }
-    } catch (error) {
-      console.error('Error fetching orders:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     }
   }
 
@@ -81,8 +82,7 @@ function ProfileContent() {
       } else {
         throw new Error('Falha ao atualizar perfil')
       }
-    } catch (error) {
-      console.error('Update profile error:', error)
+    } catch (_) {
       toast.error('Falha ao atualizar perfil')
     } finally {
       setSaving(false)
@@ -93,8 +93,8 @@ function ProfileContent() {
     try {
       await signOut()
       router.push('/')
-    } catch (error) {
-      console.error('Sign out error:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     }
   }
 

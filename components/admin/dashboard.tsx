@@ -137,15 +137,12 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   const fetchCategories = async () => {
     try {
-      console.log("Fetching categories...")
       const res = await fetchWithAuth('/api/categories')
       if (res.ok) {
         const data = await res.json()
-        console.log("Fetched categories:", data)
         setCategories(Array.isArray(data) ? data : [])
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao carregar categorias")
     }
   }
@@ -158,8 +155,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         const data = await res.json()
         setProducts(data.products || [])
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao carregar produtos")
     } finally {
       setLoading(false)
@@ -277,8 +273,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       } else {
         toast.error(data.message || data.error || "Erro ao salvar produto")
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao salvar produto")
     } finally {
       setIsCreating(false)
@@ -349,8 +344,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
               const data = await res.json()
               toast.error(data.error || "Erro ao excluir produto")
             }
-          } catch (e) {
-            console.error('Delete error:', e)
+          } catch {
             toast.error("Erro ao excluir produto")
           }
         },
@@ -366,8 +360,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     try {
       await fetch('/api/auth/signout', { method: 'POST' })
       onLogout()
-    } catch (error) {
-      console.error('Logout error:', error)
+    } catch {
       onLogout()
     }
   }

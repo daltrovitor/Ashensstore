@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState } from "react"
@@ -52,56 +53,25 @@ export function LoginForm({ onSuccess, redirectTo }: LoginFormProps) {
         throw new Error('Falha ao fazer login')
       }
 
-      // 2. Buscar role do perfil
+      // 2. Obter role do perfil exclusivamente via backend seguro
       let userRole = 'customer'
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('user_id', authData.user.id)
-          .single()
-
-        const profile = data as any
-        if (profile?.role) {
-          userRole = profile.role
+        const bypassRes = await fetch('/api/auth/check-role', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: authData.user.id }),
+        })
+        if (bypassRes.ok) {
+          const bypassData = await bypassRes.json()
+          if (bypassData.role) userRole = bypassData.role
         }
-
-        // Se RLS falhar ou retornar 'customer' incorretamente (como para admin@monstercave.com), tentar bypass pelo servidor
-        if (!userRole || userRole === 'customer') {
-          try {
-            const bypassRes = await fetch('/api/auth/check-role', {
-              method: 'POST',
-              body: JSON.stringify({ userId: authData.user.id }),
-            })
-            if (bypassRes.ok) {
-              const bypassData = await bypassRes.json()
-              if (bypassData.role) userRole = bypassData.role
-            }
-          } catch (e) {
-            console.warn('Bypass role check failed', e)
-          }
-        }
-      } catch (err) {
-        console.warn('Could not fetch role, defaulting to customer:', err)
-        // Fallback para API de check-role
-        try {
-          const bypassRes = await fetch('/api/auth/check-role', {
-            method: 'POST',
-            body: JSON.stringify({ userId: authData.user.id }),
-          })
-          if (bypassRes.ok) {
-            const bypassData = await bypassRes.json()
-            if (bypassData.role) userRole = bypassData.role
-          }
-        } catch (e) {
-          console.warn('Critical role check failure', e)
-        }
+      } catch {
+        // Fallback silencioso
       }
 
       toast.success("Login realizado com sucesso!")
 
       const isAdmin = userRole === 'admin' || userRole === 'manager'
-
       const adminPath = process.env.NEXT_PUBLIC_ADMIN_PATH || '/admin'
 
       if (onSuccess) {
@@ -109,13 +79,11 @@ export function LoginForm({ onSuccess, redirectTo }: LoginFormProps) {
       } else if (isAdmin) {
         router.push(adminPath)
       } else {
-        // Clientes: se tentarem ir para admin, mandamos para pedidos
         const target = redirectTo?.includes('/admin') || (adminPath !== '/admin' && redirectTo?.includes(adminPath)) ? '/pedidos' : (redirectTo || '/pedidos')
         router.push(target)
       }
 
     } catch (error) {
-      console.error("Login error:", error)
       setError(error instanceof Error ? error.message : "Falha ao fazer login")
     } finally {
       setLoading(false)

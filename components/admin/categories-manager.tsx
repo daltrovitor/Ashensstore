@@ -87,8 +87,7 @@ export function CategoriesManager() {
       } else {
         toast.error("Erro ao carregar categorias")
       }
-    } catch (error) {
-      console.error("Error fetching categories:", error)
+    } catch {
       toast.error("Erro ao carregar categorias")
     } finally {
       setLoading(false)
@@ -128,7 +127,6 @@ export function CategoriesManager() {
         throw new Error("URL não retornada pelo servidor")
       }
     } catch (error: any) {
-      console.error("Erro no upload:", error)
       toast.error(error.message || "Erro ao fazer upload da imagem")
     } finally {
       setLoadingState(false)
@@ -173,8 +171,7 @@ export function CategoriesManager() {
         const data = await res.json()
         toast.error(data.error || "Erro ao criar categoria principal")
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao criar categoria principal")
     } finally {
       setIsSubmittingMain(false)
@@ -218,8 +215,7 @@ export function CategoriesManager() {
         const data = await res.json()
         toast.error(data.error || "Erro ao criar categoria comum")
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao criar categoria comum")
     } finally {
       setIsSubmittingCommon(false)
@@ -249,8 +245,7 @@ export function CategoriesManager() {
             } else {
               toast.error("Erro ao remover categoria")
             }
-          } catch (error) {
-            console.error(error)
+          } catch {
             toast.error("Erro ao remover categoria")
           }
         },
@@ -307,8 +302,7 @@ export function CategoriesManager() {
         const data = await res.json()
         toast.error(data.error || "Erro ao atualizar categoria")
       }
-    } catch (error) {
-      console.error(error)
+    } catch {
       toast.error("Erro ao atualizar categoria")
     } finally {
       setIsUpdating(false)

@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
@@ -46,8 +47,8 @@ function LoginContent() {
                 const bypassData = await bypassRes.json()
                 isAdmin = bypassData.role === 'admin' || bypassData.role === 'manager'
               }
-            } catch (e) {
-              console.warn('Login page bypass check failed', e)
+            } catch (_) {
+              // Ignora erro silenciosamente
             }
           }
 
@@ -61,8 +62,8 @@ function LoginContent() {
           }
           return // Não mostra a tela de login
         }
-      } catch (error) {
-        console.error('Auth check error:', error)
+      } catch (_) {
+        // Ignora erro silenciosamente
       } finally {
         setLoading(false)
       }

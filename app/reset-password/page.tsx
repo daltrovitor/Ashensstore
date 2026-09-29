@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, Suspense } from "react"
@@ -45,7 +46,6 @@ function ResetPasswordContent() {
       toast.success("Email de recuperação enviado!")
 
     } catch (error) {
-      console.error("Reset password error:", error)
       setError(error instanceof Error ? error.message : "Falha ao enviar email")
       toast.error("Falha ao enviar email de recuperação")
     } finally {

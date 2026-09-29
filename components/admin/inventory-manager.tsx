@@ -125,8 +125,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             } else {
                 toast.error("Erro ao carregar dados de estoque")
             }
-        } catch (error) {
-            console.error("Erro:", error)
+        } catch {
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setLoading(false)
@@ -190,8 +189,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             } else {
                 toast.error("Erro ao atualizar status de estoque")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao salvar alteração")
         } finally {
             setSavingId(null)
@@ -239,8 +237,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             } else {
                 toast.error("Erro ao salvar preços")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setSavingId(null)
@@ -284,8 +281,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
             toast.success(`${successCount} item(ns) de estoque atualizado(s) com sucesso!`)
             setPriceEdits({})
             fetchInventory()
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao salvar alterações no estoque")
         } finally {
             setIsSavingAll(false)
@@ -309,8 +305,7 @@ export function InventoryManager({ onEditProduct, onProductDeleted }: InventoryM
                 const data = await res.json()
                 toast.error(data.error || "Erro ao excluir produto")
             }
-        } catch (e) {
-            console.error("Delete product error:", e)
+        } catch {
             toast.error("Erro ao conectar com o servidor para excluir produto")
         } finally {
             setIsDeleting(false)

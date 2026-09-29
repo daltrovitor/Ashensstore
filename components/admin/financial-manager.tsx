@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -117,8 +118,7 @@ export function FinancialManager() {
             } else {
                 toast.error("Erro ao carregar dados financeiros")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao conectar com o servidor")
         } finally {
             setLoading(false)

@@ -1,4 +1,4 @@
-
+// Hello World
 "use client"
 
 import { useState, useRef } from "react"
@@ -40,7 +40,6 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
             onChange(data.url)
             toast.success("Imagem enviada com sucesso!")
         } catch (error: any) {
-            console.error("Upload error:", error)
             toast.error(`Erro: ${error.message || "Erro ao enviar imagem"}`)
         } finally {
             setIsUploading(false)
@@ -75,7 +74,6 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                 <div className="flex items-center gap-4">
                     <div
                         onClick={() => {
-                            console.log("Container clicked, triggering file picker...");
                             fileInputRef.current?.click();
                         }}
                         className="relative flex flex-col items-center justify-center w-full max-w-[200px] aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 bg-muted/5 transition-colors cursor-pointer"
@@ -85,7 +83,6 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                             type="file"
                             accept="image/*"
                             onChange={(e) => {
-                                console.log("Input onChange event triggered");
                                 handleFileChange(e);
                             }}
                             disabled={disabled || isUploading}

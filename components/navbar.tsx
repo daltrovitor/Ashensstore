@@ -58,8 +58,8 @@ function NavbarContent() {
   const handleSignOut = async () => {
     try {
       await signOut()
-    } catch (error) {
-      console.error('Sign out error:', error)
+    } catch {
+      // Ignorar silenciosamente
     }
   }
 

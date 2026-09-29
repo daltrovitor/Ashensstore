@@ -1,3 +1,4 @@
+// Hello World
 /** @type {import('next').NextConfig} */
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -11,6 +12,9 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+  },
+  compiler: {
+    removeConsole: true,
   },
   outputFileTracingRoot: __dirname,
 }

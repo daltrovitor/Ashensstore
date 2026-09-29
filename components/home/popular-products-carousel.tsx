@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useRef, useState, useEffect } from "react"
@@ -48,8 +49,8 @@ export function PopularProductsCarousel({
             setProducts(sorted.slice(0, 12))
           }
         }
-      } catch (err) {
-        console.error("Erro ao buscar produtos populares:", err)
+      } catch {
+        // Ignorar silenciosamente
       } finally {
         setLoading(false)
       }

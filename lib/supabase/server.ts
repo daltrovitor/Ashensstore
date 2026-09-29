@@ -1,3 +1,4 @@
+// Hello World
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
@@ -8,7 +9,6 @@ export async function getSupabaseServer() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !anonKey) {
-    console.warn('Supabase credentials not configured')
     // Return a minimal dummy client object so callers receive a non-null value
     // This avoids widespread `possibly null` TypeScript errors in route files.
     // At runtime any attempted operation will throw with a clear message.
@@ -57,13 +57,7 @@ export async function getSupabaseServer() {
 export function getSupabaseService() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url) {
-    console.warn('getSupabaseService not configured — NEXT_PUBLIC_SUPABASE_URL missing')
-    return null
-  }
-
-  if (!serviceKey) {
-    console.warn('getSupabaseService not configured — SUPABASE_SERVICE_ROLE_KEY missing')
+  if (!url || !serviceKey) {
     return null
   }
 

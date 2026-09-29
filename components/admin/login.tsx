@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import type React from "react"
@@ -62,8 +63,6 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
         })
 
       if (authError) {
-        // **Mostra o erro real do Supabase (ex: Email not confirmed)**
-        console.error("Erro de Login Supabase:", authError)
         const msg = authError.message.includes("Email not confirmed")
           ? "O email precisa ser confirmado. Verifique o painel do Supabase."
           : "Email ou senha incorretos."

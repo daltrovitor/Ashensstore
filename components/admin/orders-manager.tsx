@@ -1,4 +1,4 @@
-
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -99,8 +99,7 @@ export function OrdersManager() {
             } else {
                 toast.error("Erro ao carregar pedidos")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao carregar pedidos")
         } finally {
             setLoading(false)
@@ -165,8 +164,7 @@ export function OrdersManager() {
             } else {
                 toast.error("Erro ao atualizar status")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao atualizar status")
         } finally {
             setUpdatingStatus(false)
@@ -202,8 +200,7 @@ export function OrdersManager() {
             } else {
                 toast.error(data.error || "Erro ao confirmar pagamento")
             }
-        } catch (error) {
-            console.error(error)
+        } catch {
             toast.error("Erro ao confirmar pagamento")
         } finally {
             setUpdatingStatus(false)

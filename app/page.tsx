@@ -42,8 +42,8 @@ function HomeContent() {
         const catData = await resCategories.json()
         setCategories(Array.isArray(catData) ? catData : [])
       }
-    } catch (error) {
-      console.error('Erro ao buscar dados da home:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     } finally {
       setLoading(false)
     }

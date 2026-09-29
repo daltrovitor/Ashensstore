@@ -69,8 +69,8 @@ function LojaContent() {
         const data = await res.json()
         setCategories(Array.isArray(data) ? data.filter((c: any) => c.is_active !== false) : [])
       }
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     }
   }
 
@@ -109,8 +109,8 @@ function LojaContent() {
           setProducts(data)
         }
       }
-    } catch (error) {
-      console.error('Erro ao buscar produtos:', error)
+    } catch (_) {
+      // Ignora erro silenciosamente
     } finally {
       setLoading(false)
     }

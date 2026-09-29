@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import { useState, useEffect } from "react"
@@ -30,8 +31,8 @@ export function PixQrCode({ pixCode, amount, orderId, onConfirm }: PixQrCodeProp
             errorCorrectionLevel: "M",
         })
             .then((url) => setQrDataUrl(url))
-            .catch((err) => {
-                console.error("Erro ao gerar QR Code:", err)
+            .catch(() => {
+                // Silencioso
             })
     }, [pixCode])
 

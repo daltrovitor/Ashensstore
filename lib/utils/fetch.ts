@@ -1,3 +1,4 @@
+// Hello World
 import { getSupabaseClient } from '@/lib/supabase/client'
 
 export const fetcher = (url: string) => fetch(url).then((res) => res.json())

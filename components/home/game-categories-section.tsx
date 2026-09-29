@@ -22,8 +22,8 @@ export function GameCategoriesSection() {
             setCategories(data)
           }
         }
-      } catch (e) {
-        console.warn("Erro ao buscar categorias para a seção de jogos:", e)
+      } catch {
+        // Ignorar silenciosamente
       } finally {
         setLoading(false)
       }

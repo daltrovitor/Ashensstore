@@ -1,3 +1,4 @@
+// Hello World
 "use client"
 
 import useSWR from "swr"
@@ -17,11 +18,6 @@ interface DynamicSectionProps {
 export function DynamicSection({ categoryId }: DynamicSectionProps) {
   const { data: category } = useSWR<Category>(`/api/categories?id=${categoryId}`, fetcher)
   const { data: contents = [] } = useSWR<Content[]>(`/api/contents?categoryId=${categoryId}`, fetcher)
-
-  // Debug: Log data
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DynamicSection] categoryId: ${categoryId}, category:`, category, 'contents:', contents)
-  }
 
   if (!category) return null
 

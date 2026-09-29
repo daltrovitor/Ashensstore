@@ -32,13 +32,10 @@ function SuccessContent() {
                     const data = await res.json()
 
                     if (!res.ok) {
-                        console.error('Falha na verificação:', data.error)
-                        // toast.error('Erro ao verificar status do pagamento')
-                    } else {
-                        console.log('Pagamento verificado:', data)
+                        // Verificação pendente
                     }
-                } catch (error) {
-                    console.error('Erro ao verificar pagamento:', error)
+                } catch {
+                    // Silencioso
                 } finally {
                     setIsVerifying(false)
                 }

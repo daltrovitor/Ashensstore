@@ -58,10 +58,8 @@ export async function updateSession(request: NextRequest) {
         )
         const result = await Promise.race([getUserPromise, timeoutPromise]) as any
         user = result?.data?.user || null
-    } catch (e) {
-        console.error('Middleware getUser error or timeout:', e)
-        // If it times out or errors, we proceed with the current response
-        // This is better than hanging and causing a 504
+    } catch {
+        // Silencioso se der timeout ou falha na checagem
     }
 
     return { response, user, supabase }

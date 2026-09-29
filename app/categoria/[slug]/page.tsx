@@ -67,8 +67,8 @@ export default function GameCategoryPage({ params }: PageProps) {
         const prodData = await resProd.json()
         setProducts(Array.isArray(prodData) ? prodData : [])
       }
-    } catch (err) {
-      console.error("Erro ao carregar dados do jogo:", err)
+    } catch (_) {
+      // Ignora erro silenciosamente
     } finally {
       setLoading(false)
     }
