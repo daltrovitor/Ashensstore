@@ -64,10 +64,10 @@ export function GameCategoriesSection() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-neutral-900">
-              Escolha um jogo
+              Escolha uma categoria
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-              Escolha seu jogo para navegar pelas ofertas e categorias de produtos
+              Escolha sua categoria para navegar pelas ofertas e itens
             </p>
           </div>
 
@@ -78,7 +78,7 @@ export function GameCategoriesSection() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Pesquisar jogo..."
+              placeholder="Pesquisar item ou categoria..."
               className="w-full bg-neutral-50 hover:bg-white focus:bg-white border border-neutral-200 focus:border-[#48B9FA] rounded-md h-10 pl-10 pr-4 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-all shadow-2xs focus:ring-2 focus:ring-[#48B9FA]/20"
             />
           </div>
@@ -106,7 +106,7 @@ export function GameCategoriesSection() {
         ) : filteredGames.length === 0 ? (
           <div className="text-center py-12 bg-neutral-50 border border-neutral-200 rounded-md p-6 space-y-2">
             <p className="text-sm font-semibold text-neutral-700">
-              Nenhum jogo encontrado para &ldquo;{searchTerm}&rdquo;
+              Nenhuma categoria encontrada para &ldquo;{searchTerm}&rdquo;
             </p>
             <p className="text-xs text-neutral-500">
               Limpe o campo de busca para ver todas as categorias principais.

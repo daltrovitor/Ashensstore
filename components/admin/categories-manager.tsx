@@ -320,7 +320,7 @@ export function CategoriesManager() {
               <span>Hierarquia de Categorias</span>
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-2xl leading-relaxed">
-              Organize sua loja com dois níveis: <strong>Categorias Principais</strong> (jogos e destaques com imagem no topo) e <strong>Categorias Comuns</strong> (subcategorias normais sem imagem que aparecem ao rolar a página).
+              Organize sua loja com dois níveis: <strong>Categorias Principais</strong> (destaques com imagem no topo) e <strong>Categorias Comuns</strong> (subcategorias normais sem imagem que aparecem ao rolar a página).
             </p>
           </div>
 
@@ -359,7 +359,7 @@ export function CategoriesManager() {
                   <h3>Categorias Principais</h3>
                 </div>
                 <p className="text-xs text-neutral-500 mt-0.5">
-                  Aparecem lá em cima no grid &ldquo;Escolha um jogo&rdquo;. As imagens são adicionadas por você.
+                  Aparecem lá em cima no grid &ldquo;Escolha uma categoria&rdquo;. As imagens são adicionadas por você.
                 </p>
               </div>
 
@@ -519,7 +519,7 @@ export function CategoriesManager() {
                     Nenhuma categoria principal cadastrada ainda.
                   </p>
                   <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                    Use o formulário acima para cadastrar os jogos ou categorias principais do topo e fazer o upload de suas próprias imagens.
+                    Use o formulário acima para cadastrar as categorias principais do topo e fazer o upload de suas próprias imagens.
                   </p>
                 </div>
               ) : (

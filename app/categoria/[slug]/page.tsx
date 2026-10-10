@@ -138,7 +138,7 @@ export default function GameCategoryPage({ params }: PageProps) {
     })
   }, [currentCategory, hierarchy, categories])
 
-  // 4. Produtos desta Categoria Principal (apenas itens ativos pertencentes a este jogo)
+  // 4. Produtos desta Categoria Principal (apenas itens ativos pertencentes a esta categoria)
   const mainCategoryProducts = useMemo(() => {
     if (!currentCategory) return []
 
@@ -434,11 +434,7 @@ export default function GameCategoryPage({ params }: PageProps) {
             {/* Produtos diretos da categoria principal sem subcategoria */}
             {directProducts.length > 0 && (
               <section className="border-b border-neutral-100 pb-10 last:border-b-0 last:pb-0">
-                <CategoryDivider
-                  title={`Mais Ofertas de ${categoryTitle}`}
-                  subtitle={`Outros produtos e ofertas disponíveis`}
-                />
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                   {directProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
