@@ -10,8 +10,8 @@ import { CartProvider } from '@/hooks/use-shopping-cart'
 import { RouteMasker } from '@/components/routing/RouteMasker'
 import { ConsoleSilencer } from '@/components/console-silencer'
 
-const SITE_NAME = 'Ashens Store | Loja de Blox Fruits'
-const SITE_DESCRIPTION = 'Sua loja definitiva de Blox Fruits! Frutas Míticas (Kitsune, Dragon, Leopard), Gamepasses com desconto, Contas Level 2550 e Raças V4. Entrega rápida no Roblox e 100% segura via PIX.'
+const SITE_NAME = 'Ashens Store | Loja de Roblox'
+const SITE_DESCRIPTION = 'Sua loja definitiva de Roblox! Frutas Míticas (Kitsune, Dragon, Leopard), Gamepasses com desconto, Contas Level 2550 e Raças V4. Entrega rápida no Roblox e 100% segura via PIX.'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ashenstore.com.br'
 
 export const viewport: Viewport = {
